@@ -1,6 +1,12 @@
+// These files are derived in part from the "Pose Calib" project.
+// They are subject to the license terms in the LICENSE file.
+
+// @author Pavel Rojtbergpackage calibrator;
+
+
 package calibrator;
 
-// changed method name oribital_pose to orbital_pose
+// changed method name oribital_pose to orbital_pose - rkt
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -11,13 +17,11 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
@@ -86,7 +90,7 @@ public class Main {
     // java.util.logging Levels	ALL FINEST FINER	FINE	INFO	CONFIG  WARNING	SEVERE	OFF
     for (String key : classesLog)
         {
-        String value = "FINER";
+        String value = "FINEST";
         classLevels.put(key, Level.parse(value));
         }
     }
@@ -96,8 +100,6 @@ public class Main {
     {
     System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
     }
-
-    static final int wait = 20;
 
     // keyboard mapping returns from waitKey
     static final int keyEscape = 27;
@@ -167,7 +169,7 @@ public class Main {
         while (!Thread.interrupted())
         {
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
-            if (cap.grabFrame(_img) != 0)
+            if (cap.grabFrame(_img, 0.5) != 0)
             {
                 if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec
                 {
@@ -212,7 +214,7 @@ public class Main {
 
             HighGui.imshow("PoseCalib", out);
 
-            int k = HighGui.waitKey(wait);
+            int k = HighGui.waitKey(Cfg.wait);
 
             if(k != timedOut) Main.LOGGER.log(Level.SEVERE, "Pressed Key " + k);
 
@@ -246,7 +248,7 @@ public class Main {
         if (ugui.user_info_text.length() > 0) // is there a message to display?
         {
             if ( ! ugui.user_info_text.equals("initialization")) // rkt stop spamming "initialization" to log
-                Main.LOGGER.log(Level.FINE,ugui.user_info_text);
+                Main.LOGGER.log(Level.SEVERE,ugui.user_info_text);
 
             Imgproc.putText(out, ugui.user_info_text, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
             Imgproc.putText(out, ugui.user_info_text, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);

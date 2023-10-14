@@ -36,7 +36,9 @@ public class Distortion
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     get_bounds                                                             */
+/*                                     get_bounds                                                             */
+/*                                     get_bounds                                                             */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -45,9 +47,8 @@ public class Distortion
         Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         Main.LOGGER.log(Level.SEVERE, "thresh " + thresh);        
         Main.LOGGER.log(Level.SEVERE, "mask " + mask);
-        double MAX_OVERLAP = 0.9; //FIXME make this user settable
 
-        List<MatOfPoint> contours = new ArrayList<MatOfPoint>(20); // arbitrary initial size - what is a better guess?
+        List<MatOfPoint> contours = new ArrayList<>(20); // arbitrary initial size - what is a better guess?
         Mat hierarchy = new Mat();
         Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
        
@@ -63,7 +64,7 @@ public class Distortion
         {
             // look for contour with largest area
             double areaContourMax = -1.; // indicate no max at the start
-            int locMax = -1; // indicate no max at the start
+            int mx = -1; // indicate no max at the start
             for(int i = 0; i < contours.size(); i++)
             {
                 // var areaContour = Imgproc.contourArea(contours.get(i)); // this might be better area but watch for area = 0.0 if only 2 points in contour
@@ -73,29 +74,31 @@ public class Distortion
                 {
                     // new max and its location
                     areaContourMax = areaContour;
-                    locMax = i;
+                    mx = i;
                 }
-                Main.LOGGER.log(Level.FINEST, "i " + i + ", areamax " + areaContourMax + ", contour size " + contours.get(i).size(i));
+                Main.LOGGER.log(Level.SEVERE, "Contour " + (mx+1) + " of " + contours.size() + ", area max so far " + areaContourMax
+                    + ", contour size " + contours.get(mx).size(mx) + "\n" + contours.get(mx).dump());
             }
-            // Now have contour with largest area so check that area not already covered
-            // that is it's not masked.
+            // Now have contour with largest area so check that area not already covered,
+            // that is, it's not masked.
             // If already mostly masked then this contour doesn't contribute
             // enough so delete it. Else it's good and return it.
-            Rect aabb = Imgproc.boundingRect(contours.get(locMax));
+            Rect aabb = Imgproc.boundingRect(contours.get(mx));
             int x = aabb.x;
             int y = aabb.y;
             int w = aabb.width;
             int h = aabb.height;
-            Main.LOGGER.log(Level.SEVERE, "processing Rect aabb " + aabb.toString());
+            Main.LOGGER.log(Level.SEVERE, "processing Rect aabb " + aabb);
             if(!mask.empty()
-                && Core.countNonZero(mask.submat(y, y+h, x, x+w)) / (w*h) > MAX_OVERLAP)
+                && (double)Core.countNonZero(mask.submat(y, y+h, x, x+w)) / (double)(w*h) > Cfg.MAX_OVERLAP)
             {
-                contours.remove(locMax);
+                contours.remove(mx);
                 continue;
             }
-            Main.LOGGER.log(Level.SEVERE, "returning aabb " + aabb.toString());
+            Main.LOGGER.log(Level.SEVERE, "returning aabb " + aabb);
             return aabb; // best contour in list so return it
         }
+
         Main.LOGGER.log(Level.SEVERE, "returning null aabb");
 
         return null; // no contours met the criteria
@@ -182,7 +185,9 @@ public class Distortion
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     sparse_undistort_map                                                   */
+/*                                     sparse_undistort_map                                                   */
+/*                                     sparse_undistort_map                                                   */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -302,13 +307,11 @@ public class Distortion
     public static Rect loc_from_dist(Mat pts, Mat dpts, Mat mask, boolean lower, double thres) // force specifying all parameters
     {
         Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-
-        Main.LOGGER.log(Level.FINER, "pts " + pts);
-        Main.LOGGER.log(Level.FINER, "dpts " + dpts);
-        Main.LOGGER.log(Level.FINER, "mask " + mask);
-        Main.LOGGER.log(Level.FINER, "lower " + lower);
-        Main.LOGGER.log(Level.FINER, "thres " + thres);
-
+        Main.LOGGER.log(Level.SEVERE, "pts " + pts);
+        Main.LOGGER.log(Level.SEVERE, "dpts " + dpts);
+        Main.LOGGER.log(Level.SEVERE, "mask " + mask);
+        Main.LOGGER.log(Level.SEVERE, "lower " + lower);
+        Main.LOGGER.log(Level.SEVERE, "thres " + thres);
 /*
 pts =  np.array([[[   0,    0], [   0,   20],  [   0,   40]],
 [[   0,    0], [   0,   20],  [   0,   40]]])
@@ -341,11 +344,11 @@ diff3 [[255 255]
         // norm(0,0) = sqrt( (p(0,0)x-dp(0,0)x)^2 + (p(0,0)y-dp(0,0)z)^2 )
         Mat diffpts = new Mat();
         Core.subtract(pts, dpts, diffpts);
-        Main.LOGGER.log(Level.FINER, "diffpts " + diffpts);
+        Main.LOGGER.log(Level.SEVERE, "diffpts " + diffpts);
 
         Mat normMat = new Mat(pts.rows(), pts.cols(), CvType.CV_32FC1);
-        Main.LOGGER.log(Level.FINER, "normMat empty " + normMat);
-//FIXME no!!!!!!!! pts is a one column strip not a rectangle; it's supposed to be rectangle. what happened to it?
+        Main.LOGGER.log(Level.SEVERE, "normMat empty " + normMat);
+
         for(int row = 0; row < pts.rows(); row++)
         for(int col = 0; col < pts.cols(); col++)
         {
@@ -361,7 +364,7 @@ diff3 [[255 255]
 
         Mat diff = new Mat();
         Core.normalize(normMat, diff, 0, 255, Core.NORM_MINMAX, CvType.CV_8U);
-        // Main.LOGGER.log(Level.FINER, "diff " + diff.dump());
+        // Main.LOGGER.log(Level.SEVERE, "diff " + diff.dump());
         Main.LOGGER.log(Level.SEVERE, "normMat normalized=diff " + diff);
 
         Rect bounds = null;
@@ -379,7 +382,7 @@ diff3 [[255 255]
                 thres -= 0.05;
                 Imgproc.threshold(diff, thres_img, thres * 255., 255., Imgproc.THRESH_BINARY);
             }
-            Main.LOGGER.log(Level.FINER, "thres_img " + thres_img /*+ "\n" + brief(thres_img.dump())*/);
+            Main.LOGGER.log(Level.SEVERE, "thres_img " + thres_img /*+ "\n" + brief(thres_img.dump())*/);
 
             bounds = get_bounds(thres_img, mask);
 
@@ -398,7 +401,7 @@ diff3 [[255 255]
         diff.release();
         diffpts.release();
 
-        Main.LOGGER.log(Level.SEVERE, "bounds " + (bounds == null ? "is null" : bounds.toString()));
+        Main.LOGGER.log(Level.SEVERE, "bounds " + (bounds == null ? "is null" : bounds));
 
         return bounds;
     }
@@ -406,7 +409,9 @@ diff3 [[255 255]
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     End Distortion class                                                                       */
+/*                                     End Distortion class                                                                       */
+/*                                     End Distortion class                                                                       */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */

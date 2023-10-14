@@ -1,9 +1,8 @@
 package calibrator;
 
-import static calibrator.ArrayUtils.brief;
-import static calibrator.ArrayUtils.isAllTrue;
-import static calibrator.ArrayUtils.argmin;
 import static calibrator.ArrayUtils.argmax;
+import static calibrator.ArrayUtils.argmin;
+import static calibrator.ArrayUtils.isAllTrue;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -17,7 +16,6 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -148,6 +146,8 @@ public class UserGuidance {
                 rel_pstd[i] = 1 - Math.sqrt(pvar[i]) / Math.sqrt(pvar_prev[i]);
             }
 
+            Main.LOGGER.log(Level.SEVERE, "relative stddev " + Arrays.toString(rel_pstd));
+            
             if(rel_pstd[this.tgt_param] < 0)
             {
                 Main.LOGGER.log(Level.SEVERE, this.INTRINSICS[this.tgt_param] + " degraded");
@@ -300,7 +300,7 @@ public class UserGuidance {
 
         jaccard = (double)Aab / (double)(Aa + Ab - Aab);
 
-        Main.LOGGER.log(Level.FINE, "jaccard " + jaccard);
+        Main.LOGGER.log(Level.SEVERE, "jaccard " + jaccard);
     
         return jaccard;
     }

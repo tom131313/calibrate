@@ -177,8 +177,8 @@ public class Calibrator {
 
         // split keyframes into its two separate components for OpenCV calibrateCamera
         // we put them together when detected then we take them apart for calibration. Maybe that's not a good idea.
-        List<Mat> imagePoints = new ArrayList<Mat>(); // pts2d
-        List<Mat> objectPoints = new ArrayList<Mat>(); // pts3d
+        List<Mat> imagePoints = new ArrayList<>(); // pts2d
+        List<Mat> objectPoints = new ArrayList<>(); // pts3d
         int N = 0; // count total number of points
 
         for (keyframe keyframe:keyframes)

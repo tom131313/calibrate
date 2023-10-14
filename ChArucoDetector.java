@@ -187,7 +187,7 @@ public class ChArucoDetector {
         // Not sure what original axis=1 norm is. Below is 2 axes which is better, I think
         Mat diff = new Mat();
         Core.subtract(this.last_ccorners, this.ccorners, diff);
-        Main.LOGGER.log(Level.FINEST, "diffpts " + diff + " " + diff.dump());
+        Main.LOGGER.log(Level.SEVERE, "diffpts " + diff + " " + diff.dump());
 
         Mat normMat = new Mat(diff.rows(), diff.cols(), CvType.CV_64FC1);
 
@@ -199,10 +199,10 @@ public class ChArucoDetector {
             double norm = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
             normMat.put(row, col, norm);
         }
-        Main.LOGGER.log(Level.FINEST, "normMat " + normMat.dump());
+        Main.LOGGER.log(Level.SEVERE, "normMat " + normMat.dump());
 
         this.mean_flow = Core.mean(normMat).val[0];
-        Main.LOGGER.log(Level.FINER, "mean_flow " + this.mean_flow);
+        Main.LOGGER.log(Level.SEVERE, "mean_flow " + this.mean_flow);
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
     }

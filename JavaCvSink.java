@@ -1,4 +1,5 @@
 package calibrator;
+
 import java.nio.ByteBuffer;
 
 import edu.wpi.first.cscore.VideoMode;

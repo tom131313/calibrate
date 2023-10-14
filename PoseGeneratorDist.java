@@ -13,9 +13,7 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.MatOfPoint3f;
 import org.opencv.core.Point;
-import org.opencv.core.Point3;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -223,10 +221,9 @@ public class PoseGeneratorDist {
                 /********************************************************************************************************* */
                 Mat off3d = unproject(off, K, cdist, t.get(0, 2)[0]);
                 /********************************************************************************************************* */
-//FIXME off3d and t apparently have different depths so check this and fix if possible. for now specify the depth to get past the error
-                off3d.put(0, 2, 0.); // zero out the Z //FIXME 3 channel Mat trying to 0 the 3rd channel at 0,0 - not this way
-                off3d.convertTo(off3d, CvType.CV_32SC1); // patch for error- different depths in add
-                  Core.add(t, off3d, t); // pretty big offset being nearly the principal point
+
+                off3d.put(0, 2, 0.); // zero out the Z
+                Core.add(t, off3d, t); // pretty big offset being nearly the principal point
                 this.sgn = -this.sgn;
                 off.release();
                 off3d.release();
@@ -234,7 +231,7 @@ public class PoseGeneratorDist {
 
             rt.set(1, t); // update the nudged t and return
 
-            Main.LOGGER.log(Level.SEVERE, "rt " + rt.get(0).dump() + rt.get(1).dump());
+            Main.LOGGER.log(Level.SEVERE, "returning rt " + rt.get(0).dump() + rt.get(1).dump());
 
             return rt;
         }
@@ -275,9 +272,8 @@ public class PoseGeneratorDist {
 
         Main.LOGGER.log(Level.SEVERE, "returning r " + r.dump());
         Main.LOGGER.log(Level.SEVERE, "returning t " + t.dump());
-        Main.LOGGER.log(Level.SEVERE, "nbounds " + nbounds + nbounds.toString());
-        Main.LOGGER.log(Level.SEVERE, "mask\n" + brief(mask));
-
+        Main.LOGGER.log(Level.SEVERE, "nbounds " + nbounds);// nbounds {0, -133, 1280x853}
+   
         nbounds.x = (int)Math.ceil((double)nbounds.x / this.SUBSAMPLE);
         nbounds.y = (int)Math.ceil((double)nbounds.y / this.SUBSAMPLE);
         nbounds.width = (int)Math.ceil((double)nbounds.width / this.SUBSAMPLE);
@@ -286,11 +282,13 @@ public class PoseGeneratorDist {
         // The np.ceil of the scalar x is the smallest integer i, such that i >= x
         // x, y, w, h = np.ceil(np.array(nbounds) / this.SUBSAMPLE).astype(int)
 
-        // mask off y through y+h (-1) and x through x+w (-1)
+        // mask off y through y+h(-1) and x through x+w(-1)
         Mat.ones(nbounds.height, nbounds.width, this.mask.type())
             .copyTo(this.mask.submat(nbounds.y, nbounds.y+nbounds.height, nbounds.x, nbounds.x+nbounds.width));
 
-        List<Mat> rt = new ArrayList<Mat>(2);
+        Main.LOGGER.log(Level.SEVERE, "mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + brief(this.mask));
+
+        List<Mat> rt = new ArrayList<>(2);
         rt.add(r);
         rt.add(t);
 
@@ -390,7 +388,7 @@ public class PoseGeneratorDist {
         Main.LOGGER.log(Level.SEVERE, "p out " + p.dump());
 
         // MatOfPoint3f p3D = new MatOfPoint3f(new Point3(p.get(0, 0)[0], p.get(0, 0)[1], 1.));
-        Mat p3D = new Mat(1, 3, CvType.CV_32FC1);
+        Mat p3D = new Mat(1, 3, CvType.CV_64FC1);
         p3D.put(0, 0, p.get(0, 0)[0], p.get(0, 0)[1], 1.);
         Core.multiply(p3D, new Scalar(Z, Z, Z), p3D);
         Main.LOGGER.log(Level.SEVERE, "return p3D Z scaled " + p3D.dump());
@@ -486,9 +484,9 @@ end of orbital_pose function
         Calib3d.Rodrigues(angleYVector, Ry);
         /********************************************************************************************************* */
 
-        // Main.LOGGER.log(Level.FINE, "Rz\n" + Rz.dump());
-        // Main.LOGGER.log(Level.FINE, "Rx\n" + Rx.dump());
-        // Main.LOGGER.log(Level.FINE, "Ry\n" + Ry.dump());
+        // Main.LOGGER.log(Level.SEVERE, "Rz\n" + Rz.dump());
+        // Main.LOGGER.log(Level.SEVERE, "Rx\n" + Rx.dump());
+        // Main.LOGGER.log(Level.SEVERE, "Ry\n" + Ry.dump());
 
         // in Python (Ry).dot(Rx).dot(Rz) messed up nomenclature - it's often really matrix multiply Ry times Rx times Rz
         Mat R = Mat.eye(4, 4, CvType.CV_64FC1);
@@ -720,11 +718,11 @@ end of orbital_pose function
         MatOfPoint2f p = new MatOfPoint2f(new Point(img_size.width/2. - pB[0]/2., img_size.height/2. + pB[1]/2.));
         Mat t = unproject(p, K, cdist, Z);
 
-        Main.LOGGER.log(Level.FINE, "KBnoPrinciplePoint " + KB + KB.dump());
-        Main.LOGGER.log(Level.FINE, "Z, pB x, y " + Z + ", " + Arrays.toString(pB));
-        Main.LOGGER.log(Level.FINE, "p " + p + p.dump());
-        Main.LOGGER.log(Level.FINE, "returning r " + r + r.dump());
-        Main.LOGGER.log(Level.FINE, "returning t " + t + t.dump());
+        Main.LOGGER.log(Level.SEVERE, "KBnoPrinciplePoint " + KB + KB.dump());
+        Main.LOGGER.log(Level.SEVERE, "Z, pB x, y " + Z + ", " + Arrays.toString(pB));
+        Main.LOGGER.log(Level.SEVERE, "p " + p + p.dump());
+        Main.LOGGER.log(Level.SEVERE, "returning r " + r + r.dump());
+        Main.LOGGER.log(Level.SEVERE, "returning t " + t + t.dump());
 
         // KB = K.dot([bbox[0], bbox[1], 0])  # ignore principal point
         // Z = (KB[0:2] / img_size).min()
@@ -766,11 +764,26 @@ return rt;
     public static List<Object> pose_from_bounds(Mat src_extParm, Rect tgt_rect, Mat K, Mat cdist, Size img_sz)
     {
         Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "src_extParm " + src_extParm + src_extParm.dump());
-        Main.LOGGER.log(Level.SEVERE, "tgt_rect " + tgt_rect.toString()); //tgt 0,40,20,40
+        Main.LOGGER.log(Level.SEVERE, "src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
+        Main.LOGGER.log(Level.SEVERE, "tgt_rect " + tgt_rect); // guidance board posed
         Main.LOGGER.log(Level.SEVERE, "camera matrix K " + K + "\n" + K.dump());
         Main.LOGGER.log(Level.SEVERE, "cdist " + cdist.dump());
-        Main.LOGGER.log(Level.SEVERE, "img_sz " + img_sz.toString());
+        Main.LOGGER.log(Level.SEVERE, "img_sz " + img_sz.toString()); // camera screen image size
+        // 2023-10-13 12:57:11.269 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] method entered  . . . . . . . . . . . . . . . . . . . . . . . . 
+        // 2023-10-13 12:57:11.270 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] src_extParm Mat [ 3*1*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x1b5dd46d880, dataAddr=0x1b5dd46d540 ]
+        // [2520;
+        //  1680;
+        //  2520] 
+        // 2023-10-13 12:57:11.270 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] tgt_rect {0, 0, 1280x720} 
+        // 2023-10-13 12:57:11.271 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] camera matrix K Mat [ 3*3*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x1b5dd46a1d0, dataAddr=0x1b5dd44ef40 ]
+        // [1066.602099500791, 0, 642.9734482913321;
+        //  0, 1070.826243517691, 356.0309241180198;
+        //  0, 0, 1] 
+        // 2023-10-13 12:57:11.272 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] cdist [0.1541017294498731, -1.03874060965494, 0.005698820757173512, -0.001005609522518133, 1.780789107853604] 
+        // 2023-10-13 12:57:11.272 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] img_sz 1280x720 
+        // 2023-10-13 12:57:11.272 FINE    [ calibrator.PoseGeneratorDist pose_from_bounds] rot90 false 
+        // 2023-10-13 12:57:11.273 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] before clip tgt_rect {0, 0, 1280x853} 
+        // 2023-10-13 12:57:11.273 SEVERE  [ calibrator.PoseGeneratorDist pose_from_bounds] after clip tgt_rect {0, -133, 1280x853} 
         // pose_from_bounds
         // [2520. 1680. 2520.]> src_ext
         // <[1260    0   20   20]> tgt_rect x y w h
@@ -784,22 +797,22 @@ return rt;
         src_extParm.get(0, 0, src_ext);
 
         boolean rot90 = tgt_rect.height > tgt_rect.width;
-        int MIN_WIDTH = (int)Math.floor(img_sz.width/3.333); // guidance board must be about a third or more of the image size
-
-        Main.LOGGER.log(Level.FINE, "rot90 " + rot90);
+        int MIN_WIDTH = (int)Math.floor(img_sz.width/3.333); // posed guidance board must be about a third or more of the camera, screen size
+//384
+        Main.LOGGER.log(Level.SEVERE, "rot90 " + rot90);
 
         if(rot90)
         {
             // flip x and y for the rotation
-            src_ext = src_ext.clone(); // not needed in this implementation; copy hidden from method caller need only if passing not a Mat
+            src_ext = src_ext.clone(); // cloning not needed in this implementation since already hiding src_extParm
             double swapXY = src_ext[0];
             src_ext[0] = src_ext[1];
             src_ext[1] = swapXY;
 
             if (tgt_rect.height < MIN_WIDTH)
             {
-                // double scale = MIN_WIDTH / tgt_rect.width; //FIXME was this wrong? tgt_rect.width => tgt_rect.height?
-                double scale = MIN_WIDTH / tgt_rect.height; //FIXME was this wrong? tgt_rect.width => tgt_rect.height?
+                // double scale = MIN_WIDTH / tgt_rect.width; //FIXME is this wrong? tgt_rect.width => tgt_rect.height? - rkt
+                double scale = MIN_WIDTH / tgt_rect.height;
                 tgt_rect.height = MIN_WIDTH;
                 tgt_rect.width *= scale;
             }
@@ -813,23 +826,36 @@ return rt;
                 tgt_rect.height *= scale;
             }
         }
-
-        double aspect = src_ext[0] / src_ext[1];
+        double aspect = src_ext[0] / src_ext[1]; // w/h of the full ChArUcoBoard // [2520; 1680; 2520] => 1.5
 
         // match aspect ratio of tgt to src, but keep tl
         if (!rot90)
-        {
+        { // 853
             tgt_rect.height = (int)(tgt_rect.width / aspect); // adapt height
         }
         else
         {
             tgt_rect.width = (int)(tgt_rect.height * aspect); // adapt width
         }
-        
+        // logic error here (missing check), I'm sure, so fix it - rkt
+        // if target too wide reduce to image size; if target too high reduce to image size
+        if (tgt_rect.width > img_sz.width)
+        {
+            aspect = img_sz.width/tgt_rect.width;
+            tgt_rect.width = (int)(tgt_rect.height * aspect); // adapt width            
+            tgt_rect.height = (int)(tgt_rect.width * aspect); // adapt height
+        }
+        if (tgt_rect.height > img_sz.height)
+        {
+            aspect = img_sz.height/tgt_rect.height;
+            tgt_rect.width = (int)(tgt_rect.height * aspect); // adapt width            
+            tgt_rect.height = (int)(tgt_rect.width * aspect); // adapt height
+        }
+
         Mat r = new Mat(1, 3, CvType.CV_64FC1);
         r.put(0, 0, Math.PI, 0., 0.);
         
-        // org is bl (bottom left?)
+        // org is bl (bottom left)
         if (rot90)
         {
             Mat R = new Mat();
@@ -850,22 +876,25 @@ return rt;
             Calib3d.Rodrigues(R, r);
 
             r = r.t(); // Rodrigues out is 3x1 and rest of program is 1x3
-            // org is tl (top left?)
+            // org is tl (top left)
         }
 
         double Z = (K.get(0, 0)[0] * src_ext[0]) / tgt_rect.width;
+        Main.LOGGER.log(Level.SEVERE, "before clip tgt_rect " + tgt_rect);
 
         //  clip to image region
         int[] min_off = {0, 0};
-        int[] max_off = {(int)(img_sz.width - tgt_rect.width), (int)(img_sz.height - tgt_rect.height)};
-        tgt_rect.x = Math.min(max_off[0], Math.max(tgt_rect.x, min_off[0]));
-        tgt_rect.y = Math.min(max_off[1], Math.max(tgt_rect.y, min_off[1]));
-    
+        //        before fix    1280      -       1280 = 0                 720   -         853 = -133
+        int[] max_off = {(int)(img_sz.width - tgt_rect.width), (int)(img_sz.height - tgt_rect.height)}; // 0 -133
+        tgt_rect.x = Math.min(max_off[0], Math.max(tgt_rect.x, min_off[0])); // 0
+        tgt_rect.y = Math.min(max_off[1], Math.max(tgt_rect.y, min_off[1])); // -133
+        Main.LOGGER.log(Level.SEVERE, "after clip tgt_rect " + tgt_rect); // 0 -133 1280 853
+
         if (!rot90)
         {
-            tgt_rect.y += tgt_rect.height;            
+            tgt_rect.y += tgt_rect.height;
         }
-    
+
         MatOfPoint2f p = new MatOfPoint2f(new Point(tgt_rect.x, tgt_rect.y));
 
         Mat t = unproject(p, K, cdist, Z);
@@ -877,7 +906,7 @@ return rt;
 
         Main.LOGGER.log(Level.SEVERE, "returning r " + r.dump());
         Main.LOGGER.log(Level.SEVERE, "returning t " + t.dump());
-        Main.LOGGER.log(Level.SEVERE, "returning tgt_rect " + tgt_rect.toString());
+        Main.LOGGER.log(Level.SEVERE, "returning tgt_rect " + tgt_rect);
 
         List<Object> rtb = new ArrayList<>(3);
         rtb.add(r); // position 0
@@ -1354,11 +1383,11 @@ The principal point of symmetry (POS), also known as the calibrated principal po
 //      axis = 0;
 //      for(int i = 0; i<20; i++)
 //      {
-//          Main.LOGGER.log(Level.FINE, String.valueOf(gb[axis].gen_bin()));
+//          Main.LOGGER.log(Level.SEVERE, String.valueOf(gb[axis].gen_bin()));
 //      }
 //      axis = 1;
 //      for(int i = 0; i<20; i++)
 //      {
-//          Main.LOGGER.log(Level.FINE, String.valueOf(gb[axis].gen_bin()));
+//          Main.LOGGER.log(Level.SEVERE, String.valueOf(gb[axis].gen_bin()));
 //      }
 //  }
