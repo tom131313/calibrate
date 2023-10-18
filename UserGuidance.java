@@ -15,12 +15,16 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     UserGuidance class                                                     */
+/*                                     UserGuidance class                                                     */
+/*                                     UserGuidance class                                                     */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -70,13 +74,15 @@ public class UserGuidance {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     UserGuidance constructor                                               */
+/*                                     UserGuidance constructor                                               */
+/*                                     UserGuidance constructor                                               */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     UserGuidance(ChArucoDetector tracker, double var_terminate) throws Exception // force use of var_terminate=0.1 instead of defaulting
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.tracker = tracker;
         this.var_terminate = var_terminate;
@@ -93,7 +99,7 @@ public class UserGuidance {
 
         // preview image
         this.board = new BoardPreview(this.tracker.boardImage);
-        Main.LOGGER.log(Level.SEVERE, "whole board " + this.board.img);
+        Main.LOGGER.log(Level.WARNING, "whole board " + this.board.img);
         // desired pose of board for first frame
         // translation defined in terms of board dimensions
         board_units = new Mat(3, 1, CvType.CV_64FC1);
@@ -108,13 +114,15 @@ public class UserGuidance {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     calibrate                                                              */
+/*                                     calibrate                                                              */
+/*                                     calibrate                                                              */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     public void calibrate() throws Exception
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if(this.calib.keyframes.size() < 2) // need at least 2 keyframes
         {
@@ -138,7 +146,7 @@ public class UserGuidance {
 
             if(total_var > total_var_prev)
             {
-                Main.LOGGER.log(Level.SEVERE, "note: total var degraded");
+                Main.LOGGER.log(Level.WARNING, "note: total var degraded");
             }
             // check for convergence
             for(int i = 0; i < pvar.length; i++)
@@ -146,11 +154,11 @@ public class UserGuidance {
                 rel_pstd[i] = 1 - Math.sqrt(pvar[i]) / Math.sqrt(pvar_prev[i]);
             }
 
-            Main.LOGGER.log(Level.SEVERE, "relative stddev " + Arrays.toString(rel_pstd));
+            Main.LOGGER.log(Level.WARNING, "relative stddev " + Arrays.toString(rel_pstd));
             
             if(rel_pstd[this.tgt_param] < 0)
             {
-                Main.LOGGER.log(Level.SEVERE, this.INTRINSICS[this.tgt_param] + " degraded");
+                Main.LOGGER.log(Level.WARNING, this.INTRINSICS[this.tgt_param] + " degraded");
             }
 
             // g (0, 1, 2, 3)  p 0 p 1 p 2 p 3 g (4, 5, 6, 7, 8) p 4 p 5 p 6 p 7 p 8
@@ -189,7 +197,7 @@ public class UserGuidance {
                 }
                 if( ! converged.isEmpty())
                 {
-                    Main.LOGGER.log(Level.SEVERE, "{" + converged + "} converged");
+                    Main.LOGGER.log(Level.WARNING, "{" + converged + "} converged");
                 }
             }
         }
@@ -207,13 +215,15 @@ public class UserGuidance {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     set_next_pose                                                          */
+/*                                     set_next_pose                                                          */
+/*                                     set_next_pose                                                          */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     public void set_next_pose() throws Exception
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int nk = this.calib.keyframes.size();
     
@@ -225,7 +235,10 @@ public class UserGuidance {
         rt.get(0).copyTo(this.tgt_r);
         rt.get(1).copyTo(this.tgt_t);
 
-        Main.LOGGER.log(Level.SEVERE, "rt1 " + tgt_r.dump() + " " + tgt_t.dump());
+        rt.get(0).copyTo(tracker.tgt_r); // copy for estimating camera img pose
+        rt.get(1).copyTo(tracker.tgt_t);
+                                    
+        Main.LOGGER.log(Level.WARNING, "rt1 " + tgt_r.dump() + " " + tgt_t.dump());
         rt.get(1).release();
         rt.remove(1);
         rt.get(0).release();
@@ -235,24 +248,26 @@ public class UserGuidance {
         // make the guidance board warped and right size
         //board_warped_shape =  # Height Width Channels (720, 1280, 3)
         this.board_warped.release(); // rkt
-        Main.LOGGER.log(Level.SEVERE, "rt2 " + this.tgt_r.dump() + " " + this.tgt_t.dump());
+        Main.LOGGER.log(Level.WARNING, "rt2 " + this.tgt_r.dump() + " " + this.tgt_t.dump());
 
         this.board_warped = this.board.project(this.tgt_r, this.tgt_t, false, Imgproc.INTER_NEAREST);
 
-        Main.LOGGER.log(Level.SEVERE, "board_warped " + board_warped);
+        Main.LOGGER.log(Level.WARNING, "board_warped created r/t " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     pose_close_to_tgt                                                      */
+/*                                     pose_close_to_tgt                                                      */
+/*                                     pose_close_to_tgt                                                      */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     public double pose_close_to_tgt()
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        Main.LOGGER.log(Level.SEVERE, "pose_valid " + this.tracker.pose_valid + ", tgt_r empty " + this.tgt_r.empty());
+        Main.LOGGER.log(Level.WARNING, "pose_valid " + this.tracker.pose_valid + ", tgt_r empty " + this.tgt_r.empty());
         
         double jaccard = 0.;
     
@@ -269,45 +284,60 @@ public class UserGuidance {
         //     this.overlap.put(row, col, this.board_warped.get(row, col)[1] != 0 ? 1. : 0.);                
         // }
 
-        byte[] board_warpedArray = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()]; // rows*cols*channels
+        byte[] board_warpedArray = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
         this.board_warped.get(0, 0, board_warpedArray); // efficient retrieval of board_warped
 
-        byte[] overlapArray = new byte[this.board_warped.rows()*this.board_warped.cols()]; // 1 channel, java sets this to all zeros
+        byte[] overlapArray = new byte[this.overlap.rows()*this.overlap.cols()]; // 1 channel, java sets this to all zeros
 
-        int indexBoard_warpedArray = 1; // extracting channel 1 (of 0, 1, 2)
+        int indexBoard_warpedArray = 1; // start position; extracting channel 1 (of 0, 1, 2)
         for(int row = 0; row < overlapArray.length; row++)
         {
             if(board_warpedArray[indexBoard_warpedArray] != 0)
             {
                 overlapArray[row] = 1;
             }
-            indexBoard_warpedArray+=3;
+            indexBoard_warpedArray += 3; // bump to next pixel; incrementing by number of channels
         }
         this.overlap.put(0, 0, overlapArray);
 
-        int Aa = Core.countNonZero(this.overlap); // number of on pixels in the warped_board
+        this.overlap.copyTo(Main.testImg2); // test 2 has the guidance board b&w//FIXME at this point the rotation of the shadow board is reversed from Python
+        Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2);
+        Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
+        Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
 
-        Mat tmp = this.board.project(this.tracker.rvec, // create projected camera image shadow board
+        int Aa = Core.countNonZero(this.overlap); // number of on (1) pixels in the warped_board (from above)
+
+        Mat tmp = this.board.project(this.tracker.rvec, // create projected shadow same way as the guidance board (hopefully)
                                     this.tracker.tvec, 
                                     true,
                                     Imgproc.INTER_NEAREST);
-        // circumvents instability during initialization and large variance in depth later on
-        // similarity index
-        int Ab = Core.countNonZero(tmp); // number of on (1) pixels in the projected camera image shadow board
-        Core.bitwise_and(this.overlap, tmp, this.overlap); // make the overlap on pixels (1)
-        tmp.release(); // rkt
-        int Aab = Core.countNonZero(this.overlap);
+                                    
+        tmp.copyTo(Main.testImg1); // test 1 has the board projected from where the detector thinks is the camera image pose
+        Core.multiply(Main.testImg1, new Scalar(255.), Main.testImg1);
+        Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
+        Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
+        
+        Main.LOGGER.log(Level.WARNING, "shadow_warped created r/t " + this.tracker.rvec.dump() + this.tracker.tvec.dump()  + board_warped);
 
+        int Ab = Core.countNonZero(tmp); // number of on (1) pixels in the warped shadow board
+        Core.bitwise_and(this.overlap, tmp, this.overlap); // make the overlapped pixels on (1)
+        int Aab = Core.countNonZero(this.overlap); // number of on (1) pixels that overlap on the 2 boards
+        
+        // circumvents instability during initialization and large variance in depth later on
+        // Jaccard similarity index
         jaccard = (double)Aab / (double)(Aa + Ab - Aab);
 
-        Main.LOGGER.log(Level.SEVERE, "jaccard " + jaccard);
+        tmp.release();
+        Main.LOGGER.log(Level.WARNING, "jaccard " + jaccard);
     
         return jaccard;
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     update                                                                 */
+/*                                     update                                                                 */
+/*                                     update                                                                 */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -318,7 +348,7 @@ public class UserGuidance {
      */ 
     public boolean update(boolean force) throws Exception
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // first time need to see at least half of the interior corners or force
         if((this.calib.keyframes.isEmpty() && this.tracker.N_pts >= this.allpts/2))
@@ -334,9 +364,10 @@ public class UserGuidance {
             }
         }
 
-        this.pose_reached = force && this.tracker.N_pts > 4;
+        this.pose_reached = force && this.tracker.N_pts >= Cfg.minCorners; // original had > 4
 
-        if(this.pose_close_to_tgt() > Cfg.pose_close_to_tgt_min)
+        double pose_close_to_tgt = this.pose_close_to_tgt(); // save it to print it
+        if(pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
         {
             this.pose_reached = true;
         }
@@ -347,10 +378,6 @@ public class UserGuidance {
         if(this.calib.keyframes.size() >= 2)
         {
             n_required = 6 / 2 * 5; // yup - that's a 15 rkt
-            if(this.tracker.N_pts < 17) // rkt
-            {
-                n_required = (int)(this.tracker.N_pts * Cfg.pt_match_min_factor); // rkt
-            }
         }
 
         this.still = this.tracker.mean_flow < Cfg.mean_flow_max;
@@ -359,13 +386,13 @@ public class UserGuidance {
 
         this.capture = this.pose_reached && (this.still || force);
 
-        Main.LOGGER.log(Level.SEVERE,
-            "this.still " + this.still +
-            ", this.tracker.mean_flow " + this.tracker.mean_flow +
-            ", this.pose_reached " + this.pose_reached +
+        Main.LOGGER.log(Level.WARNING,
+            "corners " + this.tracker.N_pts +
+            ", pose_close_to_tgt " + pose_close_to_tgt +
+            ", still " + this.still +
+            ", mean_flow " + this.tracker.mean_flow +
+            ", pose_reached " + this.pose_reached +
             ", force " + force);
-
-        // why is flow None so much with small board in the corner?
 
         if( ! this.capture)
         {
@@ -384,6 +411,7 @@ public class UserGuidance {
 
         if(this.converged)
         {
+            this.tgt_r.release();
             this.tgt_r = new Mat(); // clear the rotation
         }
         else
@@ -465,13 +493,15 @@ public class UserGuidance {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     _update_user_info                                                      */
+/*                                     _update_user_info                                                      */
+/*                                     _update_user_info                                                      */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     public void _update_user_info()
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.user_info_text = "";
 
@@ -515,14 +545,16 @@ public class UserGuidance {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     draw                                                                   */
+/*                                     draw                                                                   */
+/*                                     draw                                                                   */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     // this adds the guidance board to the camera image to make the new user display
     public void draw(Mat img, boolean mirror) // force users to specify mirror false instead of defaulting
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 /*
 img after1 (480, 640, 3) boardPreview project
 img after2 (720, 1280, 3)
@@ -565,13 +597,15 @@ done
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     write                                                                  */
+/*                                     write                                                                  */
+/*                                     write                                                                  */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     public void write()
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         Main.LOGGER.log(Level.SEVERE, "Writing the calibration data");
         Main.LOGGER.log(Level.SEVERE, "calibration_time " + LocalDateTime.now());
@@ -584,20 +618,22 @@ done
         Main.LOGGER.log(Level.SEVERE, "marker_size ", this.marker_len);
         Main.LOGGER.log(Level.SEVERE, formatFlags(calib.flags));
         Main.LOGGER.log(Level.SEVERE, "fisheye_model " + 0);
-        Main.LOGGER.log(Level.SEVERE, "camera_matrix%n" + this.calib.K.dump());
-        Main.LOGGER.log(Level.SEVERE, "distortion_coefficients%n" + this.calib.cdist.dump());
+        Main.LOGGER.log(Level.SEVERE, "camera_matrix\n" + this.calib.K.dump());
+        Main.LOGGER.log(Level.SEVERE, "distortion_coefficients\n" + this.calib.cdist.dump());
         Main.LOGGER.log(Level.SEVERE, "avg_reprojection_error " + this.calib.reperr);
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     formatFlags                                                            */
+/*                                     formatFlags                                                            */
+/*                                     formatFlags                                                            */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
     public String formatFlags(int flagsCalibration)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         HashMap<Integer, String> flags = new HashMap<>(3);
         flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix_principal_point");
@@ -615,7 +651,7 @@ done
                 }
             }
         );
-        flags_str.append("%nflags ");
+        flags_str.append("\nflags ");
         flags_str.append(flagsCalibration);
         if(unknownFlags != 0)
         {
@@ -628,7 +664,9 @@ done
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     End UserGuidance class                                                 */
+/*                                     End UserGuidance class                                                 */
+/*                                     End UserGuidance class                                                 */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */

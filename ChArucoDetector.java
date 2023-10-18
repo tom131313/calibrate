@@ -1,5 +1,7 @@
 package calibrator;
 
+// import static calibrator.ArrayUtils.brief;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -12,6 +14,7 @@ import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.MatOfPoint3f;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.objdetect.CharucoBoard;
@@ -51,6 +54,8 @@ public class ChArucoDetector {
 
     Mat rvec = new Mat();
     Mat tvec = new Mat();
+    Mat tgt_r = new Mat(); // from UserGuidance set_next_pose/get_pose cheat 'cuz bad
+    Mat tgt_t = new Mat(); // organization with the detector twisted in with the pose
 
     boolean intrinsic_valid = false;
     Mat K;
@@ -62,15 +67,16 @@ public class ChArucoDetector {
     // optical flow calculation
     Mat last_ccorners = new Mat();
     Mat last_cids = new Mat();
-    // mean flow if same corners are detected in consecutive frames
+    // mean flow if same corners are detected in consecutive frames - not fully implemented
+    // changed to same number of corners and not necessarily the same corners
     double mean_flow = Double.MAX_VALUE;
 
     public ChArucoDetector()
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
-        board.setLegacyPattern(true); // true is old style with aruco first, default is false - new style with black first
+        board.setLegacyPattern(Cfg.legacyPattern);
         board.generateImage(boardImageSize, boardImage);
 
         boolean writeBoard = true;
@@ -111,7 +117,7 @@ public class ChArucoDetector {
 
     public void set_intrinsics(Calibrator calib)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K;
@@ -120,14 +126,14 @@ public class ChArucoDetector {
 
     public void draw_axis(Mat img)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        Calib3d.drawFrameAxes(img, this.K, this.cdist, this.rvec, this.tvec, (float)(2.*this.square_len));
+        Calib3d.drawFrameAxes(img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len);
     }   
 
     public void detect_pts(Mat img) throws Exception
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         final List<Mat> markerCorners = new ArrayList();
         final Mat markerIds = new Mat();
@@ -136,15 +142,15 @@ public class ChArucoDetector {
 
         try
         {
-            detector.detectBoard
+        detector.detectBoard
             ( img, this.ccorners, this.cids, markerCorners, markerIds );
         }
         catch(Exception e) {Main.LOGGER.log(Level.SEVERE, img + " " + this.ccorners + " " + this.cids + "\n" + e);}
 
         this.N_pts = (int)this.cids.total();
-        Main.LOGGER.log(Level.SEVERE, "N_pts " + this.N_pts);
+        Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
-        if(this.N_pts == 0)
+        if(this.N_pts == 0) // maybe use the min N_pts
         {
             // for optical flow calculation
             last_ccorners = new Mat();
@@ -152,20 +158,48 @@ public class ChArucoDetector {
             return;
         }
 
+        // Main.LOGGER.log(Level.WARNING, "detected ccorners\n" + this.ccorners.dump());
+        // Main.LOGGER.log(Level.WARNING, "detected cids\n" + this.cids.dump());
+        
         // reformat the Mat to a List<Mat> for matchImagePoints
-        final List<Mat> listCurrentCharucoCorners = new ArrayList<>();
-        for(int i = 0; i < ccorners.total(); i++) {
-          listCurrentCharucoCorners.add(ccorners.row(i));
+        final List<Mat> ccornersList = new ArrayList<>();
+        for(int i = 0; i < this.ccorners.total(); i++) {
+          ccornersList.add(this.ccorners.row(i));
         }
 
         // Objdetect.drawDetectedCornersCharuco(img, ccorners, cids);
 
-        board.matchImagePoints(listCurrentCharucoCorners, this.cids,p3d, p2d);
-        
-        if(p3d.empty() || p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
+        board.matchImagePoints(ccornersList, this.cids,this.p3d, this.p2d); // p2d same data as ccornersList
+        // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
+        // after copying to MatOfPoint2f. A waste of cpu and memory.
+
+        // Main.LOGGER.log(Level.WARNING, "p3d" + this.p3d.dump()); // okay here
+        // Main.LOGGER.log(Level.WARNING, "p2d" + this.p2d.dump()); // okay here
+/*
+00098 2023-10-16 18:35:00.839 WARNING [ calibrator.ChArucoDetector detect_pts] method entered  . . . . . . . . . . . . . . . . . . . . . . . . 
+00098 2023-10-16 18:35:00.880 WARNING [ calibrator.ChArucoDetector detect_pts] N_pts 5 
+00098 2023-10-16 18:35:00.880 WARNING [ calibrator.ChArucoDetector detect_pts] detected ccorners
+ 
+00098 2023-10-16 18:35:00.881 WARNING [ calibrator.ChArucoDetector detect_pts] detected cids
+ 
+00098 2023-10-16 18:35:00.881 WARNING [ calibrator.ChArucoDetector detect_pts] p3d
+[560, 1120, 0;
+ 840, 1120, 0;
+ 280, 1400, 0;
+ 560, 1400, 0;
+ 840, 1400, 0] 
+00098 2023-10-16 18:35:00.883 WARNING [ calibrator.ChArucoDetector detect_pts] p2d
+[633.42603, 485.72961;
+ 684.49097, 465.53342;
+ 604.17853, 559.16071;
+ 653.65509, 541.08752;
+ 705.43335, 522.56055] 
+ */
+        if(this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
 
         // check for still image
         // mean flow if the same corners are detected in consecutive frames
+        // relaxed criterion to same number of corners and not necessarily the same corners - rkt
         if(this.last_cids.total() != this.cids.total())
         {
             this.ccorners.copyTo(this.last_ccorners);
@@ -187,7 +221,7 @@ public class ChArucoDetector {
         // Not sure what original axis=1 norm is. Below is 2 axes which is better, I think
         Mat diff = new Mat();
         Core.subtract(this.last_ccorners, this.ccorners, diff);
-        Main.LOGGER.log(Level.SEVERE, "diffpts " + diff + " " + diff.dump());
+        // Main.LOGGER.log(Level.WARNING, "diffpts " + diff + "\n" + diff.dump());
 
         Mat normMat = new Mat(diff.rows(), diff.cols(), CvType.CV_64FC1);
 
@@ -199,69 +233,84 @@ public class ChArucoDetector {
             double norm = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
             normMat.put(row, col, norm);
         }
-        Main.LOGGER.log(Level.SEVERE, "normMat " + normMat.dump());
+        // Main.LOGGER.log(Level.WARNING, "normMat\n" + normMat.dump());
 
         this.mean_flow = Core.mean(normMat).val[0];
-        Main.LOGGER.log(Level.SEVERE, "mean_flow " + this.mean_flow);
+        Main.LOGGER.log(Level.WARNING, "mean_flow " + this.mean_flow);
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
     }
   
     public void detect(Mat img) throws Exception
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        detect_pts(img);
+        this.detect_pts(img);
 
-        if(intrinsic_valid)
+        if(this.intrinsic_valid)
         {
-            update_pose();
+            this.update_pose();
         }
     }
     
     public Mat get_pts3d()
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        return p3d;
+        return this.p3d.clone();
     }
 
     public keyframe get_calib_pts()
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        return new keyframe(ccorners, get_pts3d());
+        return new keyframe(this.ccorners.clone(), this.get_pts3d());
     }
 
     public void update_pose() throws Exception
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        if(this.N_pts < 6) // original had 4 but using solvePnP now seems to require 6 minimum
+        if(this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
+            Main.LOGGER.log(Level.SEVERE, "too few corners ", this.N_pts);
             this.pose_valid = false;
             return;
         }
 
-        MatOfPoint3f p3dTemp = new MatOfPoint3f(this.p3d);
-        MatOfPoint2f p2dTemp = new MatOfPoint2f(this.p2d);
-        MatOfDouble distTemp = new MatOfDouble(this.cdist);
+        MatOfPoint3f p3dReTyped = new MatOfPoint3f(this.p3d);
+        MatOfPoint2f p2dReTyped = new MatOfPoint2f(this.p2d);
+        MatOfDouble distReTyped = new MatOfDouble(this.cdist);
+        // Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
+        // Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
+
         Mat rvec = new Mat();
         Mat tvec = new Mat();
 
-        this.pose_valid = Calib3d.solvePnP(p3dTemp, p2dTemp, this.K, distTemp, rvec, tvec);
+        this.tgt_r.copyTo(rvec); // GuidanceBoard pose, put this here for us to try as a good initial
+        this.tgt_t.copyTo(tvec); // guess of where the camera img is supposed to be - try it - rkt - doesn't seem to help
+
+        Main.LOGGER.log(Level.WARNING, "K\n" + this.K.dump());
+        Main.LOGGER.log(Level.WARNING, "distReTyped " + distReTyped.dump());
+        Main.LOGGER.log(Level.WARNING, " in rvec\n" + rvec.dump());
+        Main.LOGGER.log(Level.WARNING, " in tvec\n" + tvec.dump());
+        this.pose_valid = Calib3d.solvePnP(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
+
+        Core.multiply(rvec, new Scalar(-1., -1., -1.), rvec); //FIXME this makes the shadow for jaccard the right orientation for some reason!
+        //FIXME what's wrong?????
+        Main.LOGGER.log(Level.WARNING, "out rvec\n" + rvec.t().dump());
+        Main.LOGGER.log(Level.WARNING, "out tvec\n" + tvec.t().dump());
 
 // ret = estimatePoseCharucoBoard(self.ccorners, self.cids, self.board, self.K, self.cdist)
 // self.pose_valid, rvec, tvec = ret
 
         if( ! this.pose_valid)
         {
+            Main.LOGGER.log(Level.WARNING, "pose not valid");
             return;            
         }
-        this.rvec = rvec.t(); // solvePnp returns r and t as Mat(3, 1, ) and the rest of the program uses Mat(1, 3, )
-        this.tvec = tvec.t();        
-        Main.LOGGER.log(Level.SEVERE, "this.rvec " + this.rvec + "\n" + this.rvec.dump());
-        Main.LOGGER.log(Level.SEVERE, "this.tvec " + this.tvec + "\n" + this.tvec.dump());
+        this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
+        this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
     }
 }
 // https://docs.opencv.org/4.x/d5/d1f/calib3d_solvePnP.html

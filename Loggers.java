@@ -106,7 +106,7 @@ public final class Loggers {
     Filter outFilter = new Filter() {
         public boolean isLoggable(LogRecord record) {
             String ClassName = record.getSourceClassName();
-            // System.out.println(ClassName);
+            // System.out.println(">" + ClassName + "<");
             // don't want to see any java awt or swing messages - might be slightly dangerous, though. could suppress bad ones
             if(ClassName.startsWith("java.awt")) return false;
             if(ClassName.startsWith("java.io")) return false;
@@ -129,7 +129,7 @@ public final class Loggers {
     Filter errFilter = new Filter() {
         public boolean isLoggable(LogRecord record) {
             String ClassName = record.getSourceClassName();
-            // System.out.println(ClassName);
+            // System.out.println(">" + ClassName + "<");
             // don't want to see any java awt or swing messages - might be slightly dangerous, though. could suppress bad ones
             if(ClassName.startsWith("java.awt")) return false;
             if(ClassName.startsWith("java.io")) return false;
@@ -199,7 +199,7 @@ static Level	Level.OFF
 OFF is a special level that can be used to turn off logging.
 static Level	Level.SEVERE
 SEVERE is a message level indicating a serious failure.
-static Level	Level.WARNING
+static Level	Level.WARNINGING
 WARNING is a message level indicating a potential problem.
 */
 

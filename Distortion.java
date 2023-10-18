@@ -18,7 +18,9 @@ import static calibrator.ArrayUtils.brief;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     Distortion class                                                       */
+/*                                     Distortion class                                                       */
+/*                                     Distortion class                                                       */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -28,7 +30,9 @@ public class Distortion
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     Distortion constructor                                                 */
+/*                                     Distortion constructor                                                 */
+/*                                     Distortion constructor                                                 */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -44,15 +48,17 @@ public class Distortion
 /*----------------------------------------------------------------------------------------------------------- */
     public static Rect get_bounds(Mat thresh, Mat mask)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "thresh " + thresh);        
-        Main.LOGGER.log(Level.SEVERE, "mask " + mask);
+        // seems like a better strategy would be to see what contour actually contributes the most and not just check the largest ones
+        // and use true area of contour and not just the number of points in the contour
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "thresh " + thresh);        
+        Main.LOGGER.log(Level.WARNING, "mask " + mask);
 
         List<MatOfPoint> contours = new ArrayList<>(20); // arbitrary initial size - what is a better guess?
         Mat hierarchy = new Mat();
         Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
        
-        Main.LOGGER.log(Level.SEVERE, contours.size() + " contours");
+        Main.LOGGER.log(Level.WARNING, contours.size() + " contours");
         // look for the largest object that is not masked
         // This is essentially a Sort and Filter. It's not very efficient but that makes it easier
         // by not having to reorder the contours. The list is expected to be very short so it's not
@@ -67,7 +73,6 @@ public class Distortion
             int mx = -1; // indicate no max at the start
             for(int i = 0; i < contours.size(); i++)
             {
-                // var areaContour = Imgproc.contourArea(contours.get(i)); // this might be better area but watch for area = 0.0 if only 2 points in contour
                 long areaContour = contours.get(i).total();
 
                 if( areaContour >= areaContourMax)
@@ -76,7 +81,7 @@ public class Distortion
                     areaContourMax = areaContour;
                     mx = i;
                 }
-                Main.LOGGER.log(Level.SEVERE, "Contour " + (mx+1) + " of " + contours.size() + ", area max so far " + areaContourMax
+                Main.LOGGER.log(Level.WARNING, "Contour " + (mx+1) + " of " + contours.size() + ", area max so far " + areaContourMax
                     + ", contour size " + contours.get(mx).size(mx) + "\n" + contours.get(mx).dump());
             }
             // Now have contour with largest area so check that area not already covered,
@@ -88,25 +93,28 @@ public class Distortion
             int y = aabb.y;
             int w = aabb.width;
             int h = aabb.height;
-            Main.LOGGER.log(Level.SEVERE, "processing Rect aabb " + aabb);
-            if(!mask.empty()
+            Main.LOGGER.log(Level.WARNING, "processing Rect aabb " + aabb);
+
+            if(!mask.empty() // amount of mask already filled where this contour would fill
                 && (double)Core.countNonZero(mask.submat(y, y+h, x, x+w)) / (double)(w*h) > Cfg.MAX_OVERLAP)
             {
-                contours.remove(mx);
+                contours.remove(mx); // largest contour wouldn't contribute enough in the right places so skip it
                 continue;
             }
-            Main.LOGGER.log(Level.SEVERE, "returning aabb " + aabb);
+            Main.LOGGER.log(Level.WARNING, "returning aabb " + aabb); // best contributing contour for the pose
             return aabb; // best contour in list so return it
         }
 
-        Main.LOGGER.log(Level.SEVERE, "returning null aabb");
+        Main.LOGGER.log(Level.WARNING, "returning null aabb"); // pose doesn't contribute enough
 
         return null; // no contours met the criteria
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     make_distort_map                                                       */
+/*                                     make_distort_map                                                       */
+/*                                     make_distort_map                                                       */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -121,11 +129,11 @@ public class Distortion
      */
     public static Mat make_distort_map(Mat K, Size sz, Mat dist, Mat Knew)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "camera matrix K " + K + "\n" + K.dump());
-        Main.LOGGER.log(Level.SEVERE, "sz " + sz);
-        Main.LOGGER.log(Level.SEVERE, "distortion coefficients dist " + dist + "\n" + dist.dump());
-        Main.LOGGER.log(Level.SEVERE, "Knew " + Knew.dump()); // null pointer (or empty?) Knew
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
+        Main.LOGGER.log(Level.WARNING, "sz " + sz);
+        Main.LOGGER.log(Level.WARNING, "distortion coefficients dist " + dist.dump() + dist);
+        Main.LOGGER.log(Level.WARNING, "Knew " + Knew.dump()); // null pointer (or empty?) Knew
 
         //     pts = np.array(np.meshgrid(range(sz[0]), range(sz[1]))).T.reshape(-1, 1, 2)
         // inclusive 0, to not included final, step; fils one column down the rows then the next column and down the rows
@@ -162,10 +170,10 @@ public class Distortion
 
         Mat dpts2D = dpts.reshape(2, h)/*.convertTo(dpts2D, CvType.CV_32FC2 )*/; //FIXME convert or not??????
 
-        Main.LOGGER.log(Level.SEVERE, "pts " + pts + "\n" + brief(pts));
-        Main.LOGGER.log(Level.SEVERE, "dpts " + dpts + "\n" + brief(dpts));
-        Main.LOGGER.log(Level.SEVERE, "returning dpts2D " + dpts2D + brief(dpts2D));
-        Main.LOGGER.log(Level.SEVERE, "maybe returning Knew\n" + Knew.dump());
+        Main.LOGGER.log(Level.WARNING, "pts " + pts + "\n" + brief(pts));
+        Main.LOGGER.log(Level.WARNING, "dpts " + dpts + "\n" + brief(dpts));
+        Main.LOGGER.log(Level.WARNING, "returning dpts2D " + dpts2D + brief(dpts2D));
+        Main.LOGGER.log(Level.WARNING, "maybe returning Knew\n" + Knew.dump());
 
         pts.release();
         dpts.release();
@@ -196,7 +204,7 @@ public class Distortion
     //     @return: distorted points, original points
     public static List<Mat> sparse_undistort_map(Mat K, Size sz, Mat dist, Mat Knew, int step)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // best I can tell step is always 20 (subsample) and never 1 so this should not be executed
         if(step == 1) throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
@@ -291,7 +299,9 @@ public class Distortion
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     loc_from_dist                                                          */
+/*                                     loc_from_dist                                                          */
+/*                                     loc_from_dist                                                          */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -306,12 +316,12 @@ public class Distortion
      */
     public static Rect loc_from_dist(Mat pts, Mat dpts, Mat mask, boolean lower, double thres) // force specifying all parameters
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "pts " + pts);
-        Main.LOGGER.log(Level.SEVERE, "dpts " + dpts);
-        Main.LOGGER.log(Level.SEVERE, "mask " + mask);
-        Main.LOGGER.log(Level.SEVERE, "lower " + lower);
-        Main.LOGGER.log(Level.SEVERE, "thres " + thres);
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "pts " + pts);
+        Main.LOGGER.log(Level.WARNING, "dpts " + dpts);
+        Main.LOGGER.log(Level.WARNING, "mask " + mask);
+        Main.LOGGER.log(Level.WARNING, "lower " + lower);
+        Main.LOGGER.log(Level.WARNING, "thres " + thres);
 /*
 pts =  np.array([[[   0,    0], [   0,   20],  [   0,   40]],
 [[   0,    0], [   0,   20],  [   0,   40]]])
@@ -344,10 +354,10 @@ diff3 [[255 255]
         // norm(0,0) = sqrt( (p(0,0)x-dp(0,0)x)^2 + (p(0,0)y-dp(0,0)z)^2 )
         Mat diffpts = new Mat();
         Core.subtract(pts, dpts, diffpts);
-        Main.LOGGER.log(Level.SEVERE, "diffpts " + diffpts);
+        Main.LOGGER.log(Level.WARNING, "diffpts " + diffpts);
 
         Mat normMat = new Mat(pts.rows(), pts.cols(), CvType.CV_32FC1);
-        Main.LOGGER.log(Level.SEVERE, "normMat empty " + normMat);
+        Main.LOGGER.log(Level.WARNING, "normMat empty " + normMat);
 
         for(int row = 0; row < pts.rows(); row++)
         for(int col = 0; col < pts.cols(); col++)
@@ -357,15 +367,15 @@ diff3 [[255 255]
             float norm = (float)Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
             normMat.put(row, col, norm);
         }
-        Main.LOGGER.log(Level.SEVERE, "normMat filled " + normMat);
+        Main.LOGGER.log(Level.WARNING, "normMat filled " + normMat);
 
         normMat = normMat.reshape(0,mask.rows())/*.t()*/;
-        Main.LOGGER.log(Level.SEVERE, "normMat reshaped " + normMat);
+        Main.LOGGER.log(Level.WARNING, "normMat reshaped " + normMat);
 
         Mat diff = new Mat();
         Core.normalize(normMat, diff, 0, 255, Core.NORM_MINMAX, CvType.CV_8U);
-        // Main.LOGGER.log(Level.SEVERE, "diff " + diff.dump());
-        Main.LOGGER.log(Level.SEVERE, "normMat normalized=diff " + diff);
+        // Main.LOGGER.log(Level.WARNING, "diff " + diff.dump());
+        Main.LOGGER.log(Level.WARNING, "normMat normalized=diff " + diff);
 
         Rect bounds = null;
 
@@ -382,7 +392,7 @@ diff3 [[255 255]
                 thres -= 0.05;
                 Imgproc.threshold(diff, thres_img, thres * 255., 255., Imgproc.THRESH_BINARY);
             }
-            Main.LOGGER.log(Level.SEVERE, "thres_img " + thres_img /*+ "\n" + brief(thres_img.dump())*/);
+            Main.LOGGER.log(Level.WARNING, "thres_img " + thres_img /*+ "\n" + brief(thres_img.dump())*/);
 
             bounds = get_bounds(thres_img, mask);
 
@@ -401,7 +411,7 @@ diff3 [[255 255]
         diff.release();
         diffpts.release();
 
-        Main.LOGGER.log(Level.SEVERE, "bounds " + (bounds == null ? "is null" : bounds));
+        Main.LOGGER.log(Level.WARNING, "bounds " + (bounds == null ? "is null" : bounds));
 
         return bounds;
     }
@@ -519,6 +529,10 @@ diff3 [[255 255]
 
 //////////////////////////////////
             // for get_bounds this is likely a start of better but something to consider later:
+            // use true area instead of counting the perimeter segments
+            // var areaContour = Imgproc.contourArea(contours.get(i)); // this might be better area but watch for area = 0.0 if only 2 points in contour
+
+            // use true contour instead of bounding rect
             // if(!mask.empty())
             // {
             //     Mat tempContour = Mat.zeros(thresh.rows(), thresh.cols(), thresh.type());

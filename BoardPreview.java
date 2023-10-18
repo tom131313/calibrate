@@ -1,4 +1,5 @@
 package calibrator;
+
 import static calibrator.ArrayUtils.brief;
 
 import java.util.logging.Level;
@@ -30,24 +31,23 @@ public class BoardPreview {
 //imgcolor Mat [ 1680*2520*CV_8UC3, isCont=true, isSubmat=false, nativeObj=0x1bfc11b59e0, dataAddr=0x1bfc302a080 ] 
     public BoardPreview(Mat img)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         img.copyTo(this.img);
 
-        Core.flip(this.img, this.img, 0);
+        Core.flip(this.img, this.img, 0); // flipped when printing
 
-        // set black to gray
-        byte[] img1BuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffers for efficient access to a row
+        // set black pixels to gray; non-black pixels stay the same
+        byte[] img1BuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffer for more efficient access to one row
         // process one row at a time for efficiency
         for(int row = 0; row < img.rows(); row++)
         {
             this.img.get(row, 0, img1BuffRow); // get the row, all channels
             for(int col = 0; col < img1BuffRow.length; col++) // process each element of the row
             {
-                // if there is a non-black pixel then use it in img
-                if(img1BuffRow[col] == 0)
+                 if(img1BuffRow[col] == 0) // is it black?
                 {
-                    img1BuffRow[col] = 64;
+                    img1BuffRow[col] = 64; // make it gray
                 }
             }
             this.img.put(row, 0, img1BuffRow);
@@ -55,7 +55,7 @@ public class BoardPreview {
 
         Imgproc.cvtColor(this.img, this.img, Imgproc.COLOR_GRAY2BGR);
 
-        // set blue and red to black so white becomes green
+        // set blue and red channels to black (0) so gray/white becomes a shade of green (green channel was not changed)
         byte[] img3BuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffers for efficient access to a row
         // process one row at a time for efficiency
         for(int row = 0; row < this.img.rows(); row++)
@@ -266,10 +266,10 @@ Mat [ 307200*1*CV_32FC2, isCont=true, isSubmat=false, nativeObj=0x202dc89b970, d
 */
     public void create_maps(Mat K, Mat cdist, Size sz)
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "camera matrix K " + K + "\n" + K.dump());
-        Main.LOGGER.log(Level.SEVERE, "cdist " + cdist.dump());
-        Main.LOGGER.log(Level.SEVERE, "sz " + sz);
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
+        Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
+        Main.LOGGER.log(Level.WARNING, "sz " + sz);
 
         // cdist initialized in its constructor instead of setting to 0 here if null; did 5 not 4 for consistency with rest of code
         this.sz = sz;
@@ -279,11 +279,11 @@ Mat [ 307200*1*CV_32FC2, isCont=true, isSubmat=false, nativeObj=0x202dc89b970, d
         scale.put(2, 2, 1.);
         Core.gemm(scale, K, 1., new Mat(), 0.,K);
         sz = this.SIZE;
-        Main.LOGGER.log(Level.SEVERE, "K scaled\n" + K.dump());
-        Main.LOGGER.log(Level.SEVERE, "Knew null " + (this.Knew == null)); // matches to here
+        Main.LOGGER.log(Level.WARNING, "K scaled\n" + K.dump());
+        Main.LOGGER.log(Level.WARNING, "Knew null " + (this.Knew == null)); // matches to here
 
         this.Knew = Calib3d.getOptimalNewCameraMatrix(K, cdist, sz, 1.); // .2% higher than Python for same input
-        Main.LOGGER.log(Level.SEVERE, "Knew\n" + this.Knew + this.Knew.dump());
+        Main.LOGGER.log(Level.WARNING, "Knew " + this.Knew + "\n" + this.Knew.dump());
         /*[500, 0, 319.7500000000001;
  0, 666.6666666666666, 239.6666666666667;
  0, 0, 1] */
@@ -300,36 +300,36 @@ Mat [ 3*3*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x202dc89b740, dataAd
  */
         this.maps = Distortion.make_distort_map(K, sz, cdist, this.Knew);
 
-        Main.LOGGER.log(Level.SEVERE, "Knew " + this.Knew + "\n" + this.Knew.dump()); // same as input to make_distort_map
-        Main.LOGGER.log(Level.SEVERE, "maps " + this.maps + "\n" + brief(this.maps));
+        Main.LOGGER.log(Level.WARNING, "Knew " + this.Knew + "\n" + this.Knew.dump()); // same as input to make_distort_map
+        Main.LOGGER.log(Level.WARNING, "maps " + this.maps + "\n" + brief(this.maps));
     }
 
     public Mat project(Mat r, Mat t, boolean useShadow, int inter)
     // force users to specify useShadow=false and inter=Imgproc.INTER_NEAREST instead of defaulting
     // no default allowed in Java and I don't feel like making a bunch of overloaded methods for this conversion
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "r " + r.dump());
-        Main.LOGGER.log(Level.SEVERE, "t " + t.dump());
-        Main.LOGGER.log(Level.SEVERE, "useShadow " + useShadow);
-        Main.LOGGER.log(Level.SEVERE, "inter " + inter);
-        Main.LOGGER.log(Level.SEVERE, "sz " + this.sz);
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "r " + r.dump());
+        Main.LOGGER.log(Level.WARNING, "t " + t.dump());
+        Main.LOGGER.log(Level.WARNING, "useShadow " + useShadow);
+        Main.LOGGER.log(Level.WARNING, "inter " + inter);
+        Main.LOGGER.log(Level.WARNING, "sz " + this.sz);
 
         Mat img = new Mat();
 
         img = project_img(useShadow ? this.shadow : this.img, this.SIZE, this.Knew, r, t, Imgproc.INTER_LINEAR);
 
-        Main.LOGGER.log(Level.SEVERE, "maps " + this.maps + "\n" + brief(maps));
+        Main.LOGGER.log(Level.WARNING, "maps " + this.maps + "\n" + brief(maps));
         // Can be one map for XY or two maps X and Y. python had 2 and this has 1
         // Imgproc.remap(img, img, maps[0]/*X*/, maps[1]/*Y*/, inter);// maybe X Mat and Y Mat somehow; separate channels?
 
         Imgproc.remap(img, img, this.maps, new Mat(), inter);// 1st arg can be XY with no 2nd arg
-        Main.LOGGER.log(Level.SEVERE, "img after remap " + img + "\n" + brief(img));
+        Main.LOGGER.log(Level.WARNING, "img after remap " + img + "\n" + brief(img));
 
         // maps (2, 480, 640)
         Imgproc.resize(img, img, this.sz, 0, 0, inter);
 
-        Main.LOGGER.log(Level.SEVERE, "returning img after resize " + img + "\n" + brief(img));
+        Main.LOGGER.log(Level.WARNING, "returning img after resize " + img + "\n" + brief(img));
 
         return img;
     }
@@ -337,13 +337,13 @@ Mat [ 3*3*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x202dc89b740, dataAd
     public static Mat project_img(Mat img, Size sz, Mat K, Mat rvec, Mat t, int flags)
     // force user to specify flags=cv2.INTER_LINEAR to use default
     {
-        Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        Main.LOGGER.log(Level.SEVERE, "img " + img);
-        Main.LOGGER.log(Level.SEVERE, "sz " + sz);
-        Main.LOGGER.log(Level.SEVERE, "K " + K + "\n" + K.dump());
-        Main.LOGGER.log(Level.SEVERE, "rvec " + rvec + rvec.dump());
-        Main.LOGGER.log(Level.SEVERE, "t " + t + t.dump());
-        Main.LOGGER.log(Level.SEVERE, "flags " + flags);
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "img " + img);
+        Main.LOGGER.log(Level.WARNING, "sz " + sz);
+        Main.LOGGER.log(Level.WARNING, "K " + K + "\n" + K.dump());
+        Main.LOGGER.log(Level.WARNING, "rvec " + rvec + rvec.dump());
+        Main.LOGGER.log(Level.WARNING, "t " + t + t.dump());
+        Main.LOGGER.log(Level.WARNING, "flags " + flags);
 
         // construct homography
         Mat R = new Mat();
@@ -351,29 +351,20 @@ Mat [ 3*3*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x202dc89b740, dataAd
 
         // H = K.dot(np.array([R[:, 0], R[:, 1], t]).T)
         // H /= H[2, 2]
-        Main.LOGGER.log(Level.SEVERE, "R " + R + R.dump());
+        Main.LOGGER.log(Level.WARNING, "R " + R + "\n" + R.dump());
         Mat transform = new Mat(3, 3, CvType.CV_64FC1); // rotation matrix R and a translation matrix T (t)
         transform.put(0, 0,
-            R.get(0, 0)[0], R.get(0, 1)[0], R.get(0, 2)[0],  // 1st row r,second row r, third row t
+            R.get(0, 0)[0], R.get(0, 1)[0], R.get(0, 2)[0], // 1st row r,second row r, third row t
                 R.get(1, 0)[0], R.get(1, 1)[0], R.get(1, 2)[0],
                 t.get(0, 0)[0], t.get(0, 1)[0], t.get(0, 2)[0]);
-        // transform.put(0, 0,
-        // R.get(0, 0)[0], R.get(0, 1)[0], R.get(0, 2)[0],  // 1st row r,second row r, third row t
-        //     R.get(1, 0)[0], R.get(1, 1)[0], R.get(1, 2)[0],
-        //     t.get(0, 0)[0], t.get(0, 1)[0], t.get(0, 2)[0]);
-        Core.transpose(transform, transform); // then transpose since I didn't enter it the other way
+        Core.transpose(transform, transform);
         Mat H = new Mat();
         Core.gemm(K, transform, 1., new Mat(), 0., H);
         Core.divide(H, new Scalar(H.get(2, 2)[0]), H);
-        transform.release();
-        // double[] patchH = { // test data
-        //     0.0959, -0.0397, 190.4522,
-        //     -0.1163, -0.1852, 510.3200,
-        //     -0.0001, 0.0001, 1.0000 };
-        // H.put(0, 0, patchH);    
-        Main.LOGGER.log(Level.SEVERE, "transform " + transform + "\n" + transform.dump());
-        Main.LOGGER.log(Level.SEVERE, "R " + R + "\n" + R.dump());
-        Main.LOGGER.log(Level.SEVERE, "H " + H + "\n" +H.dump());
+   
+        Main.LOGGER.log(Level.WARNING, "transform " + transform + "\n" + transform.dump());
+        Main.LOGGER.log(Level.WARNING, "R " + R + "\n" + R.dump());
+        Main.LOGGER.log(Level.WARNING, "H " + H + "\n" + H.dump());
 
         Mat imgProjected = new Mat();
 
@@ -381,17 +372,17 @@ Mat [ 3*3*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x202dc89b740, dataAd
 
         // Calib3d.drawFrameAxes(imgProjected, K, cdist, R, t, 300.f); //FIXME may need rotation vector rvec instead of R
 
+        transform.release();
         R.release();
         H.release();
 
-        Main.LOGGER.log(Level.SEVERE, "returning imgProjected\n" + brief(imgProjected));
+        Main.LOGGER.log(Level.WARNING, "returning imgProjected\n" + brief(imgProjected));
 
         return imgProjected;
     }
 }
-/*
-java:
 
+/*
 python:
 project_img
 ok img (1680, 2520, 3)

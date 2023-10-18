@@ -41,14 +41,11 @@ public class LogFormatter extends Formatter {
 
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
     
-    private String format =
-    "%4$-7s [%3$s %2$s] %5$s %6$s%n";
+    private String format = "";// = "%4$-7s [%3$s %2$s] %5$s %6$s%n";
 
-    private String header =
-    "";
+    private String header = "";
 
-    private String tail =
-    "";
+    private String tail = "";
 
     LogFormatter(){}
 
@@ -173,7 +170,8 @@ public class LogFormatter extends Formatter {
                              record.getLoggerName(),
                              record.getLevel().getLocalizedName(),
                              message,
-                             throwable);
+                             throwable,
+                             Main.frame);
     }
 
     @Override

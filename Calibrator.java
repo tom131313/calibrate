@@ -1,6 +1,7 @@
 package calibrator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -35,26 +36,25 @@ public class Calibrator {
 
     List<Mat> p2d = new ArrayList<>(40);
     List<Mat> p3d = new ArrayList<>(40);
-    // public List<Mat> allImagePoints = new ArrayList<>(); part of keyframes
-    // public List<Mat> allObjectPoints = new ArrayList<>(); part of keyframes
 
     Calibrator(Size img_size)
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.img_size = img_size;
         // initial fake camera matrix just to get things started
-        Kin = Mat.zeros(3, 3, CvType.CV_64FC1);
-        Kin.put(0, 0, 1000.);
-        Kin.put(1, 1, 1000.);
-        Kin.put(2, 2, 1.);
-        Kin = Calib3d.getDefaultNewCameraMatrix(Kin, img_size, true);
-        Kin.copyTo(K); // kin needed after this? could just use k?
+        this.Kin = Mat.zeros(3, 3, CvType.CV_64FC1);
+        this.Kin.put(0, 0, 1000.);
+        this.Kin.put(1, 1, 1000.);
+        this.Kin.put(2, 2, 1.);
+        this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
+        this.Kin.copyTo(this.K);
+        Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
     }
 
     public double[] get_intrinsics()
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
       double[] intrinsics = {
         this.K.get(0, 0)[0],
         this.K.get(1, 1)[0],
@@ -71,7 +71,7 @@ public class Calibrator {
 
     public double[] calibrate(List<keyframe> keyframes) throws Exception
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int flags = this.flags;
 
@@ -107,13 +107,13 @@ public class Calibrator {
         final List<Mat> rvecs = new ArrayList<>();
         final List<Mat> tvecs = new ArrayList<>();
 
-        ArrayList<Object> res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
+        List<Object> res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
 
         // self.reperr, self.K, self.cdist, rvecs, tvecs, stdDeviationsIntrinsics, self.N_pts = res
-        this.reperr = Double.class.cast(res.get(0)); // magic I called it double
+        this.reperr = Double.class.cast(res.get(0)); // magic, I called it double
         Mat.class.cast(res.get(1)).copyTo(this.K);
         Mat.class.cast(res.get(2)).copyTo(this.cdist);
-        Main.LOGGER.log(Level.SEVERE, "res.get(2) " + res.get(2).toString() + " " + cdist.dump() );
+        Main.LOGGER.log(Level.WARNING, "res.get(2) " + res.get(2).toString() + " " + cdist.dump() );
         List<Mat> rvecsList = (List<Mat>)res.get(3);
         List<Mat> tvecsList = (List<Mat>)res.get(4);
         Mat variances= Mat.class.cast(res.get(5));// this.varIntrinsics replaces self.PCov in Python
@@ -138,9 +138,9 @@ public class Calibrator {
 //         self.disp_idx = index_of_dispersion(self.get_intrinsics(), np.diag(self.PCov)[:self.nintr])
 //         return self.disp_idx
 
-    public double[] index_of_dispersion(double[] mean, double[] variance)
+    public static double[] index_of_dispersion(double[] mean, double[] variance)
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // computes index of dispersion:
       // https://en.wikipedia.org/wiki/Index_of_dispersion
@@ -168,12 +168,21 @@ public class Calibrator {
  *    Jc2J and compute_state_cov replaced by OpenCV std dev -- NOT CONVERTED
  *    Jc2J and compute_state_cov replaced by OpenCV std dev -- NOT CONVERTED
  *    Jc2Ja nd compute_state_cov replaced by OpenCV std dev -- NOT CONVERTED
- * @throws Exception
+ *
 */
 
-    public ArrayList<Object> calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K) throws Exception
+    /**
+     * 
+     * @param keyframes
+     * @param img_size
+     * @param flags
+     * @param K
+     * @return
+     * @throws Exception
+     */
+    public static List<Object> calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K) throws Exception
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // split keyframes into its two separate components for OpenCV calibrateCamera
         // we put them together when detected then we take them apart for calibration. Maybe that's not a good idea.
@@ -202,9 +211,9 @@ public class Calibrator {
            reperr = Calib3d.calibrateCameraExtended(
               objectPoints, imagePoints, img_size, K, cdist, rvecs, tvecs, stdDeviationsIntrinsics, new Mat(), new Mat(), flags, criteria); // maybe null for the two empty Mats??
 
-          Main.LOGGER.log(Level.SEVERE, "camera matrix K " + K + "\n" + K.dump());
-          Main.LOGGER.log(Level.SEVERE, "distortion coefficients " + cdist + "\n" + cdist.dump());
-          Main.LOGGER.log(Level.SEVERE, "repError " + reperr);
+          Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
+          Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
+          Main.LOGGER.log(Level.WARNING, "repError " + reperr);
         }
         catch(CvException error)
         {
@@ -214,7 +223,7 @@ public class Calibrator {
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
 
-        Main.LOGGER.log(Level.SEVERE, "cdist " + cdist.dump() + ", N = " + N);
+        Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump() + ", N = " + N);
         // return is positional
         ArrayList<Object> res = new ArrayList<>(7);
         res.add(reperr); // 0
@@ -226,10 +235,16 @@ public class Calibrator {
         res.add(N); // 6
         return res;
     }
-     
-    public  double[] compute_pose_var(List<Mat> rvecs, List<Mat> tvecs)
+    
+    /**
+     * Compute variances and prints the euler angles in degrees for debugging
+     * @param rvecs data 1 - List of triplets
+     * @param tvecs data 2 -List of triplets
+     * @return variances of data 1 and data 2 - a sextet
+     */
+    public static double[] compute_pose_var(List<Mat> rvecs, List<Mat> tvecs)
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // void meanStdDev(InputArray src, OutputArray mean, OutputArray stddev, InputArray mask=noArray());
     // def compute_pose_var(rvecs, tvecs):
@@ -242,7 +257,7 @@ public class Calibrator {
     //     ret[0:3] = np.var(reuler, axis=0)
     //     ret[3:6] = np.var(np.array(tvecs) / 10, axis=0).ravel()  # [mm]
     //     return ret
-      double[] ret = {0., 0., 0., 0., 0., 0.};
+      double[] ret = new double[6];
 
       List<double[]> reulers = new ArrayList<>(50);
 
@@ -254,14 +269,13 @@ public class Calibrator {
         double[] reuler;
 
         Calib3d.Rodrigues(r, dst);
-        reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ);
+        reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns  reuler.length = 3
+        Main.LOGGER.log(Level.WARNING, "\nreuler degrees " + Arrays.toString(reuler) + "\nr " + r.t().dump());
         // workaround for the given board so r_x does not oscilate between +-180°
-        reuler[0] = reuler[0] % 360.; //FIXME verify this works as wanted
-        reuler[1] = reuler[1] % 360.;
-        reuler[2] = reuler[2] % 360.;
-
+        reuler[0] = reuler[0] % 360.;
         reulers.add(reuler);
       }
+
       double[] varReuler = stupidVariance(reulers);
 
       for(int i=0; i <3; i++)
@@ -277,7 +291,7 @@ public class Calibrator {
 
         for(int i=0; i <3; i++)
         {
-          tvec[i] /= 10.; // [mm]      // divide by 245 to get inches?
+          tvec[i] /= 10.; // [mm]      // divide by 254 to get inches?
         }
         translations.add(tvec);
       }
@@ -291,9 +305,9 @@ public class Calibrator {
       return ret;
     }
 
-    public double[] stupidVariance(List<double[]> data)
+    public static double[] stupidVariance(List<double[]> data)
     {
-      Main.LOGGER.log(Level.SEVERE, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // always 3 components x, y, z
       double[] sum = {0., 0., 0.};

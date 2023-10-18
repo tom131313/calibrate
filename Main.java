@@ -1,12 +1,15 @@
-// These files are derived in part from the "Pose Calib" project.
-// They are subject to the license terms in the LICENSE file.
+// This project is derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the LICENSE file.
 
-// @author Pavel Rojtbergpackage calibrator;
-
+//FIXME detector needs at least 6 points to keep solvePnP happy. UserGuidance needs 15 or more. Why not just one min?
 
 package calibrator;
 
 // changed method name oribital_pose to orbital_pose - rkt
+// didn't change some other misspellings
+// changed a couple of other "bugs" (maybe, I think)
+// used current OpenCV methods. Some old ones were removed.
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -36,11 +39,12 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     Main class                                                             */
+/*                                     Main class                                                             */
+/*                                     Main class                                                             */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-
 public class Main {
     static final String version = "CONVERTING IN PROGRESS"; // change this
 
@@ -48,16 +52,15 @@ public class Main {
     static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
 
     public static final Logger LOGGER = Logger.getLogger("");
-    private static final String outFormat = "%4$-7s [%3$s %2$s] %5$s %6$s%n";
+    private static final String outFormat = "%7$s%4$-7s [%3$s %2$s] %5$s %6$s%n";
     private static final String outTail = "THE END OF THE LOG\n";
-    private static final String errFormat = "%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL %4$-7s [%3$s %2$s] %5$s %6$s%n";
+    private static final String errFormat = "%7$s%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL %4$-7s [%3$s %2$s] %5$s %6$s%n";
     private static final String errTail = "THE END OF THE LOG\n";
 
     // normally don't change header but it's here (or below) to use version
     static final String header = "\n\nStarting Log for Camera Calibration Program Version " + version
     + ", current time " + java.time.LocalDateTime.now() + "\n\n";
-    //    + "  current time ms " + System.currentTimeMillis() + "\n\n";
-        
+    //    + "  current time ms " + System.currentTimeMillis() + "\n\n";   
     private static final String errHeader = header;
     private static final String outHeader = header;
 
@@ -94,6 +97,8 @@ public class Main {
         classLevels.put(key, Level.parse(value));
         }
     }
+    static int frameNumber = 0;
+    static String frame = "00000 ";
     // END LOGGER STUFF
 
     static
@@ -102,18 +107,25 @@ public class Main {
     }
 
     // keyboard mapping returns from waitKey
-    static final int keyEscape = 27;
-    static final int keyc = 67;
-    static final int keym = 77;
+    static final int keyTerminate = 27;
+    static final int keyCapture = 67;
+    static final int keyMirrorToggle = 77;
     static final int timedOut = -1;  // timed out no key pressed
+    static long allowKeyPressAfterTime = 0; // time when next key press is allowed - prevents multiple rapid, unintentional presses; allows holding key down for extended period so it is seen by the keywait
 
     // Checks for the specified camera and uses it if present. 0 internal, 1 external if there is a 0 internal (sometimes)    
     static final int camId = 0;
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
+
+    public static Mat testImg1 = new Mat(); // testing only
+    public static Mat testImg2 = new Mat(); // testing only
+
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     main                                                                   */
+/*                                     main                                                                   */
+/*                                     main                                                                   */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -163,11 +175,13 @@ public class Main {
         boolean mirror = true;
         boolean save = false; // indicator for user pressed the "c" key to capture (save) manually    
         ChArucoDetector tracker = new ChArucoDetector();
-        UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate);   
+        UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate);
 
         grabFrameLoop:
         while (!Thread.interrupted())
         {
+            frameNumber++;
+            frame = String.format("%05d ", frameNumber);
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
             if (cap.grabFrame(_img, 0.5) != 0)
             {
@@ -209,28 +223,40 @@ public class Main {
 
             displayOverlay(out, ugui);
 
-            Imgproc.putText(out, ugui.tgt_r.dump()+ugui.tgt_t.dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, ugui.tgt_r.dump()+ugui.tgt_t.dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+            if( ! testImg1.empty()) HighGui.imshow("test img 1", testImg1);
+            if( ! testImg2.empty()) HighGui.imshow("test img 2", testImg2);
 
             HighGui.imshow("PoseCalib", out);
 
             int k = HighGui.waitKey(Cfg.wait);
 
-            if(k != timedOut) Main.LOGGER.log(Level.SEVERE, "Pressed Key " + k);
+            if(k == timedOut)
+            {
+                continue; // no key press to process
+            }
+            
+            // have a key
+            long currentTimeMillis = System.currentTimeMillis();
+            if(currentTimeMillis < allowKeyPressAfterTime)
+            {// smarter way is check for SAME key pressed rapidly but this checking for any key pressed is good enough for now
+                continue; // a key pressed soon after previous press so ignore it
+            }
+            
+            // process this key
+            Main.LOGGER.log(Level.WARNING, "Pressed Key " + k);
+            
+            allowKeyPressAfterTime = currentTimeMillis + Cfg.keyLockoutDelayMillis; // lockout more presses for a awhile
 
             switch(k)
             {
-                case timedOut: // no key pressed
-                        break;
-
-                case keyEscape: // 'Esc' key pressed to stop immediately
+                case keyTerminate: // terminate key pressed to stop loop immediately
                         break grabFrameLoop;
 
-                case keym: // mirror key pressed
+                case keyMirrorToggle: // mirror/no mirror key pressed
                         mirror = !mirror;
                         break;
 
-                case keyc: // capture frame key pressed
+                case keyCapture: // capture frame key pressed
                         save = true;
                         break;
 
@@ -239,19 +265,24 @@ public class Main {
             }
         } // end grabFrameLoop
 
+        ugui.write(); //FIXME temp just to see what comes out - remove when program working right and converging
+
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
     }
     
     public static void displayOverlay(Mat out, UserGuidance ugui)
     {
+        Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+        Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+
         if (ugui.user_info_text.length() > 0) // is there a message to display?
         {
             if ( ! ugui.user_info_text.equals("initialization")) // rkt stop spamming "initialization" to log
-                Main.LOGGER.log(Level.SEVERE,ugui.user_info_text);
+                Main.LOGGER.log(Level.WARNING,ugui.user_info_text);
 
-            Imgproc.putText(out, ugui.user_info_text, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, ugui.user_info_text, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+            Imgproc.putText(out, ugui.user_info_text, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+            Imgproc.putText(out, ugui.user_info_text, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
         }
 
         Imgproc.putText(out, ugui.tgt_r.dump()+ugui.tgt_t.dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
@@ -261,7 +292,9 @@ public class Main {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                                                                                            */
+/*                                     End Main class                                                         */
+/*                                     End Main class                                                         */
+/*                                     End Main class                                                         */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -422,5 +455,25 @@ public class Main {
 cd C:\Users\RKT\frc\FRC2023\Code\Java
 find "repError" CalibrationLog.txt
 find "jaccard" CalibrationLog.txt
+find "board_warped created" CalibrationLog.txt
 
  */
+
+
+
+ /*
+  * The rotvecd( ) function gives a scaled rotation axis.  I.e., what it would take to do a single rotation of an object
+   on all three axes simultaneously to get from one orientation to another.  The direction of the vector gives the rotation
+    axis, and the magnitude of the vector gives the total rotation angle.
+The eulerd( ) function gives the angles for performing three separate sequential rotations (not simultaneous) to get from
+ one orientation to another.  E.g., rotate about the X-axis by some amount first, then from that resulting position rotate
+  about the Y-axis by some amount, then from that resulting position rotate about the Z-axis by some amount to get to the
+   final orientation.
+In general, anytime you deal with Euler Angles you are dealing with separate rotations that are chained together sequentially.
+
+All rotations in 3-D can be represented by four elements: a three-element axis of rotation and a rotation angle.
+ If the rotation axis is constrained to be unit length, the rotation angle can be distributed over the vector elements to
+  reduce the representation to three elements.
+
+https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
+  */
