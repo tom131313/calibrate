@@ -1,4 +1,5 @@
 package calibrator;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -14,7 +15,9 @@ import org.opencv.core.MatOfPoint3f;
 import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+
 import static calibrator.ArrayUtils.brief;
+
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -24,7 +27,7 @@ import static calibrator.ArrayUtils.brief;
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public class Distortion
+class Distortion
 {
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
 /*----------------------------------------------------------------------------------------------------------- */
@@ -46,7 +49,7 @@ public class Distortion
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-    public static Rect get_bounds(Mat thresh, Mat mask)
+    private static Rect get_bounds(Mat thresh, Mat mask)
     {
         // seems like a better strategy would be to see what contour actually contributes the most and not just check the largest ones
         // and use true area of contour and not just the number of points in the contour
@@ -127,7 +130,7 @@ public class Distortion
      * @param Knew
      * @return
      */
-    public static Mat make_distort_map(Mat K, Size sz, Mat dist, Mat Knew)
+    static Mat make_distort_map(Mat K, Size sz, Mat dist, Mat Knew)
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
@@ -166,10 +169,11 @@ public class Distortion
 
         MatOfPoint2f dpts = new MatOfPoint2f();
 
+        Main.Kcsv(Id.__LINE__(), K);
         Calib3d.undistortPoints(pts, dpts, K, dist, new Mat(), Knew);
 
         Mat dpts2D = dpts.reshape(2, h)/*.convertTo(dpts2D, CvType.CV_32FC2 )*/; //FIXME convert or not??????
-
+        Main.Kcsv(Id.__LINE__(), Knew);
         Main.LOGGER.log(Level.WARNING, "pts " + pts + "\n" + brief(pts));
         Main.LOGGER.log(Level.WARNING, "dpts " + dpts + "\n" + brief(dpts));
         Main.LOGGER.log(Level.WARNING, "returning dpts2D " + dpts2D + brief(dpts2D));
@@ -181,15 +185,6 @@ public class Distortion
 //     return dpts.reshape(sz[0], sz[1], 2).T
         return dpts2D;
     }
-// def make_distort_map(K, sz, dist, Knew):
-//     """
-//     creates a map for distorting an image as a opposed to the default
-//     behaviour of undistorting
-//     @param sz: width, height
-//     """
-//     pts = np.array(np.meshgrid(range(sz[0]), range(sz[1]))).T.reshape(-1, 1, 2)
-//     dpts = cv2.undistortPoints(pts.astype(np.float32), K, dist, P=Knew)
-//     return dpts.reshape(sz[0], sz[1], 2).T
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -202,14 +197,14 @@ public class Distortion
     //     same output as initUndistortRectifyMap, but sparse
     //     @param sz: width, height
     //     @return: distorted points, original points
-    public static List<Mat> sparse_undistort_map(Mat K, Size sz, Mat dist, Mat Knew, int step)
+    static List<Mat> sparse_undistort_map(Mat K, Size sz, Mat dist, Mat Knew, int step)
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
+        Main.Kcsv(Id.__LINE__(), K);
+        Main.Kcsv(Id.__LINE__(), Knew);
         // best I can tell step is always 20 (subsample) and never 1 so this should not be executed
         if(step == 1) throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
-        //     zero = np.zeros(3)
-        //     pts = np.array(np.meshgrid(range(0, sz[0], step), range(0, sz[1], step))).T.reshape(-1, 1, 2)
         // inclusive 0 to step
         int w = (int)sz.width/step; // columns
         int h = (int)sz.height/step; // rows
@@ -245,7 +240,8 @@ public class Distortion
 
         MatOfPoint2f dpts = new MatOfPoint2f();
 
-        Calib3d.projectPoints(pts3d, noTransforms, noTransforms, Knew, distOfDouble, dpts); // project points in 3d back to a 2d screen
+        Calib3d.projectPoints(pts3d, noTransforms, noTransforms, K, distOfDouble, dpts); // project points in 3d back to a 2d screen
+
         int[] shape = {w, h};
         Mat dpts2D = dpts.reshape(c, shape);
         Mat pts2D = pts.reshape(c, shape);
@@ -264,37 +260,12 @@ public class Distortion
 
         return maps;
     }
-    // def sparse_undistort_map(K, sz, dist, Knew, step=1):
-    // """
-    // same output as initUndistortRectifyMap, but sparse
-    // @param sz: width, height
-    // @return: distorted points, original points
-    // """
-    // print("sparse_undistort_map", sz, step, sep="><")
- 
-    // zero = np.zeros(3)
-    // pts = np.array(np.meshgrid(range(0, sz[0], step), range(0, sz[1], step))).T.reshape(-1, 1, 2) #long list of (x, y) points out
-    // print("pts", np.shape(pts), type(pts), pts, sep="><")
-    // """
-    // sparse_undistort_map><(1280, 720)><20
-    // pts><(2304, 1, 2)><<class 'numpy.ndarray'>><[[[   0    0]]
-    // [[   0   20]]
-    // [[   0   40]]
-    // ...
-    // [[1260  660]]
-    // [[1260  680]]
-    // [[1260  700]]]
-    // """
-    // if step == 1:
-    //     dpts = cv2.initUndistortRectifyMap(K, dist, None, Knew, sz, cv2.CV_32FC2)[0].transpose(1, 0, 2)
-    // else:
-    //     pts3d = cv2.undistortPoints(pts.astype(np.float32), Knew, None)
-    //     pts3d = cv2.convertPointsToHomogeneous(pts3d).reshape(-1, 3) # (x, y, 1) points out
-    //     dpts = cv2.projectPoints(pts3d, zero, zero, K, dist)[0]
 
-    // shape = (sz[0] // step, sz[1] // step, 2) # size of rectangular array of samples
-
-    // return dpts.reshape(-1, 2).reshape(shape), pts.reshape(shape) # rectangular arrays of samples returned
+/**
+ *    get_diff_heatmap  NOT USED -- NOT CONVERTED
+ *    get_diff_heatmap  NOT USED -- NOT CONVERTED
+ *    get_diff_heatmap  NOT USED -- NOT CONVERTED
+*/
 
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -314,7 +285,7 @@ public class Distortion
      * @param thres: distortion strength to use as threshold [%]
      * @return
      */
-    public static Rect loc_from_dist(Mat pts, Mat dpts, Mat mask, boolean lower, double thres) // force specifying all parameters
+    static Rect loc_from_dist(Mat pts, Mat dpts, Mat mask, boolean lower, double thres) // force specifying all parameters
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         Main.LOGGER.log(Level.WARNING, "pts " + pts);
@@ -322,36 +293,6 @@ public class Distortion
         Main.LOGGER.log(Level.WARNING, "mask " + mask);
         Main.LOGGER.log(Level.WARNING, "lower " + lower);
         Main.LOGGER.log(Level.WARNING, "thres " + thres);
-/*
-pts =  np.array([[[   0,    0], [   0,   20],  [   0,   40]],
-[[   0,    0], [   0,   20],  [   0,   40]]])
-dpts = np.array([[[-3.3855473e+01, -1.7103071e+01], [-3.0816502e+01,  5.4372540e+00], [-2.8238459e+01,  2.7548717e+01] ],
-[[-3.3855473e+01, -1.7103071e+01], [-3.0816502e+01,  5.4372540e+00], [-2.8238459e+01,  2.7548717e+01] ]])
-        
-diff [[[33.855473 17.103071]
-[30.816502 14.562746]     
-[28.238459 12.451283]]    
-
-[[33.855473 17.103071]
-[30.816502 14.562746]
-[28.238459 12.451283]]]
-diff1 [37.93030569 34.08416592 30.86170791 37.93030569 34.08416592 30.86170791]
-diff2 [[37.93030569 37.93030569]
-[34.08416592 34.08416592]
-[30.86170791 30.86170791]]
-diff3 [[255 255]
-[116 116]
-[  0   0]]
-*/
-        // pts><(64, 36, 2) dpts><(64, 36, 2)
-        // pairs of points p - dp
-        // want an array of norms of element by element not one total for the whole input arrays.
-        // sqr root of the sum of the sqrs
-        // points on row/col locations are a 2D mat with 2 channels - channel x, channel y
-        // the norm of each point x,y is norm = sqrt(x^2 + y^2) is computed and put in the same row/col location
-        // the pair of points in row=0 col=0 of pts and dpts have their norm computed and put in output row=0 col=0
-        // x is in channel 0 and y is in channel 1
-        // norm(0,0) = sqrt( (p(0,0)x-dp(0,0)x)^2 + (p(0,0)y-dp(0,0)z)^2 )
         Mat diffpts = new Mat();
         Core.subtract(pts, dpts, diffpts);
         Main.LOGGER.log(Level.WARNING, "diffpts " + diffpts);
@@ -425,108 +366,15 @@ diff3 [[255 255]
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
+
+// Parking lot
+
 /*
  Calib3d.convertPointsToHomogeneous()
         n by 2 or 3 dimensions in or 2 or 3 dimensions by n in; always nx1x 3 or 4 channels out
         a dimension is either a Mat row or column or 1 row or column and 2 or 3 channels
         1xnx2, 1xnx3, nx1x2, nx1x3, nx2x1, nx3x1 in; always nx1x3 or nx1x4 out
 */
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// import cv2
-
-// import numpy as np
-// import numpy.linalg as la
-
-// def get_bounds(thresh, mask):
-//     MAX_OVERLAP = 0.9
-//     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
-//     contours = list(contours) # revert to the old way that contours is a list and not a tuple as in the new way
-    
-//     # look for the largest object that is not masked
-//     while contours:
-//         mx = np.argmax([len(c) for c in contours])
-//         contour = contours[mx]
-//         aabb = cv2.boundingRect(contour)
-
-//         x, y, w, h = aabb
-//         if mask is not None and (cv2.countNonZero(mask[y:y + h, x:x + w]) / (w * h) > MAX_OVERLAP):
-//             del contours[mx]  # remove from candidates the old way from the list
-//             #contours = contours[:mx] + contours[mx+1:] # the new way from the tuple
-//             continue
-
-//         return (aabb, contour)
-
-//     return None
-
-// def make_distort_map(K, sz, dist, Knew):
-//     """
-//     creates a map for distorting an image as a opposed to the default
-//     behaviour of undistorting
-//     @param sz: width, height
-//     """
-//     pts = np.array(np.meshgrid(range(sz[0]), range(sz[1]))).T.reshape(-1, 1, 2)
-//     dpts = cv2.undistortPoints(pts.astype(np.float32), K, dist, P=Knew)
-
-//     return dpts.reshape(sz[0], sz[1], 2).T
-
-// def sparse_undistort_map(K, sz, dist, Knew, step=1):
-//     """
-//     same output as initUndistortRectifyMap, but sparse
-//     @param sz: width, height
-//     @return: distorted points, original points
-//     """
-//     zero = np.zeros(3)
-//     pts = np.array(np.meshgrid(range(0, sz[0], step), range(0, sz[1], step))).T.reshape(-1, 1, 2)
-
-//     if step == 1:
-//         dpts = cv2.initUndistortRectifyMap(K, dist, None, Knew, sz, cv2.CV_32FC2)[0].transpose(1, 0, 2)
-//     else:
-//         pts3d = cv2.undistortPoints(pts.astype(np.float32), Knew, None)
-//         pts3d = cv2.convertPointsToHomogeneous(pts3d).reshape(-1, 3)
-//         dpts = cv2.projectPoints(pts3d, zero, zero, K, dist)[0]
-
-//     shape = (sz[0] // step, sz[1] // step, 2)
-
-//     return dpts.reshape(-1, 2).reshape(shape), pts.reshape(shape)
-
-// def loc_from_dist(pts, dpts, mask=None, lower=False, thres=1.0):
-//     """
-//     compute location based on distortion strength
-//     @param pts: sampling locations
-//     @param dpts: distorted points
-//     @param mask: mask for ignoring locations
-//     @param lower: find location with minimal distortion instead
-//     @param thres: distortion strength to use as threshold [%]
-//     """
-//     diff = la.norm((pts - dpts).reshape(-1, 2), axis=1)
-//     diff = diff.reshape(pts.shape[0:2]).T
-//     diff = cv2.normalize(diff, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-
-//     bounds = None
-
-//     while not bounds and thres >= 0 and thres <= 1:
-//         if lower:
-//             thres += 0.05
-//             thres_img = cv2.threshold(diff, thres * 255, 255, cv2.THRESH_BINARY_INV)[1]
-//         else:
-//             thres -= 0.05
-//             thres_img = cv2.threshold(diff, thres * 255, 255, cv2.THRESH_BINARY)[1]
-
-//         bounds = get_bounds(thres_img, mask)
-
-//         if bounds is None:
-//             continue
-
-//         # ensure area is not 0
-//         if bounds[0][2] * bounds[0][3] == 0:
-//             bounds = None
-    
-//     if bounds is None:
-//         return None, None
-
-//     return np.array(bounds[0]), thres_img
-
 //////////////////////////////////
             // for get_bounds this is likely a start of better but something to consider later:
             // use true area instead of counting the perimeter segments

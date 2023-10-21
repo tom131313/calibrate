@@ -1,14 +1,11 @@
 package calibrator;
 
-// import static calibrator.ArrayUtils.brief;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfInt;
@@ -29,47 +26,52 @@ public class ChArucoDetector {
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
  
     // configuration
-    Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
-    double square_len = Cfg.square_len;
-    double marker_len = Cfg.marker_len;
+    private Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
+    private double square_len = Cfg.square_len;
+    private double marker_len = Cfg.marker_len;
     Size img_size = new Size(Cfg.image_width, Cfg.image_height);
 
     // per frame data
-    final Mat p3d = new Mat(); // currentObjectPoints
-    final Mat p2d = new Mat(); // currentImagePoints
-    int N_pts = 0;
-    boolean pose_valid = false;
-    Mat raw_img = new Mat();
+
+    // p3d is the object coordinates of the perfect undistorted ChArUco Board corners that the camera is pointing at.
+    // In this case the board is flat at its Z origin (say, the wall upon which it is mounted) so the Z coordinate is always 0.
+    // p2d is the coordinates of the corresponding board corners as they are located in the camera image,
+    // distorted by perspective (pose) and camera intrinsic parameters and camera distortion.
+    private final Mat p3d = new Mat(); // 3 dimensional currentObjectPoints, the physical target ChArUco Board
+    private final Mat p2d = new Mat(); // 2 dimensional currentImagePoints, the likely distorted board on the flat camera sensor frame posed relative to the target
+    private int N_pts = 0;
+    private boolean pose_valid = false;
+    private Mat raw_img = new Mat();
 
     /// Charuco Board
-    final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
+    private final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
+    private final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
+    final Mat boardImage = new Mat();
+    private final CharucoBoard board = new CharucoBoard(board_sz, Cfg.square_len, Cfg.marker_len, dictionary);
+    private CharucoDetector detector; // the OpenCV detector spelled almost the same - fooled me too many times!!!!!
 
-    final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
+    private Mat rvec = new Mat();
+    private Mat tvec = new Mat();
 
-    public final Mat boardImage = new Mat();
-       
-    public final CharucoBoard board = new CharucoBoard(board_sz, Cfg.square_len, Cfg.marker_len, dictionary);
+    private boolean intrinsic_valid = false;
+    private Mat K;
+    private Mat cdist;
 
-    CharucoDetector detector; // the OpenCV detector spelled almost the same - fooled me too many times!!!!!
-
-    Mat rvec = new Mat();
-    Mat tvec = new Mat();
-    Mat tgt_r = new Mat(); // from UserGuidance set_next_pose/get_pose cheat 'cuz bad
-    Mat tgt_t = new Mat(); // organization with the detector twisted in with the pose
-
-    boolean intrinsic_valid = false;
-    Mat K;
-    Mat cdist;
-
-    final Mat ccorners = new Mat(); /*currentCharucoCorners */
-    final Mat cids = new Mat(); /*currentCharucoIds */
+    private final Mat ccorners = new Mat(); // currentCharucoCorners
+    private final Mat cids = new Mat(); // currentCharucoIds
 
     // optical flow calculation
-    Mat last_ccorners = new Mat();
-    Mat last_cids = new Mat();
-    // mean flow if same corners are detected in consecutive frames - not fully implemented
-    // changed to same number of corners and not necessarily the same corners
-    double mean_flow = Double.MAX_VALUE;
+    private Mat last_ccorners = new Mat(); // previous ChArUcoBoard corners
+    private Mat last_cids = new Mat(); // previous ChArUcoBoard ids
+    private double mean_flow = Double.MAX_VALUE; // mean flow of the same corners that are detected in consecutive frames
+
+    // getters
+    int N_pts(){return N_pts;}
+    Size board_sz(){return board_sz;}
+    boolean pose_valid(){return this.pose_valid;}
+    Mat rvec(){return rvec;}
+    Mat tvec(){return tvec;}
+    double mean_flow(){return this.mean_flow;}
 
     public ChArucoDetector()
     {
@@ -79,8 +81,7 @@ public class ChArucoDetector {
         board.setLegacyPattern(Cfg.legacyPattern);
         board.generateImage(boardImageSize, boardImage);
 
-        boolean writeBoard = true;
-        if(writeBoard)
+        if(Cfg.writeBoard)
         {
             // write ChArUco Board to file for print to use for calibration
             final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
@@ -94,7 +95,6 @@ public class ChArucoDetector {
         /// end create board
 
         /// board detector
-        
         final DetectorParameters detectParams = new DetectorParameters();
         final RefineParameters refineParams = new RefineParameters();
         final CharucoParameters charucoParams = new CharucoParameters();
@@ -120,8 +120,10 @@ public class ChArucoDetector {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
-        this.K = calib.K;
-        this.cdist = calib.cdist;
+        this.K = calib.K();
+        this.cdist = calib.cdist();
+        Main.Kcsv(Id.__LINE__(), this.K);
+        Main.LOGGER.log(Level.WARNING, "class private K\n" + K.dump());
     }
 
     public void draw_axis(Mat img)
@@ -138,7 +140,6 @@ public class ChArucoDetector {
         final List<Mat> markerCorners = new ArrayList();
         final Mat markerIds = new Mat();
         this.N_pts = 0;
-        this.mean_flow = Double.MAX_VALUE;
 
         try
         {
@@ -151,15 +152,15 @@ public class ChArucoDetector {
         Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
         if(this.N_pts == 0) // maybe use the min N_pts
-        {
+        { // bad structure; duplicates code in another place
             // for optical flow calculation
             last_ccorners = new Mat();
             last_cids = new Mat();
             return;
         }
 
-        // Main.LOGGER.log(Level.WARNING, "detected ccorners\n" + this.ccorners.dump());
-        // Main.LOGGER.log(Level.WARNING, "detected cids\n" + this.cids.dump());
+        Main.LOGGER.log(Level.WARNING, "detected ccorners\n" + this.ccorners.dump());
+        Main.LOGGER.log(Level.WARNING, "detected cids\n" + this.cids.dump());
         
         // reformat the Mat to a List<Mat> for matchImagePoints
         final List<Mat> ccornersList = new ArrayList<>();
@@ -167,80 +168,142 @@ public class ChArucoDetector {
           ccornersList.add(this.ccorners.row(i));
         }
 
-        // Objdetect.drawDetectedCornersCharuco(img, ccorners, cids);
+        // display the cids on the board
+        Objdetect.drawDetectedCornersCharuco(img, ccorners, cids);
 
         board.matchImagePoints(ccornersList, this.cids,this.p3d, this.p2d); // p2d same data as ccornersList
         // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
         // after copying to MatOfPoint2f. A waste of cpu and memory.
 
-        // Main.LOGGER.log(Level.WARNING, "p3d" + this.p3d.dump()); // okay here
-        // Main.LOGGER.log(Level.WARNING, "p2d" + this.p2d.dump()); // okay here
-/*
-00098 2023-10-16 18:35:00.839 WARNING [ calibrator.ChArucoDetector detect_pts] method entered  . . . . . . . . . . . . . . . . . . . . . . . . 
-00098 2023-10-16 18:35:00.880 WARNING [ calibrator.ChArucoDetector detect_pts] N_pts 5 
-00098 2023-10-16 18:35:00.880 WARNING [ calibrator.ChArucoDetector detect_pts] detected ccorners
- 
-00098 2023-10-16 18:35:00.881 WARNING [ calibrator.ChArucoDetector detect_pts] detected cids
- 
-00098 2023-10-16 18:35:00.881 WARNING [ calibrator.ChArucoDetector detect_pts] p3d
-[560, 1120, 0;
- 840, 1120, 0;
- 280, 1400, 0;
- 560, 1400, 0;
- 840, 1400, 0] 
-00098 2023-10-16 18:35:00.883 WARNING [ calibrator.ChArucoDetector detect_pts] p2d
-[633.42603, 485.72961;
- 684.49097, 465.53342;
- 604.17853, 559.16071;
- 653.65509, 541.08752;
- 705.43335, 522.56055] 
- */
+        Main.LOGGER.log(Level.WARNING, "p3d\n" + this.p3d.dump()); // data okay here
+        Main.LOGGER.log(Level.WARNING, "p2d\n" + this.p2d.dump()); // data okay here
+
         if(this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
 
-        // check for still image
-        // mean flow if the same corners are detected in consecutive frames
-        // relaxed criterion to same number of corners and not necessarily the same corners - rkt
-        if(this.last_cids.total() != this.cids.total())
-        {
-            this.ccorners.copyTo(this.last_ccorners);
-            this.cids.copyTo(this.last_cids);
-            return;
-        }
-        for(int row = 0; row < this.last_cids.rows(); row++)
-        for(int col = 0; col < this.last_cids.cols(); col++)
-        {
-            if(this.last_cids.get(row, col)[0] != this.cids.get(row, col)[0])
-            {
-                this.ccorners.copyTo(this.last_ccorners);
-                this.cids.copyTo(this.last_cids);
-                return;                
-            }
-        }
+        // compute mean flow of the image for the check for stillness elsewhere
+        computeMeanFlow(); // the rkt way - relaxed criteria from original
 
-        // calculate mean flow.
-        // Not sure what original axis=1 norm is. Below is 2 axes which is better, I think
-        Mat diff = new Mat();
-        Core.subtract(this.last_ccorners, this.ccorners, diff);
-        // Main.LOGGER.log(Level.WARNING, "diffpts " + diff + "\n" + diff.dump());
+        // abandoned the original algorithm in favor of more relaxed version - rkt
+        // // mean flow if the same corners are detected in consecutive frames
+        // // relaxed criterion to same number of corners and not necessarily the same corners - rkt
+        // if(this.last_cids.total() != this.cids.total())
+        // {
+        //     this.ccorners.copyTo(this.last_ccorners);
+        //     this.cids.copyTo(this.last_cids);
+        //     return;
+        // }
+        // for(int row = 0; row < this.last_cids.rows(); row++)
+        // for(int col = 0; col < this.last_cids.cols(); col++)
+        // {
+        //     if(this.last_cids.get(row, col)[0] != this.cids.get(row, col)[0])
+        //     {
+        //         this.ccorners.copyTo(this.last_ccorners);
+        //         this.cids.copyTo(this.last_cids);
+        //         return;                
+        //     }
+        // }
 
-        Mat normMat = new Mat(diff.rows(), diff.cols(), CvType.CV_64FC1);
+        // // calculate mean flow.
+        // // Not sure what original axis=1 norm is. Below is 2 axes which is better, I think
+        // Mat diff = new Mat();
+        // Core.subtract(this.last_ccorners, this.ccorners, diff);
+        // // Main.LOGGER.log(Level.WARNING, "diffpts " + diff + "\n" + diff.dump());
 
-        for(int row =0; row < diff.rows(); row++)
-        for(int col = 0; col < diff.cols(); col++)
-        {
-            float[] point = new float[2]; // get the 2 channels of data x in 0 and y in 1
-            diff.get(row, col, point);
-            double norm = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
-            normMat.put(row, col, norm);
-        }
-        // Main.LOGGER.log(Level.WARNING, "normMat\n" + normMat.dump());
+        // Mat normMat = new Mat(diff.rows(), diff.cols(), CvType.CV_64FC1);
 
-        this.mean_flow = Core.mean(normMat).val[0];
+        // for(int row =0; row < diff.rows(); row++)
+        // for(int col = 0; col < diff.cols(); col++)
+        // {
+        //     float[] point = new float[2]; // get the 2 channels of data x in 0 and y in 1
+        //     diff.get(row, col, point);
+        //     double norm = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
+        //     normMat.put(row, col, norm);
+        // }
+        // // Main.LOGGER.log(Level.WARNING, "normMat\n" + normMat.dump());
+
+        // this.mean_flow = Core.mean(normMat).val[0];
+
         Main.LOGGER.log(Level.WARNING, "mean_flow " + this.mean_flow);
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
     }
   
+    public void computeMeanFlow()
+    {
+        //assumptions: cids float 1 col, 1 channel; ccorners float 1 col, 2 channels
+        //FIXME verify assumptions?
+
+        this.mean_flow = Double.MAX_VALUE;
+
+        if(last_cids.rows() >= 1 && cids.rows() >= 1) // handles the first time and other cases
+        {
+            // get all the last cids and ccorners and all the current cids and ccorners in arrays.
+            // do all the computations in the arrays.
+            float[] last_ccornersArray = new float[last_ccorners.rows()*last_ccorners.channels()];
+            int[] last_cidsArray = new int[last_cids.rows()]; // assume 1 col 1 channel
+            float[] ccornersArray = new float[ccorners.rows()*ccorners.channels()];
+            int[] cidsArray = new int[cids.rows()];
+            
+            this.last_ccorners.get(0,0, last_ccornersArray);
+            this.last_cids.get(0, 0, last_cidsArray);
+            this.ccorners.get(0, 0, ccornersArray);
+            this.cids.get(0, 0,cidsArray );
+            
+            // assume the cids and last_cids are in order ascending
+
+            // mean flow if the same corners are detected in consecutive frames
+            // relaxed criterion to same number of corners and not necessarily the same corners - rkt
+            if(this.last_cids.total() <= 0 || this.cids.total() <= 0)
+            {
+                return; // one of them has no corners to compare to
+            }
+
+            this.mean_flow = 0.; // starting at 0 for a summation process but that will change to flow or max value
+            double countMatchingCids = 0;
+            int indexCurrent = 0;
+            int indexLast = 0;
+
+            // merge last_cids and cids; assume they are already sorted ascending
+            while(indexCurrent< this.cids.rows() && indexLast< this.last_cids.rows())
+            {
+                if(cidsArray[indexCurrent] == last_cidsArray[indexLast])
+                {// great we have matching cids to compare then bump both to stay in sync
+                    double diffX = ccornersArray[2*indexCurrent  ] - last_ccornersArray[2*indexLast  ]; // current - last
+                    double diffY = ccornersArray[2*indexCurrent+1] - last_ccornersArray[2*indexLast+1]; // current - last
+
+                    this.mean_flow += Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2)); // sum the L2 norm (Frobenious)
+                    countMatchingCids++;
+                    indexCurrent++;
+                    indexLast++;
+                    continue;
+                }
+                else
+                if(cidsArray[indexCurrent] < last_cidsArray[indexLast])
+                {// missing corresponding last so bump current to catch up to last
+                    indexCurrent++;
+                    continue;
+                }
+                else
+                if(cidsArray[indexCurrent] > last_cidsArray[indexLast])
+                {// missing corresponding current so bump last to catch up to current
+                    indexLast++;
+                    continue;
+                }
+                Main.LOGGER.log(Level.SEVERE, "Can't be here; 3-way 'if' failed");
+            }
+
+            if(countMatchingCids > 0           // allow some missing cids from either list by a Jaccard index similarity
+                && (countMatchingCids/(this.last_cids.rows() + this.cids.rows() - countMatchingCids)) > Cfg.matchStillCidsMin)
+            {
+                this.mean_flow /= countMatchingCids; // mean of the sum of the norms
+            }
+            else
+            {
+                this.mean_flow = Double.MAX_VALUE;
+            }
+        }
+    }
+
     public void detect(Mat img) throws Exception
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
@@ -281,28 +344,25 @@ public class ChArucoDetector {
         MatOfPoint3f p3dReTyped = new MatOfPoint3f(this.p3d);
         MatOfPoint2f p2dReTyped = new MatOfPoint2f(this.p2d);
         MatOfDouble distReTyped = new MatOfDouble(this.cdist);
-        // Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
-        // Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
 
-        Mat rvec = new Mat();
+        Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
+        Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
+
+        Mat rvec = new Mat(); // initalizing rvec and tvec didn't help solvePnP so leave them empty
         Mat tvec = new Mat();
 
-        this.tgt_r.copyTo(rvec); // GuidanceBoard pose, put this here for us to try as a good initial
-        this.tgt_t.copyTo(tvec); // guess of where the camera img is supposed to be - try it - rkt - doesn't seem to help
-
-        Main.LOGGER.log(Level.WARNING, "K\n" + this.K.dump());
         Main.LOGGER.log(Level.WARNING, "distReTyped " + distReTyped.dump());
         Main.LOGGER.log(Level.WARNING, " in rvec\n" + rvec.dump());
         Main.LOGGER.log(Level.WARNING, " in tvec\n" + tvec.dump());
-        this.pose_valid = Calib3d.solvePnP(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
 
-        Core.multiply(rvec, new Scalar(-1., -1., -1.), rvec); //FIXME this makes the shadow for jaccard the right orientation for some reason!
-        //FIXME what's wrong?????
+        this.pose_valid = Calib3d.solvePnP(
+            p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec, false, Calib3d.SOLVEPNP_ITERATIVE);
+
+        //FIXME negating "x" makes the shadow for jaccard the right orientation for some unknown reason! Python doesn't need this.
+        Core.multiply(rvec, new Scalar(-1., 1., 1.), rvec);
+
         Main.LOGGER.log(Level.WARNING, "out rvec\n" + rvec.t().dump());
         Main.LOGGER.log(Level.WARNING, "out tvec\n" + tvec.t().dump());
-
-// ret = estimatePoseCharucoBoard(self.ccorners, self.cids, self.board, self.K, self.cdist)
-// self.pose_valid, rvec, tvec = ret
 
         if( ! this.pose_valid)
         {
@@ -313,169 +373,26 @@ public class ChArucoDetector {
         this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
     }
 }
-// https://docs.opencv.org/4.x/d5/d1f/calib3d_solvePnP.html
-// https://docs.opencv.org/4.8.0/d5/dae/tutorial_aruco_detection.html
-// C:\Users\RKT\frc\FRC2023\opencv-4.x\modules\objdetect\test\test_aruco_utils.cpp
-// C:\Users\RKT\frc\FRC2023\opencv-4.x\modules\objdetect\test\test_aruco_utils.hpp
-// C:\Users\RKT\frc\FRC2023\opencv-4.x\modules\objdetect\test\test_charucodetection.cpp
+/*
+Python & Java
+pose gen orbital_pose
+Pose Gen Rod Rf r returned [2.7188 -0.5408 -1.1262]
+Pose Gen Rod Rf t returned><[-595.8323 1258.2399 4627.8323]
 
-//////////////////////////////
-//////////////////////////////
-//////////////////////////////
-// bool getCharucoBoardPose(InputArray charucoCorners, InputArray charucoIds,  const aruco::CharucoBoard &board,
-// InputArray cameraMatrix, InputArray distCoeffs, InputOutputArray rvec, InputOutputArray tvec,
-// bool useExtrinsicGuess) {
-//     CV_Assert((charucoCorners.getMat().total() == charucoIds.getMat().total()));
-//     if(charucoIds.getMat().total() < 4) return false; // need, at least, 4 corners
+Python
+ret = estimatePoseCharucoBoard(self.ccorners, self.cids, self.board, self.K, self.cdist)
+update_pose rvec [[-2.6629] [0.6387] [1.1686]]
+update_pose tvec [[1930.3167] [1424.4072] [7285.3986]]
 
-//     std::vector<Point3f> objPoints;
-//     objPoints.reserve(charucoIds.getMat().total());
-//     for(unsigned int i = 0; i < charucoIds.getMat().total(); i++) {
-//     int currId = charucoIds.getMat().at< int >(i);
-//     CV_Assert(currId >= 0 && currId < (int)board.getChessboardCorners().size());
-//     objPoints.push_back(board.getChessboardCorners()[currId]);
-//     }
+Java
+solvePnP
+*/
+// Parking lot
 
-//     // points need to be in different lines, check if detected points are enough
-//     if(!_arePointsEnoughForPoseEstimation(objPoints)) return false;
-
-//     solvePnP(objPoints, charucoCorners, cameraMatrix, distCoeffs, rvec, tvec, useExtrinsicGuess);
-//     return true;
-//     }
-
-// /** Check if a set of 3d points are enough for calibration. Z coordinate is ignored.
-//  * Only axis parallel lines are considered */
-// static bool _arePointsEnoughForPoseEstimation(const std::vector<Point3f> &points) {
-//     if(points.size() < 4) return false;
-
-//     std::vector<double> sameXValue; // different x values in points
-//     std::vector<int> sameXCounter;  // number of points with the x value in sameXValue
-//     for(unsigned int i = 0; i < points.size(); i++) {
-//         bool found = false;
-//         for(unsigned int j = 0; j < sameXValue.size(); j++) {
-//             if(sameXValue[j] == points[i].x) {
-//                 found = true;
-//                 sameXCounter[j]++;
-//             }
-//         }
-//         if(!found) {
-//             sameXValue.push_back(points[i].x);
-//             sameXCounter.push_back(1);
-//         }
-//     }
-
-//     // count how many x values has more than 2 points
-//     int moreThan2 = 0;
-//     for(unsigned int i = 0; i < sameXCounter.size(); i++) {
-//         if(sameXCounter[i] >= 2) moreThan2++;
-//     }
-
-//     // if we have more than 1 two xvalues with more than 2 points, calibration is ok
-//     if(moreThan2 > 1)
-//         return true;
-//     return false;
-// }
-//////////////////////////////
-//////////////////////////////
-//////////////////////////////
 // https://stackoverflow.com/questions/12794876/how-to-verify-the-correctness-of-calibration-of-a-webcam/12821056#12821056
 // The correct way to check calibration accuracy is to use the reprojection error provided by OpenCV. I'm not sure why this
-//  wasn't mentioned anywhere in the answer or comments, you don't need to calculate this by hand - it's the return value of
-//   calibrateCamera. In Python it's the first return value (followed by the camera matrix, etc).
+// wasn't mentioned anywhere in the answer or comments, you don't need to calculate this by hand - it's the return value of
+// calibrateCamera. In Python it's the first return value (followed by the camera matrix, etc).
 // The reprojection error is the RMS error between where the points would be projected using the intrinsic coefficients and
-//  where they are in the real image. Typically you should expect an RMS error of less than 0.5px - I can routinely get around 
-//  0.1px with machine vision cameras.
-
-/////////////////////////////////////////////////
-// class ChArucoDetector:
-//     def __init__(self, cfg):
-//         # configuration
-//         self.board_sz = np.array([int(cfg.getNode("board_x").real()), int(cfg.getNode("board_y").real())])
-//         self.square_len = cfg.getNode("square_len").real()
-//         self.ardict = Dictionary_get(int(cfg.getNode("dictionary").real()))
-        
-//         self.marker_len = cfg.getNode("marker_len").real()
-//         self.board = CharucoBoard_create(self.board_sz[0], self.board_sz[1], self.square_len, self.marker_len, self.ardict)
-//         self.img_size = (int(cfg.getNode("image_width").real()), int(cfg.getNode("image_height").real()))
-
-//         # per frame data
-//         self.N_pts = 0
-//         self.pose_valid = False
-//         self.raw_img = None
-//         self.pt_min_markers = int(cfg.getNode("pt_min_markers").real())
-
-//         self.intrinsic_valid = False
-
-//         # optical flow calculation
-//         self.last_img = None
-//         self.mean_flow = math.inf
-
-//     def set_intrinsics(self, calib):
-//         print("set_intrinsics")
-//         self.intrinsic_valid = True
-//         self.K = calib.K
-//         self.cdist = calib.cdist
-
-//     def draw_axis(self, img): # the board detected in the camera image
-//         #drawAxis(img, self.K, self.cdist, self.rvec, self.tvec, self.square_len)
-//         drawFrameAxes(img, self.K, self.cdist, self.rvec, self.tvec, 2.*self.square_len)
-
-//     def detect_pts(self, img):
-//         self.corners, ids, self.rejected = detectMarkers(img, self.ardict)
-
-//         self.N_pts = 0
-
-//         if ids is None or ids.size == 0:
-//             return
-
-//         res = interpolateCornersCharuco(self.corners, ids, img, self.board, minMarkers=self.pt_min_markers)
-//         self.N_pts, self.ccorners, self.cids = res
-//         # print("cids", self.cids)
-//         if self.N_pts == 0:
-//             return   
-
-//         next_img = cv2.resize(img, (0, 0), fx=1./12., fy=1./12., interpolation=cv2.INTER_AREA)
-//         next_img = cv2.cvtColor(next_img, cv2.COLOR_BGR2GRAY)
-//         self.mean_flow = math.inf
-//         if self.last_img is not None:
-//             flow = cv2.calcOpticalFlowFarneback(self.last_img, next_img, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-//             mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-//             self.mean_flow = np.mean(mag)
-
-//         self.last_img = next_img.copy()
-
-//     def detect(self, img):
-        
-//         self.raw_img = img.copy()
-//         # print("img shape", np.shape(img), np.shape(self.raw_img))
-
-//         self.detect_pts(img)
-
-//         if self.intrinsic_valid:
-//             self.update_pose()
-
-//     def get_pts3d(self):
-//         return self.board.chessboardCorners[self.cids].reshape(-1, 3)
-
-//     def get_calib_pts(self):
-//         return (self.ccorners.copy(), self.get_pts3d())
-
-//     def update_pose(self):
-//         if self.N_pts < 4:
-//             self.pose_valid = False
-//             return
-
-//         ret = estimatePoseCharucoBoard(self.ccorners, self.cids, self.board, self.K, self.cdist)
-//         self.pose_valid, rvec, tvec = ret
-
-//         if not self.pose_valid:
-//             return
-
-//         self.rvec = rvec.ravel()
-//         self.tvec = tvec.ravel()
-
-//         GlobalStuff.RTcamera[:3] = self.rvec
-//         GlobalStuff.RTcamera[3:] = self.tvec
-        
-//         # print(cv2.RQDecomp3x3(cv2.Rodrigues(self.rvec)[0])[0])
-//         # print(self.tvec)
+// where they are in the real image. Typically you should expect an RMS error of less than 0.5px - I can routinely get around 
+// 0.1px with machine vision cameras.

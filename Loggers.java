@@ -38,7 +38,7 @@ public final class Loggers {
     private static Level errLevel = Level.WARNING;
 
   private Loggers() {
-    throw new UnsupportedOperationException("This is a utility class");
+    throw new UnsupportedOperationException("Run setupLoggers() to change defaults.");
   }
 
   public static void setupLoggers(OutputStream errLog, String outFormat, String outHeader, String outTail, Level outLevel,

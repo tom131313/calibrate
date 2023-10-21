@@ -29,7 +29,7 @@ public class ArrayUtils
 	 * @param array an array
 	 * @return the argmax (lowest index in case of duplicate values)
 	 */
-	public static int argmax(double[] array)
+	static int argmax(double[] array)
 	{
 		int locationOfExtreme = 0;
 		double extreme = array[locationOfExtreme];
@@ -58,7 +58,7 @@ public class ArrayUtils
 	 * @param array an array
 	 * @return the argmin (lowest index in case of duplicate values)
 	 */
-	public static int argmin(double[] array)
+	static int argmin(double[] array)
 	{
 		int locationOfExtreme = 0;
 		double extreme = array[locationOfExtreme];
@@ -87,7 +87,7 @@ public class ArrayUtils
  * @param array
  * @return true if all true or false if any false
  */
-	public static boolean isAllTrue(boolean[] array)
+	static boolean isAllTrue(boolean[] array)
 	{
 		for(boolean element : array)
 		{
@@ -109,7 +109,7 @@ public class ArrayUtils
  * @param mat OpenCV Mat to be partially printed
  * @return String of the values in the corners of the Mat if large or entire Mat if small
  */
-	public static String brief(Mat mat)
+	static String brief(Mat mat)
 	{
 		StringBuilder sb = new StringBuilder();
 		sb.append(mat);

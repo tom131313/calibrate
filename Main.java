@@ -15,6 +15,7 @@ import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -46,20 +47,25 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    static final String version = "CONVERTING IN PROGRESS"; // change this
+    private static final String version = "CONVERTED draft 1"; // change this
+
+
+    private static PrintWriter pw;
+    private static int counter = 0;
+
 
     // LOGGER STUFF
-    static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
+    private static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
 
-    public static final Logger LOGGER = Logger.getLogger("");
+    static final Logger LOGGER = Logger.getLogger("");
     private static final String outFormat = "%7$s%4$-7s [%3$s %2$s] %5$s %6$s%n";
     private static final String outTail = "THE END OF THE LOG\n";
     private static final String errFormat = "%7$s%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL %4$-7s [%3$s %2$s] %5$s %6$s%n";
     private static final String errTail = "THE END OF THE LOG\n";
 
     // normally don't change header but it's here (or below) to use version
-    static final String header = "\n\nStarting Log for Camera Calibration Program Version " + version
-    + ", current time " + java.time.LocalDateTime.now() + "\n\n";
+    private static final String header = "\n\nStarting Log for Camera Calibration Program Version " + version
+                                            + ", current time " + java.time.LocalDateTime.now() + "\n\n";
     //    + "  current time ms " + System.currentTimeMillis() + "\n\n";   
     private static final String errHeader = header;
     private static final String outHeader = header;
@@ -77,7 +83,7 @@ public class Main {
     static boolean errOverride2ndStageClassFilter = false;
 
     // classes to specify log level
-    static final String[] classesLog = { 
+    private static final String[] classesLog = { 
         "calibrator.PoseGeneratorDist",
         "calibrator.BoardPreview",
         "calibrator.Distortion",
@@ -97,7 +103,7 @@ public class Main {
         classLevels.put(key, Level.parse(value));
         }
     }
-    static int frameNumber = 0;
+    private static int frameNumber = 0;
     static String frame = "00000 ";
     // END LOGGER STUFF
 
@@ -107,18 +113,18 @@ public class Main {
     }
 
     // keyboard mapping returns from waitKey
-    static final int keyTerminate = 27;
-    static final int keyCapture = 67;
-    static final int keyMirrorToggle = 77;
-    static final int timedOut = -1;  // timed out no key pressed
-    static long allowKeyPressAfterTime = 0; // time when next key press is allowed - prevents multiple rapid, unintentional presses; allows holding key down for extended period so it is seen by the keywait
+    private static final int keyTerminate = 27;
+    private static final int keyCapture = 67;
+    private static final int keyMirrorToggle = 77;
+    private static final int timedOut = -1;  // timed out no key pressed
+    private static long allowKeyPressAfterTime = 0; // time when next key press is allowed - prevents multiple rapid, unintentional presses; allows holding key down for extended period so it is seen by the keywait
 
     // Checks for the specified camera and uses it if present. 0 internal, 1 external if there is a 0 internal (sometimes)    
-    static final int camId = 0;
+    private static final int camId = 0;
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
 
-    public static Mat testImg1 = new Mat(); // testing only
-    public static Mat testImg2 = new Mat(); // testing only
+    static Mat testImg1 = new Mat(); // testing only
+    static Mat testImg2 = new Mat(); // testing only
 
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -131,6 +137,8 @@ public class Main {
 /*----------------------------------------------------------------------------------------------------------- */
     public static void main(String[] args) throws Exception
     {
+        pw = new PrintWriter("K.csv");
+
         OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
         // add the file that is a running duplicate of System.err
         try { // create a stream with the 2 substreams
@@ -172,7 +180,7 @@ public class Main {
         Mat out = new Mat(); // user display Mat
 
         // runtime variables
-        boolean mirror = true;
+        boolean mirror = false;
         boolean save = false; // indicator for user pressed the "c" key to capture (save) manually    
         ChArucoDetector tracker = new ChArucoDetector();
         UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate);
@@ -214,7 +222,7 @@ public class Main {
 
             ugui.update(force); // calibrate
             
-            if (ugui.converged) // are we there yet?
+            if (ugui.converged()) // are we there yet?
             {
                 ugui.write(); // write all the calibration data
 
@@ -222,11 +230,14 @@ public class Main {
             }
 
             displayOverlay(out, ugui);
+            // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
 
+            // Imgcodecs.imwrite("java"+frame+".jpg", out);
+            
             if( ! testImg1.empty()) HighGui.imshow("test img 1", testImg1);
             if( ! testImg2.empty()) HighGui.imshow("test img 2", testImg2);
 
-            HighGui.imshow("PoseCalib", out);
+            HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python
 
             int k = HighGui.waitKey(Cfg.wait);
 
@@ -276,17 +287,31 @@ public class Main {
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
 
-        if (ugui.user_info_text.length() > 0) // is there a message to display?
+        if (ugui.user_info_text().length() > 0) // is there a message to display?
         {
-            if ( ! ugui.user_info_text.equals("initialization")) // rkt stop spamming "initialization" to log
-                Main.LOGGER.log(Level.WARNING,ugui.user_info_text);
+            if ( ! ugui.user_info_text().equals("initialization")) // rkt stop spamming "initialization" to log
+                Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
 
-            Imgproc.putText(out, ugui.user_info_text, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, ugui.user_info_text, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+            Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+            Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
         }
 
-        Imgproc.putText(out, ugui.tgt_r.dump()+ugui.tgt_t.dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
-        Imgproc.putText(out, ugui.tgt_r.dump()+ugui.tgt_t.dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+        Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
+        Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+    }
+    public static void Kcsv(String line, Mat K)
+    {
+        counter++;
+        if(counter == 1)
+        {
+            Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence");
+        }
+        String Kdump = K.dump();
+        Kdump = Kdump.replace("[", "").replace("]", "").replace(";", ",").replace("\n", "");
+        Main.pw.println(Main.frame + ", " + line + ", " + Kdump + ", " + counter);
+        //  [500, 0, 319.75;
+        //  0, 666.6666666666666, 239.6666666666667;
+        //  0, 0, 1]
     }
 }
 /*----------------------------------------------------------------------------------------------------------- */
@@ -298,152 +323,8 @@ public class Main {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-// #!/usr/bin/env python3
 
-// """
-// This file is part of the "Pose Calib" project.
-// It is subject to the license terms in the LICENSE file found
-// in the top-level directory of this distribution.
-
-// @author Pavel Rojtberg
-// """
-
-// import cv2
-// import argparse
-// import sys
-
-// from ui import UserGuidance
-// from utils import ChArucoDetector
-    
-// class UVCVideoCapture:
-//     def __init__(self, cfg):
-//         self.manual_focus = True
-//         self.manual_exposure = True
-
-//         imsize = (int(cfg.getNode("image_width").real()), int(cfg.getNode("image_height").real()))
-        
-//         cam_id = 0
-//         if not cfg.getNode("v4l_id").empty():
-//             cam_id = "/dev/v4l/by-id/usb-{}-video-index0".format(cfg.getNode("v4l_id").string())
-        
-//         cap = cv2.VideoCapture(cam_id)
-//         cap.set(cv2.CAP_PROP_FRAME_WIDTH, imsize[0])
-//         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, imsize[1])
-//         cap.set(cv2.CAP_PROP_GAIN, 0.0)
-//         cap.set(cv2.CAP_PROP_AUTOFOCUS, not self.manual_focus)
-//         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-        
-//         val = 1 / 4 if self.manual_exposure else 3 / 4
-//         cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, val)
-        
-//         self.cap = cap
-        
-//         assert self.cap.isOpened()
-
-//     def set(self, prop, val):
-//         self.cap.set(prop, val)
-        
-//     def read(self):
-//         return self.cap.read()
-
-// def add_camera_controls(win_name, cap):
-//     cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE | cv2.WINDOW_GUI_NORMAL)
-
-//     if cap.manual_focus:
-//         focus = 0
-//         cap.set(cv2.CAP_PROP_FOCUS, focus / 100)
-//         cv2.createTrackbar("Focus", win_name, focus, 100, lambda v: cap.set(cv2.CAP_PROP_FOCUS, v / 100))
-
-//     if cap.manual_exposure:
-//         exposure = 200
-//         cap.set(cv2.CAP_PROP_EXPOSURE, exposure / 1000)
-//         cv2.createTrackbar("Exposure", win_name, exposure, 1000, lambda v: cap.set(cv2.CAP_PROP_EXPOSURE, v / 1000))    
-    
-// def main():
-//     parser = argparse.ArgumentParser(description="Interactive camera calibration using efficient pose selection")
-//     parser.add_argument("-c", "--config", help="path to calibration configuration (e.g. data/calib_config.yml)")
-//     parser.add_argument("-o", "--outfile", help="path to calibration output (defaults to calib_<cameraId>.yml)")
-//     parser.add_argument("-m", "--mirror", action="store_true", help="horizontally flip the camera image for display")
-//     args = parser.parse_args()
-
-//     if args.config is None:
-//         print("falling back to "+sys.path[0]+"/data/calib_config.yml")
-//         args.config = sys.path[0]+"/data/calib_config.yml"
-
-//     cfg = cv2.FileStorage(args.config, cv2.FILE_STORAGE_READ)
-//     assert cfg.isOpened()
-
-//     calib_name = "default"
-//     if not cfg.getNode("v4l_id").empty():
-//         calib_name = cfg.getNode("v4l_id").string()
-
-//     # Video I/O
-//     live = cfg.getNode("images").empty()
-//     if live:
-//         cap = UVCVideoCapture(cfg)
-//         add_camera_controls("PoseCalib", cap)
-//         wait = 1
-//     else:
-//         cv2.namedWindow("PoseCalib")
-//         cap = cv2.VideoCapture(cfg.getNode("images").string() + "frame%0d.png", cv2.CAP_IMAGES)
-//         wait = 0
-//         assert cap.isOpened()
-
-//     tracker = ChArucoDetector(cfg)
-
-
-//     # user guidance
-//     ugui = UserGuidance(tracker, cfg.getNode("terminate_var").real())
-
-//     # runtime variables
-//     mirror = False
-//     save = False
-
-//     while True:
-//         force = not live  # force add frame to calibration
-
-//         status, _img = cap.read()
-//         if status:
-//             img = _img
-//         else:
-//             force = False
-
-//         tracker.detect(img)
-
-//         if save:
-//             save = False
-//             force = True
-
-//         out = img.copy()
-
-//         ugui.draw(out, mirror)
-
-//         ugui.update(force)
-        
-//         if ugui.converged:
-//             if args.outfile is None:
-//                 outfile = "calib_{}.yml".format(calib_name)
-//             else:
-//                 outfile = args.outfile
-//             ugui.write(outfile)
-
-//         if ugui.user_info_text:
-//             cv2.displayOverlay("PoseCalib", ugui.user_info_text, 1000 // 30)
-
-//         cv2.imshow("PoseCalib", out)
-//         k = cv2.waitKey(wait)
-
-//         if k == 27:
-//             break
-//         elif k == ord('m'):
-//             mirror = not mirror
-//         elif k == ord('c'):
-//             save = True
-
-// if __name__ == "__main__":
-//     main()
-
-/////////////////////////////////////////////////////////////////////////
+// Parking lot
 
 // Logger.getLogger("").setLevel(Level.OFF); // turn off everything - especially java.awt fine, finer, finest spam
 // Logger.getLogger("calibrator").setLevel(Level.ALL); // turn on for my package
@@ -451,16 +332,11 @@ public class Main {
 // System.loadLibrary("opencv_videoio_ffmpeg480_64");
 
 /*
-
 cd C:\Users\RKT\frc\FRC2023\Code\Java
 find "repError" CalibrationLog.txt
 find "jaccard" CalibrationLog.txt
 find "board_warped created" CalibrationLog.txt
-
  */
-
-
-
  /*
   * The rotvecd( ) function gives a scaled rotation axis.  I.e., what it would take to do a single rotation of an object
    on all three axes simultaneously to get from one orientation to another.  The direction of the vector gives the rotation
