@@ -138,41 +138,42 @@ class Distortion
         Main.LOGGER.log(Level.WARNING, "distortion coefficients dist " + dist.dump() + dist);
         Main.LOGGER.log(Level.WARNING, "Knew " + Knew.dump()); // null pointer (or empty?) Knew
 
-        //     pts = np.array(np.meshgrid(range(sz[0]), range(sz[1]))).T.reshape(-1, 1, 2)
-        // inclusive 0, to not included final, step; fils one column down the rows then the next column and down the rows
+        // pts = np.array(np.meshgrid(range(sz[0]), range(sz[1]))).T.reshape(-1, 1, 2)
+                // inclusive 0, to not included final, step; fills one column down the rows then the next column and down the rows
+                // then transposes and reshapes to long and skinny
+        // build grid in the correct final order (and shape) so the pair of transposes aren't needed
         int w = (int)sz.width; // columns
         int h = (int)sz.height; // rows
-        int c = 2; // channels, x and y axes
+        int c = 2; // MatOfPoint2f channels, x and y axes
         // make smaller 2-D Mat of x,y points from full size image Mat
         // the values in the smaller Mat are the original x, y coordinates from the larger Mat
 
         MatOfPoint2f pts = new MatOfPoint2f();
         pts.alloc(h*w);
-        // make 2d meshgrid but flattened to 1 dimension
+        // make 2d meshgrid but flattened to 1 dimension - lots of rows and 1 column each element is essentially Point2f
         // created mesh grid with flipped rows/cols so the transpose isn't needed like the np.meshgrid
         float[] ptsMeshGrid = new float[w*c]; // intermediate 1d version of 2d points for a column; X, Y pair
-        int indexRowChannel;
-        int indexRow = 0;
-        for(int y = 0; y < h; y++) // traverse all rows
+        int indexRectangularRowChannel; // one row of the rectangular grid
+        int indexLinearRow = 0; // rows in the long skinny Mat
+        for(int y = 0; y < h; y++) // traverse all rows of the rectangle grid
         {
-            indexRowChannel = 0;
-            for(int x = 0; x < w; x++) // traverse all columns
+            indexRectangularRowChannel = 0;
+            for(int x = 0; x < w; x++) // traverse all columns of the rectangle grid
             {
-                ptsMeshGrid[indexRowChannel++] = x;
-                ptsMeshGrid[indexRowChannel++] = y;
+                ptsMeshGrid[indexRectangularRowChannel++] = x;
+                ptsMeshGrid[indexRectangularRowChannel++] = y;
             }
-            pts.put(indexRow, 0, ptsMeshGrid);
-            indexRow += indexRowChannel/c;
+            pts.put(indexLinearRow, 0, ptsMeshGrid);
+            indexLinearRow += indexRectangularRowChannel/c; // next starting row of the very long skinny Mat for the rectangular grid row
         }
-
-        //     dpts = cv2.undistortPoints(pts.astype(np.float32), K, dist, P=Knew)
+        // grid is built
 
         MatOfPoint2f dpts = new MatOfPoint2f();
 
         Main.Kcsv(Id.__LINE__(), K);
         Calib3d.undistortPoints(pts, dpts, K, dist, new Mat(), Knew);
 
-        Mat dpts2D = dpts.reshape(2, h)/*.convertTo(dpts2D, CvType.CV_32FC2 )*/; //FIXME convert or not??????
+        Mat dpts2D = dpts.reshape(2, h);
         Main.Kcsv(Id.__LINE__(), Knew);
         Main.LOGGER.log(Level.WARNING, "pts " + pts + "\n" + brief(pts));
         Main.LOGGER.log(Level.WARNING, "dpts " + dpts + "\n" + brief(dpts));
@@ -182,7 +183,6 @@ class Distortion
         pts.release();
         dpts.release();
 
-//     return dpts.reshape(sz[0], sz[1], 2).T
         return dpts2D;
     }
 /*----------------------------------------------------------------------------------------------------------- */
@@ -205,29 +205,33 @@ class Distortion
         Main.Kcsv(Id.__LINE__(), Knew);
         // best I can tell step is always 20 (subsample) and never 1 so this should not be executed
         if(step == 1) throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
+        // make smaller 2-D Mat of x,y points from full size image Mat
+        // the values in the smaller Mat are the original x, y coordinates from the larger Mat
+
         // inclusive 0 to step
         int w = (int)sz.width/step; // columns
         int h = (int)sz.height/step; // rows
         int c = 2; // x and y axes
-        int index; // make smaller 2-D Mat of x,y points from full size image Mat
-        // the values in the smaller Mat are the original x, y coordinates from the larger Mat
-
+        // OpenCV methods require linear 1-column Mats flattened from the 2d mesh grid
+        int indexLinearRow;
         MatOfPoint2f pts = new MatOfPoint2f();
         pts.alloc(h*w);
         float[] ptsMeshGrid = new float[w*h*c]; // intermediate 2d points
 
-        index = 0;
+        indexLinearRow = 0;
         for(float y = 0.f; y<h; y+=step)
-        for(float x = 0.f; x<w; x+=step)
         {
-            ptsMeshGrid[index++] = x;
-            ptsMeshGrid[index++] = y;
+            for(float x = 0.f; x<w; x+=step)
+            {
+                ptsMeshGrid[indexLinearRow++] = x;
+                ptsMeshGrid[indexLinearRow++] = y;
+            }
         }
         pts.put(0, 0, ptsMeshGrid);
 
         MatOfPoint2f ptsUndistorted = new MatOfPoint2f(); // intermediate 2d points
-        MatOfPoint3f pts3d = new MatOfPoint3f(); // 3d points
-        Mat noTransforms = Mat.zeros(3, 1, CvType.CV_32FC1);
+        MatOfPoint3f pts3d = new MatOfPoint3f(); // 3d points; Z = 0 added to the 2d to make 3d
+        Mat zero = Mat.zeros(3, 1, CvType.CV_32FC1);
 
         Calib3d.undistortPoints(pts, ptsUndistorted, Knew, new Mat()); // undistort the 2d points
 
@@ -240,7 +244,7 @@ class Distortion
 
         MatOfPoint2f dpts = new MatOfPoint2f();
 
-        Calib3d.projectPoints(pts3d, noTransforms, noTransforms, K, distOfDouble, dpts); // project points in 3d back to a 2d screen
+        Calib3d.projectPoints(pts3d, zero, zero, K, distOfDouble, dpts); // project points in 3d back to a 2d screen
 
         int[] shape = {w, h};
         Mat dpts2D = dpts.reshape(c, shape);
@@ -251,7 +255,7 @@ class Distortion
         pts.release();
         ptsUndistorted.release();
         pts3d.release();
-        noTransforms.release();
+        zero.release();
         distOfDouble.release();
         dpts.release();
 
@@ -369,12 +373,6 @@ class Distortion
 
 // Parking lot
 
-/*
- Calib3d.convertPointsToHomogeneous()
-        n by 2 or 3 dimensions in or 2 or 3 dimensions by n in; always nx1x 3 or 4 channels out
-        a dimension is either a Mat row or column or 1 row or column and 2 or 3 channels
-        1xnx2, 1xnx3, nx1x2, nx1x3, nx2x1, nx3x1 in; always nx1x3 or nx1x4 out
-*/
 //////////////////////////////////
             // for get_bounds this is likely a start of better but something to consider later:
             // use true area instead of counting the perimeter segments

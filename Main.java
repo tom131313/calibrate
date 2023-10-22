@@ -26,6 +26,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
@@ -47,12 +48,10 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED draft 1"; // change this
-
+    private static final String version = "CONVERTED draft 2"; // change this
 
     private static PrintWriter pw;
     private static int counter = 0;
-
 
     // LOGGER STUFF
     private static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
@@ -165,8 +164,8 @@ public class Main {
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(camId);
-        camera.setPixelFormat(PixelFormat.kYUYV);
-        camera.setResolution(Cfg.image_width, Cfg.image_height);
+        // camera.setPixelFormat(PixelFormat.kMJPEG);
+        // camera.setResolution(Cfg.image_width, Cfg.image_height);
         camera.setExposureAuto();
         // camera.setExposureManual(65);
         // camera.setBrightness(50);
@@ -195,9 +194,9 @@ public class Main {
             {
                 if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec
                 {
-                    // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC);
-                    Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
-                    continue;
+                    Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC);
+                    // Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
+                    // continue;
                 }
                 _img.copyTo(img);
             }
@@ -232,7 +231,7 @@ public class Main {
             displayOverlay(out, ugui);
             // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
 
-            // Imgcodecs.imwrite("java"+frame+".jpg", out);
+            // Imgcodecs.imwrite("java" + frame + ".jpg", out); // save image in jpg file
             
             if( ! testImg1.empty()) HighGui.imshow("test img 1", testImg1);
             if( ! testImg2.empty()) HighGui.imshow("test img 2", testImg2);
@@ -280,9 +279,17 @@ public class Main {
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
-    }
-    
-    public static void displayOverlay(Mat out, UserGuidance ugui)
+    }   
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/*                                                                                                            */
+/*                                     displayOverlay                                                         */
+/*                                     displayOverlay                                                         */
+/*                                     displayOverlay                                                         */
+/*                                                                                                            */
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+public static void displayOverlay(Mat out, UserGuidance ugui)
     {
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
@@ -299,19 +306,40 @@ public class Main {
         Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
     }
-    public static void Kcsv(String line, Mat K)
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/*                                                                                                            */
+/*                                     Kcsv                                                                   */
+/*                                     Kcsv                                                                   */
+/*                                     Kcsv                                                                   */
+/*                                                                                                            */
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/**
+ * Print the K camera matrix Mat to a file defined in variable "pw" in CSV format.
+ * [500, 0, 319.75;
+ * 0, 666.6666666666666, 239.6666666666667;
+ * 0, 0, 1]
+ * 00000 , "BoardPreview.java@166", 500, 0, 319.75, 0, 666.6666666666666, 239.6666666666667, 0, 0, 1, 4
+ * Used for debugging.
+ * Requires class variables:
+ *   private static PrintWriter pw;  // print writer file name
+ *   private static int counter = 0; // sequence number
+ * 
+ *   pw = new PrintWriter("K.csv");  // define the file - statement may throw an exception to be handled somehow
+ * @param line Input "comment" line that could be used to identify the location in the program
+ * @param K Input 3x3 camera matrix Mat. Doesn't have to be 3x3 but assumptions are made about changing the "[];\n"
+ */
+public static void Kcsv(String line, Mat K)
     {
         counter++;
         if(counter == 1)
         {
-            Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence");
+            Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence"); // K's column names
         }
         String Kdump = K.dump();
         Kdump = Kdump.replace("[", "").replace("]", "").replace(";", ",").replace("\n", "");
-        Main.pw.println(Main.frame + ", " + line + ", " + Kdump + ", " + counter);
-        //  [500, 0, 319.75;
-        //  0, 666.6666666666666, 239.6666666666667;
-        //  0, 0, 1]
+        Main.pw.println(Main.frame + ", \"" + line + "\", " + Kdump + ", " + counter);
     }
 }
 /*----------------------------------------------------------------------------------------------------------- */
