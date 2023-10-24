@@ -299,12 +299,12 @@ public class UserGuidance {
         }
         this.overlap.put(0, 0, overlapArray);
 
-        { // debug display
-        this.overlap.copyTo(Main.testImg2); // test 2 has the warped guidance board b&w
-        Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2); // brighten (to gray) so it can be seen by humans
-        Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
-        Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
-        }
+        // { // debug display
+        // this.overlap.copyTo(Main.testImg2); // test 2 has the warped guidance board b&w
+        // Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2); // brighten (to gray) so it can be seen by humans
+        // Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
+        // Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
+        // }
         int Aa = Core.countNonZero(this.overlap); // number of on (1) pixels in the warped_board (from above)
 
         Mat tmp = this.board.project(this.tracker.rvec(), // create projected shadow same way as the guidance board but using the estimated pose of the camera image

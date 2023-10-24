@@ -444,9 +444,13 @@ public class ChArucoDetector {
         Main.LOGGER.log(Level.WARNING, " in rvec\n" + rvec.dump());
         Main.LOGGER.log(Level.WARNING, " in tvec\n" + tvec.dump());
 
-        this.pose_valid = Calib3d.solvePnP(
-            p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec, false, Calib3d.SOLVEPNP_ITERATIVE);
+        this.pose_valid = Calib3d.solvePnPRansac(
+            p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);//, false);//, Calib3d.SOLVEPNP_EPNP); //Calib3d.SOLVEPNP_ITERATIVE
 
+            Calib3d.solvePnPRefineVVS(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
+        // this.pose_valid = Calib3d.solvePnP(
+        //     p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec, false, Calib3d.SOLVEPNP_EPNP); //Calib3d.SOLVEPNP_ITERATIVE
+    
         //FIXME negating "x" makes the shadow for jaccard the right orientation for some unknown reason! Python doesn't need this.
         Core.multiply(rvec, new Scalar(-1., 1., 1.), rvec);
 

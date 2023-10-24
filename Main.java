@@ -50,7 +50,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED draft 5"; // change this
+    private static final String version = "CONVERTED draft 6"; // change this
 
     private static PrintWriter pw;
     private static int counter = 0;

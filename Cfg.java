@@ -46,7 +46,7 @@ public class Cfg
     static final double MAX_OVERLAP = 0.9; // maximum fraction of distortion mask overlapping with this pose before pose considered not contributing enough to help fill distortion mask
     static final double minCorners = 6; // min for solvePnP (original needed 4 or 5 w/o solvePnP) but another place requires many more
 
-    static final int wait = 20; // milliseconds to wait for user keyboard response to a new image
+    static final int wait = 1; // (20 almost works) milliseconds to wait for user keyboard response to a new image
     static final long keyLockoutDelayMillis = 10000L; // allows banging on the keyboard trying to get a response within "wait" and ignore multiple presses
     private Cfg()
     {

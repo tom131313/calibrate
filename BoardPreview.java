@@ -7,6 +7,7 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -84,6 +85,13 @@ class BoardPreview {
         H.release();
 
         Main.LOGGER.log(Level.WARNING, "returning imgProjected\n" + brief(imgProjected));
+ 
+        { // debug display
+        imgProjected.copyTo(Main.testImg2); // test 2 has the warped guidance board b&w
+        Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2); // brighten (to gray) so it can be seen by humans
+        Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
+        Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
+        }
 
         return imgProjected;
     }
