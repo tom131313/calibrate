@@ -10,6 +10,7 @@ package calibrator;
 // didn't change some other misspellings
 // changed a couple of other "bugs" (maybe, I think)
 // used current OpenCV methods. Some old ones were removed.
+// didn't convert some unused methods and variables
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -48,7 +49,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED draft 2"; // change this
+    private static final String version = "CONVERTED draft 4"; // change this
 
     private static PrintWriter pw;
     private static int counter = 0;
@@ -124,7 +125,6 @@ public class Main {
 
     static Mat testImg1 = new Mat(); // testing only
     static Mat testImg2 = new Mat(); // testing only
-
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -164,25 +164,27 @@ public class Main {
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(camId);
-        // camera.setPixelFormat(PixelFormat.kMJPEG);
-        // camera.setResolution(Cfg.image_width, Cfg.image_height);
-        camera.setExposureAuto();
-        // camera.setExposureManual(65);
+        camera.setPixelFormat(PixelFormat.kYUYV);
+        camera.setResolution(Cfg.image_width, Cfg.image_height);
+        // camera.setExposureAuto();
+        camera.setExposureManual(65);
         // camera.setBrightness(50);
         // Get a CvSink. This will capture Mats from the camera
         JavaCvSink cap = new JavaCvSink("sink1");
         cap.setSource(camera);
-        Mat _img = new Mat(); // this follows the camera input
-        Mat  img = Mat.zeros(Cfg.image_height, Cfg.image_width, CvType.CV_8UC3); // set by user config
+
+        Mat _img = new Mat(); // this follows the camera input but ...
+        Mat  img = new Mat(Cfg.image_height, Cfg.image_width, CvType.CV_8UC3); // set by user config - need camera to return this size, too
         /** end video image capture setup **/
 
         Mat out = new Mat(); // user display Mat
 
-        // runtime variables
-        boolean mirror = false;
-        boolean save = false; // indicator for user pressed the "c" key to capture (save) manually    
         ChArucoDetector tracker = new ChArucoDetector();
         UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate);
+
+        // runtime variables
+        boolean mirror = false;
+        boolean save = false; // indicator for user pressed the "c" key to capture (save) manually
 
         grabFrameLoop:
         while (!Thread.interrupted())
@@ -190,21 +192,23 @@ public class Main {
             frameNumber++;
             frame = String.format("%05d ", frameNumber);
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
-            if (cap.grabFrame(_img, 0.5) != 0)
+
+            long status = cap.grabFrame(_img, 0.5);
+            if (status != 0)
             {
-                if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec
+                if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
-                    Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC);
-                    // Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
-                    // continue;
+                    // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC); //FIXME testing with different cameras and struggling with camera setup
+                    Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
+                    continue;
                 }
                 _img.copyTo(img);
             }
             else
             {
                 LOGGER.log(Level.SEVERE, "grabFrame error " + cap.getError());
-                force = false;
-                continue; // pretend frame never happened rkt addition
+                force = false; // useless now with the continue below
+                continue; // pretend frame never happened - rkt addition; original reprocessed previous frame
             }
             
             tracker.detect(img);
@@ -225,18 +229,18 @@ public class Main {
             {
                 ugui.write(); // write all the calibration data
 
-                break grabFrameLoop; // the end
+                break grabFrameLoop; // the end - rkt addition; the original kept looping somehow
             }
 
             displayOverlay(out, ugui);
-            // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
 
-            // Imgcodecs.imwrite("java" + frame + ".jpg", out); // save image in jpg file
+            // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
+            // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
             
-            if( ! testImg1.empty()) HighGui.imshow("test img 1", testImg1);
-            if( ! testImg2.empty()) HighGui.imshow("test img 2", testImg2);
+            if( ! testImg1.empty()) HighGui.imshow("test img 1", testImg1); // debugging
+            if( ! testImg2.empty()) HighGui.imshow("test img 2", testImg2); // debugging
 
-            HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python
+            HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
 
             int k = HighGui.waitKey(Cfg.wait);
 
@@ -263,7 +267,7 @@ public class Main {
                         break grabFrameLoop;
 
                 case keyMirrorToggle: // mirror/no mirror key pressed
-                        mirror = !mirror;
+                        mirror = ! mirror;
                         break;
 
                 case keyCapture: // capture frame key pressed
@@ -289,7 +293,7 @@ public class Main {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public static void displayOverlay(Mat out, UserGuidance ugui)
+    public static void displayOverlay(Mat out, UserGuidance ugui)
     {
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
@@ -330,7 +334,7 @@ public static void displayOverlay(Mat out, UserGuidance ugui)
  * @param line Input "comment" line that could be used to identify the location in the program
  * @param K Input 3x3 camera matrix Mat. Doesn't have to be 3x3 but assumptions are made about changing the "[];\n"
  */
-public static void Kcsv(String line, Mat K)
+    public static void Kcsv(String line, Mat K)
     {
         counter++;
         if(counter == 1)

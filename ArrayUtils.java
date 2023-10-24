@@ -83,11 +83,11 @@ public class ArrayUtils
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-/**
- * Test for all values in a boolean array are true
- * @param array
- * @return true if all true or false if any false
- */
+	/**
+	 * Test for all values in a boolean array are true
+	 * @param array
+	 * @return true if all true or false if any false
+	 */
 	static boolean isAllTrue(boolean[] array)
 	{
 		for(boolean element : array)
@@ -105,11 +105,11 @@ public class ArrayUtils
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-/**
- * 
- * @param mat OpenCV Mat to be partially printed
- * @return String of the values in the corners of the Mat if large or entire Mat if small
- */
+	/**
+	 * 
+	 * @param mat OpenCV Mat to be partially printed
+	 * @return String of the values in the corners of the Mat if large or entire Mat if small
+	 */
 	static String brief(Mat mat)
 	{
 		StringBuilder sb = new StringBuilder();
@@ -247,10 +247,25 @@ public class ArrayUtils
 		}
 		return sb.toString();
 	}
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/*                                                                                                            */
+/*                                   ArrayUtils constructor                                                                         */
+/*                                   ArrayUtils constructor                                                                         */
+/*                                   ArrayUtils constructor                                                                         */
+/*                                                                                                            */
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+	private ArrayUtils()
+	{
+        throw new UnsupportedOperationException("This is a utility class");
+    }
 }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
+/*                                   End ArrayUtils class                                                                         */
+/*                                   End ArrayUtils class                                                                         */
 /*                                   End ArrayUtils class                                                                         */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */

@@ -31,7 +31,15 @@ import org.opencv.imgproc.Imgproc;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class UserGuidance {
-
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/*                                                                                                            */
+/*                                     UserGuidance constructor                                               */
+/*                                     UserGuidance constructor                                               */
+/*                                     UserGuidance constructor                                               */
+/*                                                                                                            */
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
 
     private Calibrator calib;
@@ -77,16 +85,7 @@ public class UserGuidance {
     String user_info_text(){return user_info_text;}
     Mat tgt_r(){return tgt_r;}
     Mat tgt_t(){return tgt_t;}
-
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     UserGuidance constructor                                               */
-/*                                     UserGuidance constructor                                               */
-/*                                     UserGuidance constructor                                               */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+    
     UserGuidance(ChArucoDetector tracker, double var_terminate) throws Exception // force use of var_terminate=0.1 instead of defaulting
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
@@ -560,12 +559,12 @@ public class UserGuidance {
         flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix_principal_point");
         flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero_tangent_dist");
         flags.put(Calib3d.CALIB_USE_LU, "+use_lu");
-        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, " fix aspect ratio");
-        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, " fix principal point");
-        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, " zero tangent dist");
-        flags.put(Calib3d.CALIB_FIX_K1, " fix k1");
-        flags.put(Calib3d.CALIB_FIX_K2, " fix k2");
-        flags.put(Calib3d.CALIB_FIX_K3, " fix k3");
+        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, "+fix aspect ratio");
+        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix principal point");
+        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero tangent dist");
+        flags.put(Calib3d.CALIB_FIX_K1, "+fix k1");
+        flags.put(Calib3d.CALIB_FIX_K2, "+fix k2");
+        flags.put(Calib3d.CALIB_FIX_K3, "+fix k3");
        
         StringBuilder flags_str = new StringBuilder("flags: ");
         int unknownFlags = flagsCalibration; // initially assume all flags are unknown to the hashmap

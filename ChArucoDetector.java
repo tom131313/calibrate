@@ -32,6 +32,15 @@ import org.opencv.objdetect.RefineParameters;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class ChArucoDetector {
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/*                                                                                                            */
+/*                                     ChArucoDetector constructor                                            */
+/*                                     ChArucoDetector constructor                                            */
+/*                                     ChArucoDetector constructor                                            */
+/*                                                                                                            */
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
  
     // configuration
@@ -50,13 +59,13 @@ public class ChArucoDetector {
     private final Mat p2d = new Mat(); // 2 dimensional currentImagePoints, the likely distorted board on the flat camera sensor frame posed relative to the target
     private int N_pts = 0;
     private boolean pose_valid = false;
-    private Mat raw_img = new Mat();
+    // private Mat raw_img = null; // not used
 
     /// Charuco Board
     private final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
     private final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
     final Mat boardImage = new Mat();
-    private final CharucoBoard board = new CharucoBoard(board_sz, Cfg.square_len, Cfg.marker_len, dictionary);
+    private final CharucoBoard board = new CharucoBoard(this.board_sz, Cfg.square_len, Cfg.marker_len, this.dictionary);
     private CharucoDetector detector; // the OpenCV detector spelled almost the same - fooled me too many times!!!!!
 
     private Mat rvec = new Mat();
@@ -72,7 +81,7 @@ public class ChArucoDetector {
     // optical flow calculation
     private Mat last_ccorners = new Mat(); // previous ChArUcoBoard corners
     private Mat last_cids = new Mat(); // previous ChArUcoBoard ids
-    private double mean_flow = Double.MAX_VALUE; // mean flow of the same corners that are detected in consecutive frames
+    private double mean_flow = Double.MAX_VALUE; // mean flow of the same corners that are detected in consecutive frames (relaxed from original)
 
     // getters
     int N_pts(){return N_pts;}
@@ -82,22 +91,13 @@ public class ChArucoDetector {
     Mat tvec(){return tvec;}
     double mean_flow(){return this.mean_flow;}
 
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     ChArucoDetector constructor                                            */
-/*                                     ChArucoDetector constructor                                            */
-/*                                     ChArucoDetector constructor                                            */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-public ChArucoDetector()
+    public ChArucoDetector()
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
-        board.setLegacyPattern(Cfg.legacyPattern);
-        board.generateImage(boardImageSize, boardImage);
+        this.board.setLegacyPattern(Cfg.legacyPattern); //FIXME shouldn't use - remove when we match the original and we can go our own way
+        this.board.generateImage(this.boardImageSize, this.boardImage);
 
         if(Cfg.writeBoard)
         {
@@ -106,7 +106,7 @@ public ChArucoDetector()
             final String file = "ChArUcoBoard.jpg";
             Imgcodecs.imwrite(
             file,
-            boardImage,
+            this.boardImage,
             writeBoardParams);
             Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file ChArUcoBoard.jpg");
         }
@@ -123,7 +123,7 @@ public ChArucoDetector()
         // charucoParams.set_distCoeffs();
         detectParams.set_cornerRefinementMaxIterations(2000);
         detectParams.set_cornerRefinementMethod(Objdetect.CORNER_REFINE_CONTOUR); // 2
-        detector = new CharucoDetector(board, charucoParams, detectParams, refineParams);
+        detector = new CharucoDetector(this.board, charucoParams, detectParams, refineParams);
         
         Main.LOGGER.log(Level.CONFIG, "" + detector.getCharucoParameters().get_minMarkers()); // 2 default
         Main.LOGGER.log(Level.CONFIG, "" + detector.getCharucoParameters().get_tryRefineMarkers()); // false default
@@ -141,7 +141,7 @@ public ChArucoDetector()
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public void set_intrinsics(Calibrator calib)
+    public void set_intrinsics(Calibrator calib)
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
@@ -160,7 +160,7 @@ public void set_intrinsics(Calibrator calib)
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public void draw_axis(Mat img)
+    public void draw_axis(Mat img)
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
@@ -175,13 +175,13 @@ public void draw_axis(Mat img)
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public void detect_pts(Mat img) throws Exception
+    public void detect_pts(Mat img) throws Exception
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         final List<Mat> markerCorners = new ArrayList();
         final Mat markerIds = new Mat();
-        this.N_pts = 0;
+        this.N_pts = 0; // in case no corners are detected (detectBoard might not return 0 check it)
 
         try
         {
@@ -190,14 +190,26 @@ public void detect_pts(Mat img) throws Exception
         }
         catch(Exception e) {Main.LOGGER.log(Level.SEVERE, img + " " + this.ccorners + " " + this.cids + "\n" + e);}
 
-        this.N_pts = (int)this.cids.total();
+        if(this.cids.rows() > 0)
+        {
+            this.N_pts = this.cids.rows();
+        }
+        else
+        {
+            Main.LOGGER.log(Level.WARNING, "N_pts " + this.cids.rows());
+        }
+
+        this.mean_flow = Double.MAX_VALUE;
+
         Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
         if(this.N_pts == 0) // maybe use the min N_pts
-        { // bad structure; duplicates code in another place
+        {
             // for optical flow calculation
-            last_ccorners = new Mat();
-            last_cids = new Mat();
+            this.last_ccorners.release();
+            this.last_cids.release();;
+            this.last_ccorners = new Mat();
+            this.last_cids = new Mat();
             return;
         }
 
@@ -210,8 +222,8 @@ public void detect_pts(Mat img) throws Exception
           ccornersList.add(this.ccorners.row(i));
         }
 
-        // display the cids on the board
-        Objdetect.drawDetectedCornersCharuco(img, ccorners, cids);
+        // display the detected cids on the board (debugging)
+        // Objdetect.drawDetectedCornersCharuco(img, ccorners, cids);
 
         board.matchImagePoints(ccornersList, this.cids,this.p3d, this.p2d); // p2d same data as ccornersList
         // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
@@ -278,10 +290,9 @@ public void detect_pts(Mat img) throws Exception
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public void computeMeanFlow()
+    public void computeMeanFlow()
     {
-        //assumptions: cids float 1 col, 1 channel; ccorners float 1 col, 2 channels
-        //FIXME verify assumptions?
+        // cids: int 1 col, 1 channel; ccorners: float 1 col, 2 channels (x, y)
 
         this.mean_flow = Double.MAX_VALUE;
 
@@ -301,8 +312,8 @@ public void computeMeanFlow()
             
             // assume the cids and last_cids are in order ascending
 
-            // mean flow if the same corners are detected in consecutive frames
-            // relaxed criterion to same number of corners and not necessarily the same corners - rkt
+            // mean flow of only the corners in common that are detected in consecutive frames
+            // relaxed criterion from original need of exactly the same corners in successive frames - rkt
             if(this.last_cids.total() <= 0 || this.cids.total() <= 0)
             {
                 return; // one of them has no corners to compare to
@@ -313,7 +324,7 @@ public void computeMeanFlow()
             int indexCurrent = 0;
             int indexLast = 0;
 
-            // merge last_cids and cids; assume they are already sorted ascending
+            // merge/match last_cids and cids; assume they are already sorted ascending
             while(indexCurrent< this.cids.rows() && indexLast< this.last_cids.rows())
             {
                 if(cidsArray[indexCurrent] == last_cidsArray[indexLast])
@@ -349,7 +360,7 @@ public void computeMeanFlow()
             }
             else
             {
-                this.mean_flow = Double.MAX_VALUE;
+                this.mean_flow = Double.MAX_VALUE; // avoided the divide by zero and return flow is big (no need to be infinite)
             }
         }
     }
@@ -362,10 +373,10 @@ public void computeMeanFlow()
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public void detect(Mat img) throws Exception
+    public void detect(Mat img) throws Exception
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-
+        // raw_img never used - not converted
         this.detect_pts(img);
 
         if(this.intrinsic_valid)
@@ -382,11 +393,11 @@ public void detect(Mat img) throws Exception
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public Mat get_pts3d()
+    public Mat get_pts3d()
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        return this.p3d.clone();
+        return this.p3d;
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -397,11 +408,11 @@ public Mat get_pts3d()
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public keyframe get_calib_pts()
+    public keyframe get_calib_pts()
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        return new keyframe(this.ccorners.clone(), this.get_pts3d());
+        return new keyframe(this.ccorners.clone(), this.get_pts3d()); //FIXME best to have clone on get_pts3d()?
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -412,7 +423,7 @@ public keyframe get_calib_pts()
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-public void update_pose() throws Exception
+    public void update_pose() throws Exception
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
@@ -430,7 +441,7 @@ public void update_pose() throws Exception
         Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
         Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
 
-        Mat rvec = new Mat(); // initalizing rvec and tvec didn't help solvePnP so leave them empty
+        Mat rvec = new Mat(); // initializing rvec and tvec may help solvePnP with useExtrinsicGuess=true but this program is too contorted to easily get the tgt_r and tgt_t back in here.
         Mat tvec = new Mat();
 
         Main.LOGGER.log(Level.WARNING, "distReTyped " + distReTyped.dump());

@@ -1,3 +1,4 @@
+// projects a 2D object (image) according to parameters - generate styled board image
 package calibrator;
 
 import java.util.logging.Level;
@@ -22,9 +23,6 @@ import static calibrator.ArrayUtils.brief;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 class BoardPreview {
-// generate styled board image
-    static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
-
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -34,6 +32,16 @@ class BoardPreview {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
+/**
+ *
+ * @param img image to project
+ * @param sz size of the final image
+ * @param K
+ * @param rvec
+ * @param t
+ * @param flags
+ * @return
+ */
     private static Mat project_img(Mat img, Size sz, Mat K, Mat rvec, Mat t, int flags)
     // force user to specify flags=cv2.INTER_LINEAR to use default
     {
@@ -68,8 +76,8 @@ class BoardPreview {
 
         Imgproc.warpPerspective(img, imgProjected, H, sz, flags);
 
-        //FIXME these axes diagram cover the board before it is processed. Maybe draw them later and they are in a different position
-        Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); //FIXME may need rotation vector rvec instead of R
+        // these axes diagram cover the board before it is processed. Maybe draw them later and they are in a different position
+        // Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); // may need rotation vector rvec instead of R
 
         transform.release();
         R.release();
@@ -79,16 +87,6 @@ class BoardPreview {
 
         return imgProjected;
     }
-
-    // class BoardPreview:
-    //     SIZE = (640, 480) # different than camera res okay and it runs a little faster if smaller. Resize at end makes images match
-    private Size SIZE = new Size(640., 480.);
-    private Size sz;
-    private Mat img = new Mat();
-    private Mat shadow; // used for overlap score
-    private Mat maps; // 2D version used for remap function
-    private Mat Knew;
-
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -96,44 +94,52 @@ class BoardPreview {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-BoardPreview(Mat img)
+    static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
+
+    private Size SIZE = new Size(640., 480.); // different than camera res okay and it runs a little faster if smaller. Resize at end makes images match
+    private Size sz;
+    private Mat img = new Mat();
+    private Mat shadow; // used for overlap score
+    private Mat maps; // 2D version used for remap function
+    private Mat Knew;
+    BoardPreview(Mat img)
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         img.copyTo(this.img);
 
-        // Core.flip(this.img, this.img, 0); // flipped when printing
+        Core.flip(this.img, this.img, 0); // flipped when printing
 
         // set black pixels to gray; non-black pixels stay the same
-        byte[] img1BuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffer for more efficient access to one row
+        byte[] img1ChannelBuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffer for more efficient access to one row
         // process one row at a time for efficiency
         for(int row = 0; row < img.rows(); row++)
         {
-            this.img.get(row, 0, img1BuffRow); // get the row, all channels
-            for(int col = 0; col < img1BuffRow.length; col++) // process each element of the row
+            this.img.get(row, 0, img1ChannelBuffRow); // get the row, all channels
+            for(int col = 0; col < img1ChannelBuffRow.length; col++) // process each element of the row
             {
-                 if(img1BuffRow[col] == 0) // is it black?
+                if(img1ChannelBuffRow[col] == 0) // is it black?
                 {
-                    img1BuffRow[col] = 64; // make it gray
+                    img1ChannelBuffRow[col] = 64; // make it gray
                 }
             }
-            this.img.put(row, 0, img1BuffRow);
+            this.img.put(row, 0, img1ChannelBuffRow);
         }
 
         Imgproc.cvtColor(this.img, this.img, Imgproc.COLOR_GRAY2BGR);
 
         // set blue and red channels to black (0) so gray/white becomes a shade of green (green channel was not changed)
-        byte[] img3BuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffers for efficient access to a row
+        byte[] img3ChannelBuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffers for efficient access to a row
         // process one row at a time for efficiency
         for(int row = 0; row < this.img.rows(); row++)
         {
-            this.img.get(row, 0, img3BuffRow); // get the row, all channels
-            for(int col = 0; col < img3BuffRow.length; col+=3) // process each triplet (channels) of the row
+            this.img.get(row, 0, img3ChannelBuffRow); // get the row, all channels
+            for(int col = 0; col < img3ChannelBuffRow.length; col+=3) // process each triplet (channels) of the row
             {
-                img3BuffRow[col] = 0; // B
-                img3BuffRow[col+2] = 0; // R
+                img3ChannelBuffRow[col] = 0; // B
+                img3ChannelBuffRow[col+2] = 0; // R
             }
-            this.img.put(row, 0, img3BuffRow);
+            this.img.put(row, 0, img3ChannelBuffRow);
         }
 
         // used for overlap score
@@ -148,7 +154,7 @@ BoardPreview(Mat img)
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-void create_maps(Mat K, Mat cdist, Size sz)
+    void create_maps(Mat K, Mat cdist, Size sz)
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
@@ -158,11 +164,11 @@ void create_maps(Mat K, Mat cdist, Size sz)
         // cdist initialized in its constructor instead of setting to 0 here if null; did 5 not 4 for consistency with rest of code
         this.sz = sz;
         Mat scale = Mat.zeros(3, 3, K.type()); // assuming it's K.rows(), K.cols()
-        scale.put(0, 0, SIZE.width/sz.width);
-        scale.put(1, 1, SIZE.height/sz.height);
+        scale.put(0, 0, this.SIZE.width/sz.width);
+        scale.put(1, 1, this.SIZE.height/sz.height);
         scale.put(2, 2, 1.);
         Main.Kcsv(Id.__LINE__(), K);
-                Core.gemm(scale, K, 1., new Mat(), 0.,K);
+        Core.gemm(scale, K, 1., new Mat(), 0.,K);
         Main.Kcsv(Id.__LINE__(), K);
         sz = this.SIZE;
         Main.LOGGER.log(Level.WARNING, "K scaled\n" + K.dump());
@@ -185,7 +191,7 @@ void create_maps(Mat K, Mat cdist, Size sz)
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-Mat project(Mat r, Mat t, boolean useShadow, int inter)
+    Mat project(Mat r, Mat t, boolean useShadow, int inter)
     // force users to specify useShadow=false and inter=Imgproc.INTER_NEAREST instead of defaulting
     // no default allowed in Java and I don't feel like making a bunch of overloaded methods for this conversion
     {
@@ -204,7 +210,7 @@ Mat project(Mat r, Mat t, boolean useShadow, int inter)
         // Can be one map for XY or two maps X and Y. python had 2 and this has 1
         // Imgproc.remap(img, img, maps[0]/*X*/, maps[1]/*Y*/, inter);// maybe X Mat and Y Mat somehow; separate channels?
 
-        Imgproc.remap(img, img, this.maps, new Mat(), inter);// 1st arg can be XY with no 2nd arg
+        Imgproc.remap(img, img, this.maps, new Mat(), inter);// 1st arg can be XY with no 2nd arg (original has separate X and Y arguments)
         Main.LOGGER.log(Level.WARNING, "img after remap " + img + "\n" + brief(img));
 
         // maps (2, 480, 640)
