@@ -369,7 +369,7 @@ class Calibrator {
         }
         catch(CvException error)
         {
-          Main.LOGGER.log(Level.SEVERE, error.toString());
+          Main.LOGGER.log(Level.SEVERE, Id.__LINE__() + " " + error.toString());
         }
         Main.Kcsv(Id.__LINE__(), K);
         Mat varianceIntrinsics = new Mat();

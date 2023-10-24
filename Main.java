@@ -11,6 +11,8 @@ package calibrator;
 // changed a couple of other "bugs" (maybe, I think)
 // used current OpenCV methods. Some old ones were removed.
 // didn't convert some unused methods and variables
+// dry run not implemented
+// sampled distortion map with step = 1 (full map - not sampled) not implemented
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -27,7 +29,6 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
@@ -49,7 +50,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED draft 3"; // change this
+    private static final String version = "CONVERTED draft 5"; // change this
 
     private static PrintWriter pw;
     private static int counter = 0;
@@ -164,8 +165,8 @@ public class Main {
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(camId);
-        // camera.setPixelFormat(PixelFormat.kMJPEG);
-        // camera.setResolution(Cfg.image_width, Cfg.image_height);
+        camera.setPixelFormat(PixelFormat.kYUYV);
+        camera.setResolution(Cfg.image_width, Cfg.image_height);
         // camera.setExposureAuto();
         camera.setExposureManual(65);
         // camera.setBrightness(50);
@@ -198,16 +199,16 @@ public class Main {
             {
                 if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
-                    Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC); //FIXME testing with different cameras and struggling with camera setup
-                    // Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
-                    // continue; //FIXME should not be commented out to skip wrong-sized frames
+                    // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC); //FIXME testing with different cameras and struggling with camera setup
+                    Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
+                    continue;
                 }
                 _img.copyTo(img);
             }
             else
             {
                 LOGGER.log(Level.SEVERE, "grabFrame error " + cap.getError());
-                force = false;
+                force = false; // useless now with the continue below
                 continue; // pretend frame never happened - rkt addition; original reprocessed previous frame
             }
             

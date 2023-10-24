@@ -44,19 +44,19 @@ public class UserGuidance {
 
     private Calibrator calib;
 
-    private String[] AX_NAMES = {"red", "green", "blue"};
-    private String[] INTRINSICS = {"fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"};
-    private String[] POSE = {"fx", "ry", "rz", "tx", "ty", "tz"};
+    private static final String[] AX_NAMES = {"red", "green", "blue"};
+    private static final String[] INTRINSICS = {"fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"};
+    private static final String[] POSE = {"fx", "ry", "rz", "tx", "ty", "tz"};
 
     // parameters that are optimized by the same board poses
-    private int PARAM_GROUPS[][] = {{0, 1, 2, 3}, {4, 5, 6, 7, 8}}; // grouping and numbering the INTRINSICS
+    private static final int PARAM_GROUPS[][] = {{0, 1, 2, 3}, {4, 5, 6, 7, 8}}; // grouping and numbering the INTRINSICS
 
     // get geometry from tracker
     private ChArucoDetector tracker;
     private int allpts;
     private int square_len;
     private int marker_len;
-    private int SQUARE_LEN_PIX = 12; // immediately changed in constructor. Why init here? Maybe 0 init would be safer.
+    private int SQUARE_LEN_PIX = 12;
 
     private Size img_size;
     private Mat overlap;
@@ -68,7 +68,7 @@ public class UserGuidance {
     private boolean[] pconverged;
     private double min_reperr_init = Double.POSITIVE_INFINITY;
 
-    private int tgt_param = -1; // not sure this needs init but it came from None in Python which throws error if accessed
+    private int tgt_param = -999_999_999; // None in Python which throws error if accessed; this may throw an error if used as a subscript
 
     // actual user guidance
     private boolean pose_reached = false;
@@ -92,9 +92,9 @@ public class UserGuidance {
 
         this.tracker = tracker;
         this.var_terminate = var_terminate;
-        calib = new Calibrator(tracker.img_size);
-        pconverged = new boolean[calib.nintr()];
-        Arrays.fill(pconverged, false);
+        this.calib = new Calibrator(tracker.img_size);
+        this.pconverged = new boolean[this.calib.nintr()];
+        Arrays.fill(this.pconverged, false);
 
         this.allpts = (Cfg.board_x-1)*(Cfg.board_y-1); // board w = 9 h = 6 => 54 squares; 8x5 => 40 interior corners
         this.square_len = Cfg.square_len;
@@ -107,11 +107,11 @@ public class UserGuidance {
         this.board = new BoardPreview(this.tracker.boardImage);
         // desired pose of board for first frame
         // translation defined in terms of board dimensions
-        board_units = new Mat(3, 1, CvType.CV_64FC1);
-        board_units.put(0, 0, tracker.board_sz().width*square_len);
-        board_units.put(1, 0, tracker.board_sz().height*square_len);
-        board_units.put(2, 0, tracker.board_sz().width*square_len);
-        this.posegen = new PoseGeneratorDist(img_size);
+        this.board_units = new Mat(3, 1, CvType.CV_64FC1);
+        this.board_units.put(0, 0, tracker.board_sz().width*this.square_len);
+        this.board_units.put(1, 0, tracker.board_sz().height*this.square_len);
+        this.board_units.put(2, 0, tracker.board_sz().width*this.square_len);
+        this.posegen = new PoseGeneratorDist(this.img_size);
 
         // set first pose
         this.set_next_pose();
@@ -137,14 +137,14 @@ public class UserGuidance {
         double[] pvar_prev = this.calib.varIntrinsics().clone(); // calib still has the previous intrinsics
         boolean first = this.calib.keyframes.size() == 2;
 
-        List<keyframe> placeholder = new ArrayList<>(20); // dummy so I don't have to overload the method
         // compute the new intrinsics
-        double[] index_of_dispersion = this.calib.calibrate(placeholder).clone();  // local copy so original not changed
+        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1)).clone(); // dummy arg to avoid overloaded method
 
-        double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics - just a shorter name
+        double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics - just a shorter name to match original
 
         double[] rel_pstd = new double[pvar.length];
-        if(! first)
+
+        if( ! first)
         {      
             double total_var_prev = Arrays.stream(pvar_prev).sum();
             double total_var = Arrays.stream(pvar).sum();
@@ -167,10 +167,8 @@ public class UserGuidance {
             }
 
             // g (0, 1, 2, 3)  p 0 p 1 p 2 p 3 g (4, 5, 6, 7, 8) p 4 p 5 p 6 p 7 p 8
-            for(int gIdx=0; gIdx< this.PARAM_GROUPS.length; gIdx++) // loop through all groups (2 groups)
+            for(int[] g : this.PARAM_GROUPS) // loop through all groups (2 groups)
             {
-                int[] g = this.PARAM_GROUPS[gIdx]; // change the name to match original
-
                 // check if in this group
                 boolean inGroup = false; // first assume not in this group
                 for(int p : g) // loop through whole group (4 or 5 items)
@@ -190,7 +188,6 @@ public class UserGuidance {
 
                 for(int p : g)
                 {
-                    // if index_of_dispersion[p] < 0.05:
                     if(rel_pstd[p] > 0 && rel_pstd[p] < this.var_terminate)
                     {    
                         if(! this.pconverged[p])
@@ -265,6 +262,13 @@ public class UserGuidance {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
+    /**
+     * Jaccard similarity coefficient (Jaccard index) compares estimated image pose and target GuidanceBoard pose.
+     * Change from original - Returning numerical index instead of the true/false decision of close to target.
+     * Calling program can decide what to do with the number. This can put all the decisions
+     * in the same place instead of dispersed.
+     * @return Jaccard similarity coefficient of estimated image pose and desired (target) guidance pose
+     */
     private double pose_close_to_tgt()
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
@@ -280,9 +284,9 @@ public class UserGuidance {
             return jaccard;
     
         byte[] board_warpedArray = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
-        this.board_warped.get(0, 0, board_warpedArray); // efficient retrieval of board_warped
+        this.board_warped.get(0, 0, board_warpedArray); // efficient retrieval of complete board_warped
 
-        byte[] overlapArray = new byte[this.overlap.rows()*this.overlap.cols()]; // 1 channel, java sets this to all zeros
+        byte[] overlapArray = new byte[this.overlap.rows()*this.overlap.cols()]; // 1 channel; java sets this to all zeros
 
         int indexBoard_warpedArray = 1; // start position; extracting channel 1 (of 0, 1, 2)
         for(int row = 0; row < overlapArray.length; row++)
@@ -295,20 +299,21 @@ public class UserGuidance {
         }
         this.overlap.put(0, 0, overlapArray);
 
-        this.overlap.copyTo(Main.testImg2); // test 2 has the guidance board b&w//FIXME at this point the rotation of the shadow board is reversed from Python
-        Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2);
+        { // debug display
+        this.overlap.copyTo(Main.testImg2); // test 2 has the warped guidance board b&w
+        Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2); // brighten (to gray) so it can be seen by humans
         Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
         Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
-
+        }
         int Aa = Core.countNonZero(this.overlap); // number of on (1) pixels in the warped_board (from above)
 
-        Mat tmp = this.board.project(this.tracker.rvec(), // create projected shadow same way as the guidance board (hopefully)
+        Mat tmp = this.board.project(this.tracker.rvec(), // create projected shadow same way as the guidance board but using the estimated pose of the camera image
                                     this.tracker.tvec(), 
                                     true,
                                     Imgproc.INTER_NEAREST);
                                     
-        tmp.copyTo(Main.testImg1); // test 1 has the board projected from where the detector thinks is the camera image pose
-        Core.multiply(Main.testImg1, new Scalar(255.), Main.testImg1);
+        tmp.copyTo(Main.testImg1); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
+        Core.multiply(Main.testImg1, new Scalar(255.), Main.testImg1); // brighten (to white) so it can be seen by humans
         Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
         Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
         
@@ -351,7 +356,7 @@ public class UserGuidance {
             // try to estimate intrinsic params from single frame
             this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()));
 
-            if( /*! np.isnan(this.calib.K()).any() &&*/ this.calib.reperr() < this.min_reperr_init)
+            if( /*! np.isnan(this.calib.K()).any() &&*/ this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be
             {
                 this.set_next_pose();  // update target pose
                 this.tracker.set_intrinsics(this.calib);
@@ -435,7 +440,7 @@ public class UserGuidance {
 
         if(this.calib.keyframes.size() < 2)
         {
-                        this.user_info_text = "initialization";
+            this.user_info_text = "initialization";
         }
         else if( ! this.converged)
         {
@@ -458,7 +463,6 @@ public class UserGuidance {
             }
             String param = this.INTRINSICS[this.tgt_param];
             this.user_info_text = String.format("{%s} {%s} to minimize {%s}", action, this.POSE[axis], param);
-            //translate 'ty' to minimize 'k3' this message comes with nearly 100% similarity but it still won't accept and move to next pose
         }
         else
         {
@@ -514,6 +518,13 @@ public class UserGuidance {
             Core.flip(img, img, 1);
         }
     }
+
+/**
+ *    seed NOT USED -- NOT CONVERTED
+ *    seed NOT USED -- NOT CONVERTED
+ *    seed NOT USED -- NOT CONVERTED
+*/
+
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -559,12 +570,12 @@ public class UserGuidance {
         flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix_principal_point");
         flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero_tangent_dist");
         flags.put(Calib3d.CALIB_USE_LU, "+use_lu");
-        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, " fix aspect ratio");
-        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, " fix principal point");
-        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, " zero tangent dist");
-        flags.put(Calib3d.CALIB_FIX_K1, " fix k1");
-        flags.put(Calib3d.CALIB_FIX_K2, " fix k2");
-        flags.put(Calib3d.CALIB_FIX_K3, " fix k3");
+        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, "+fix aspect ratio");
+        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix principal point");
+        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero tangent dist");
+        flags.put(Calib3d.CALIB_FIX_K1, "+fix k1");
+        flags.put(Calib3d.CALIB_FIX_K2, "+fix k2");
+        flags.put(Calib3d.CALIB_FIX_K3, "+fix k3");
        
         StringBuilder flags_str = new StringBuilder("flags: ");
         int unknownFlags = flagsCalibration; // initially assume all flags are unknown to the hashmap
@@ -578,12 +589,10 @@ public class UserGuidance {
             }                       
         }
 
-        flags_str.append("\nflags ");
-        flags_str.append(flagsCalibration);
+        flags_str.append(String.format("\nflags %08x", flagsCalibration));
         if(unknownFlags != 0)
         {
-            flags_str.append("; unknown flag usage = ");
-            flags_str.append(unknownFlags);          
+            flags_str.append(String.format("; unknown flag usage = %08x", unknownFlags));          
         }
         return flags_str.toString();
     }

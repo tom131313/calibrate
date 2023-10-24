@@ -1,5 +1,7 @@
 package calibrator;
 
+import java.util.logging.Level;
+
 import org.opencv.core.Mat;
 
 /*----------------------------------------------------------------------------------------------------------- */
@@ -33,6 +35,10 @@ keyframe(Mat p2d, Mat p3d)
   {
     this.p2d = p2d;
     this.p3d = p3d;
+    if(this.p2d.rows() != this.p3d.rows() || this.p2d.cols() != p3d.cols())
+    {
+        Main.LOGGER.log(Level.SEVERE, "size of p2d != p3d");
+    }
   }
 }
 /*----------------------------------------------------------------------------------------------------------- */

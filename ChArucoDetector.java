@@ -184,21 +184,26 @@ public class ChArucoDetector {
 
         try
         {
-        detector.detectBoard
-            ( img, this.ccorners, this.cids, markerCorners, markerIds );
+            detector.detectBoard
+                ( img, this.ccorners, this.cids, markerCorners, markerIds );
         }
         catch(Exception e) {Main.LOGGER.log(Level.SEVERE, img + " " + this.ccorners + " " + this.cids + "\n" + e);}
 
-        this.N_pts = this.cids.rows();
+        this.N_pts = 0;
         this.mean_flow = Double.MAX_VALUE;
+
+        if( ! this.cids.empty() && this.cids.rows() > 0) // double check since there was some unknown failure to get the N_pts set right
+        {
+            this.N_pts = this.cids.rows();
+        }
 
         Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
-        if(this.N_pts == 0) // maybe use the min N_pts
+        if(this.N_pts == 0) // maybe use the min N_pts from Cfg
         {
             // for optical flow calculation
             this.last_ccorners.release();
-            this.last_cids.release();;
+            this.last_cids.release();
             this.last_ccorners = new Mat();
             this.last_cids = new Mat();
             return;
