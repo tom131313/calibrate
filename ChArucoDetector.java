@@ -181,7 +181,6 @@ public class ChArucoDetector {
 
         final List<Mat> markerCorners = new ArrayList();
         final Mat markerIds = new Mat();
-        this.N_pts = 0; // in case no corners are detected (detectBoard might not return 0 check it)
 
         try
         {
@@ -190,15 +189,7 @@ public class ChArucoDetector {
         }
         catch(Exception e) {Main.LOGGER.log(Level.SEVERE, img + " " + this.ccorners + " " + this.cids + "\n" + e);}
 
-        if(this.cids.rows() > 0)
-        {
-            this.N_pts = this.cids.rows();
-        }
-        else
-        {
-            Main.LOGGER.log(Level.WARNING, "N_pts " + this.cids.rows());
-        }
-
+        this.N_pts = this.cids.rows();
         this.mean_flow = Double.MAX_VALUE;
 
         Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);

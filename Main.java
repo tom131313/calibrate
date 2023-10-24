@@ -49,7 +49,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED draft 4"; // change this
+    private static final String version = "CONVERTED draft 3"; // change this
 
     private static PrintWriter pw;
     private static int counter = 0;
@@ -164,8 +164,8 @@ public class Main {
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(camId);
-        camera.setPixelFormat(PixelFormat.kYUYV);
-        camera.setResolution(Cfg.image_width, Cfg.image_height);
+        // camera.setPixelFormat(PixelFormat.kMJPEG);
+        // camera.setResolution(Cfg.image_width, Cfg.image_height);
         // camera.setExposureAuto();
         camera.setExposureManual(65);
         // camera.setBrightness(50);
@@ -198,16 +198,16 @@ public class Main {
             {
                 if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
-                    // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC); //FIXME testing with different cameras and struggling with camera setup
-                    Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
-                    continue;
+                    Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC); //FIXME testing with different cameras and struggling with camera setup
+                    // Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
+                    // continue; //FIXME should not be commented out to skip wrong-sized frames
                 }
                 _img.copyTo(img);
             }
             else
             {
                 LOGGER.log(Level.SEVERE, "grabFrame error " + cap.getError());
-                force = false; // useless now with the continue below
+                force = false;
                 continue; // pretend frame never happened - rkt addition; original reprocessed previous frame
             }
             

@@ -559,12 +559,12 @@ public class UserGuidance {
         flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix_principal_point");
         flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero_tangent_dist");
         flags.put(Calib3d.CALIB_USE_LU, "+use_lu");
-        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, "+fix aspect ratio");
-        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix principal point");
-        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero tangent dist");
-        flags.put(Calib3d.CALIB_FIX_K1, "+fix k1");
-        flags.put(Calib3d.CALIB_FIX_K2, "+fix k2");
-        flags.put(Calib3d.CALIB_FIX_K3, "+fix k3");
+        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, " fix aspect ratio");
+        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, " fix principal point");
+        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, " zero tangent dist");
+        flags.put(Calib3d.CALIB_FIX_K1, " fix k1");
+        flags.put(Calib3d.CALIB_FIX_K2, " fix k2");
+        flags.put(Calib3d.CALIB_FIX_K3, " fix k3");
        
         StringBuilder flags_str = new StringBuilder("flags: ");
         int unknownFlags = flagsCalibration; // initially assume all flags are unknown to the hashmap
