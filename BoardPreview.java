@@ -76,8 +76,8 @@ class BoardPreview {
 
         Imgproc.warpPerspective(img, imgProjected, H, sz, flags);
 
-        // these axes diagram cover the board before it is processed. Maybe draw them later and they are in a different position
-        // Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); // may need rotation vector rvec instead of R
+        // these axes diagram cover the desired posed (warped) Guidance Board before it is processed. Maybe draw them later and they are in a different position
+        Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); // may need rotation vector rvec instead of R
 
         transform.release();
         R.release();
@@ -108,39 +108,39 @@ class BoardPreview {
 
         img.copyTo(this.img);
 
+        // at this point the img appears correctly if displayed on a screen or printed
         Core.flip(this.img, this.img, 0); // flipped when printing
+        // at this point the img is flipped upside down. This is needed because the Imgproc.warpPerspective
+        // flips the img upside down likely because it's acting like it's projecting through a camera
+        // aperture/lens which flips the scene upside down. So after the Imgproc.warpPerspective the img is
+        // again upside right.
 
         // set black pixels to gray; non-black pixels stay the same
-        byte[] img1ChannelBuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffer for more efficient access to one row
-        // process one row at a time for efficiency
-        for(int row = 0; row < img.rows(); row++)
+
+        // process entire Mat for efficiency
+        byte[] img1ChannelBuff = new byte[this.img.rows()*this.img.cols()*this.img.channels()]; // temp buffer for more efficient access
+        this.img.get(0, 0, img1ChannelBuff); // get the row, all channels
+        for(int index = 0; index < img1ChannelBuff.length; index++) // process each element of the row
         {
-            this.img.get(row, 0, img1ChannelBuffRow); // get the row, all channels
-            for(int col = 0; col < img1ChannelBuffRow.length; col++) // process each element of the row
+            if(img1ChannelBuff[index] == 0) // is it black?
             {
-                if(img1ChannelBuffRow[col] == 0) // is it black?
-                {
-                    img1ChannelBuffRow[col] = 64; // make it gray
-                }
+                img1ChannelBuff[index] = 64; // make it gray
             }
-            this.img.put(row, 0, img1ChannelBuffRow);
         }
+        this.img.put(0, 0, img1ChannelBuff);
 
         Imgproc.cvtColor(this.img, this.img, Imgproc.COLOR_GRAY2BGR);
 
         // set blue and red channels to black (0) so gray/white becomes a shade of green (green channel was not changed)
-        byte[] img3ChannelBuffRow = new byte[this.img.cols()*this.img.channels()]; // temp buffers for efficient access to a row
+        byte[] img3ChannelBuff = new byte[this.img.rows()*this.img.cols()*this.img.channels()]; // temp buffers for efficient access
         // process one row at a time for efficiency
-        for(int row = 0; row < this.img.rows(); row++)
+        this.img.get(0, 0, img3ChannelBuff); // get the row, all channels
+        for(int index = 0; index < img3ChannelBuff.length; index+=3) // process each triplet (channels) of the row
         {
-            this.img.get(row, 0, img3ChannelBuffRow); // get the row, all channels
-            for(int col = 0; col < img3ChannelBuffRow.length; col+=3) // process each triplet (channels) of the row
-            {
-                img3ChannelBuffRow[col] = 0; // B
-                img3ChannelBuffRow[col+2] = 0; // R
-            }
-            this.img.put(row, 0, img3ChannelBuffRow);
+            img3ChannelBuff[index] = 0; // B
+            img3ChannelBuff[index+2] = 0; // R
         }
+        this.img.put(0, 0, img3ChannelBuff);
 
         // used for overlap score
         this.shadow = Mat.ones(this.img.rows(), this.img.cols(), CvType.CV_8UC1);

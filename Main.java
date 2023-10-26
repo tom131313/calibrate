@@ -54,7 +54,12 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED alpha 1"; // change this
+    private static final String VERSION = "CONVERTED alpha 2"; // change this
+
+    static
+    {
+    System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
+    }
 
     private static PrintWriter pw; // K debugging
     private static int counter = 0; // K debugging
@@ -70,7 +75,7 @@ public class Main {
     private static final String errTail = "THE END OF THE LOG\n";
 
     // normally don't change header but it's here (or below) to use version
-    private static final String header = "\n\nStarting Log for Camera Calibration Program Version " + version
+    private static final String header = "\n\nStarting Log for Camera Calibration Program Version " + VERSION
                                             + ", current time " + java.time.LocalDateTime.now() + "\n\n";
     //    + "  current time ms " + System.currentTimeMillis() + "\n\n";   
     private static final String errHeader = header;
@@ -112,11 +117,6 @@ public class Main {
     private static int frameNumber = 0;
     static String frame = "00000 ";
     // END LOGGER STUFF
-
-    static
-    {
-    System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
-    }
 
     // keyboard mapping returns from waitKey
     private static final int keyTerminate = 27;
@@ -310,7 +310,8 @@ public class Main {
 
         Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
-    
+        
+        // write a frame to a file name java<frame nbr>.jpg
         // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
         // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
         
@@ -328,6 +329,7 @@ public class Main {
                 new Point(testImg1.cols()-1., testImg1.rows()-1.),
                 new Scalar(255., 255., 0.), 1);
             temp2.copyTo(out.submat(9*Cfg.image_height/20, 9*Cfg.image_height/20+testImg1.rows(), 0,testImg1.cols()));
+            temp2.release();
         }
     }
 /*----------------------------------------------------------------------------------------------------------- */

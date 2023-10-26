@@ -105,6 +105,7 @@ public class UserGuidance {
 
         // preview image
         this.board = new BoardPreview(this.tracker.boardImage);
+
         // desired pose of board for first frame
         // translation defined in terms of board dimensions
         this.board_units = new Mat(3, 1, CvType.CV_64FC1);
@@ -325,9 +326,6 @@ public class UserGuidance {
         // Jaccard similarity index
         jaccard = (double)Aab / (double)(Aa + Ab - Aab);
 
-        Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
-        Imgproc.putText(Main.testImg1, Main.frame + jaccard, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
-
         tmp.release();
         tempImg.release();
 
@@ -369,7 +367,8 @@ public class UserGuidance {
 
         this.pose_reached = force && this.tracker.N_pts() >= Cfg.minCorners; // original had > 4
 
-        double pose_close_to_tgt = this.pose_close_to_tgt(); // save it to print it
+        double pose_close_to_tgt = this.pose_close_to_tgt();
+
         if(pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
         {
             this.pose_reached = true;
@@ -499,25 +498,6 @@ public class UserGuidance {
         // assumes both img and board are 3 color channels BGR
         if( ! this.tgt_r.empty())
         {
-            // process one row at a time for more cpu efficiency than one element at a time
-            // byte[] imgBuffRow = new byte[img.cols()*img.channels()]; // temp buffers for efficient access to a row
-            // byte[] board_warpedBuffRow = new byte[this.board_warped.cols()*this.board_warped.channels()];
-            
-            // for(int row = 0; row < img.rows(); row++)
-            // {
-            //     img.get(row, 0, imgBuffRow); // get the row
-            //     this.board_warped.get(row, 0,board_warpedBuffRow);
-            //     for(int col = 0; col < imgBuffRow.length; col++) // process each element of the row
-            //     {
-            //         // if there is a non-black pixel in the warped board then use it in img
-            //         if(board_warpedBuffRow[col] != 0)
-            //         {
-            //             imgBuffRow[col] = board_warpedBuffRow[col];
-            //         }
-            //     }
-            //     img.put(row, 0, imgBuffRow);
-            // }
-
             // process complete Mats' temp buffers for efficient access
             byte[] imgBuff = new byte[img.rows()*img.cols()*img.channels()];
             byte[] board_warpedBuff = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
@@ -540,7 +520,7 @@ public class UserGuidance {
 
         if(this.tracker.pose_valid())
         {
-            this.tracker.draw_axis(img); // draw axis on the detected board from the camera image
+            this.tracker.draw_axis(img); // draw axes on the detected board from the camera image
         }
 
         if(mirror)
