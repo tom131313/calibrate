@@ -334,16 +334,16 @@ class Calibrator {
       Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // split keyframes into its two separate components, image points and object points, for OpenCV calibrateCamera
-        // we put them together when detected then we take them apart for calibration. Maybe that's not a good idea.
+        // we put them together when detected then we take them apart for calibration.
         
-        List<Mat> pts2d = new ArrayList<>(40); // image points
-        List<Mat> pts3d = new ArrayList<>(40); // object points
+        List<Mat> pts2dFrames = new ArrayList<>(40); // image points
+        List<Mat> pts3dFrames = new ArrayList<>(40); // object points
         int N = 0; // count total number of points
 
         for (keyframe keyframe : keyframes)
         {
-            pts2d.add(keyframe.p2d());
-            pts3d.add(keyframe.p3d());
+            pts2dFrames.add(keyframe.p2d());
+            pts3dFrames.add(keyframe.p3d());
             N += keyframe.p2d().rows();
         }
 
@@ -361,7 +361,7 @@ class Calibrator {
         try
         {
            reperr = Calib3d.calibrateCameraExtended(
-              pts3d, pts2d, img_size, K, cdist, rvecs, tvecs, stdDeviationsIntrinsics, new Mat(), new Mat(), flags, criteria); //FIXME maybe null for the two empty Mats??
+              pts3dFrames, pts2dFrames, img_size, K, cdist, rvecs, tvecs, stdDeviationsIntrinsics, new Mat(), new Mat(), flags, criteria); //FIXME maybe null for the two empty Mats?
 
           Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
           Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);

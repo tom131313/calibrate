@@ -13,13 +13,16 @@ package calibrator;
 // didn't convert some unused methods and variables
 // dry run not implemented
 // sampled distortion map with step = 1 (full map - not sampled) not implemented
+// added clone to this.get_pts3d()
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,6 +32,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
@@ -50,10 +54,11 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String version = "CONVERTED draft 6"; // change this
+    private static final String version = "CONVERTED alpha 1"; // change this
 
-    private static PrintWriter pw;
-    private static int counter = 0;
+    private static PrintWriter pw; // K debugging
+    private static int counter = 0; // K debugging
+    static Mat testImg1 = new Mat(); // testing only
 
     // LOGGER STUFF
     private static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
@@ -124,8 +129,6 @@ public class Main {
     private static final int camId = 0;
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
 
-    static Mat testImg1 = new Mat(); // testing only
-    static Mat testImg2 = new Mat(); // testing only
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -192,6 +195,8 @@ public class Main {
         {
             frameNumber++;
             frame = String.format("%05d ", frameNumber);
+            if(frameNumber%Cfg.garbageCollectionFrames == 0) System.gc();
+
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
 
             long status = cap.grabFrame(_img, 0.5);
@@ -199,7 +204,7 @@ public class Main {
             {
                 if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
-                    // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC); //FIXME testing with different cameras and struggling with camera setup
+                    // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC);
                     Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
                     continue;
                 }
@@ -234,12 +239,6 @@ public class Main {
             }
 
             displayOverlay(out, ugui);
-
-            // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
-            // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
-            
-            if( ! testImg1.empty()) HighGui.imshow("test img 1", testImg1); // debugging
-            if( ! testImg2.empty()) HighGui.imshow("test img 2", testImg2); // debugging
 
             HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
 
@@ -281,6 +280,7 @@ public class Main {
         } // end grabFrameLoop
 
         ugui.write(); //FIXME temp just to see what comes out - remove when program working right and converging
+        pw.close(); // K debugging
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
@@ -310,6 +310,25 @@ public class Main {
 
         Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+    
+        // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
+        // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
+        
+        if( ! testImg1.empty())
+        { // add to the display the board/camera overlap image
+            Imgproc.resize(testImg1, testImg1, new Size((double)(Cfg.image_width/10), (double)(Cfg.image_height/10)), 0, 0, Imgproc.INTER_CUBIC);
+            List<Mat> temp1 = new ArrayList<>(3);
+            temp1.add(testImg1);
+            temp1.add(testImg1);
+            temp1.add(testImg1);
+            Mat temp2 = new Mat();
+            Core.merge(temp1, temp2);
+            Imgproc.rectangle(temp2,
+                new Point(0, 0),
+                new Point(testImg1.cols()-1., testImg1.rows()-1.),
+                new Scalar(255., 255., 0.), 1);
+            temp2.copyTo(out.submat(9*Cfg.image_height/20, 9*Cfg.image_height/20+testImg1.rows(), 0,testImg1.cols()));
+        }
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -332,13 +351,15 @@ public class Main {
  *   private static int counter = 0; // sequence number
  * 
  *   pw = new PrintWriter("K.csv");  // define the file - statement may throw an exception to be handled somehow
+ * 
+ *   pw.close(); // forces last line to be completed, too
  * @param line Input "comment" line that could be used to identify the location in the program
  * @param K Input 3x3 camera matrix Mat. Doesn't have to be 3x3 but assumptions are made about changing the "[];\n"
  */
     public static void Kcsv(String line, Mat K)
     {
         counter++;
-        if(counter == 1)
+        if(counter == 1) // first time switch for columns' header
         {
             Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence"); // K's column names
         }

@@ -408,7 +408,7 @@ public class ChArucoDetector {
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        return new keyframe(this.ccorners.clone(), this.get_pts3d()); //FIXME best to have clone on get_pts3d()?
+        return new keyframe(this.ccorners.clone(), this.get_pts3d().clone());
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -436,34 +436,29 @@ public class ChArucoDetector {
 
         Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
         Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
-
-        Mat rvec = new Mat(); // initializing rvec and tvec may help solvePnP with useExtrinsicGuess=true but this program is too contorted to easily get the tgt_r and tgt_t back in here.
-        Mat tvec = new Mat();
-
-        Main.LOGGER.log(Level.WARNING, "distReTyped " + distReTyped.dump());
-        Main.LOGGER.log(Level.WARNING, " in rvec\n" + rvec.dump());
-        Main.LOGGER.log(Level.WARNING, " in tvec\n" + tvec.dump());
+        
+        Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
+        Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
 
         this.pose_valid = Calib3d.solvePnPRansac(
-            p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);//, false);//, Calib3d.SOLVEPNP_EPNP); //Calib3d.SOLVEPNP_ITERATIVE
-
-            Calib3d.solvePnPRefineVVS(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
-        // this.pose_valid = Calib3d.solvePnP(
-        //     p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec, false, Calib3d.SOLVEPNP_EPNP); //Calib3d.SOLVEPNP_ITERATIVE
-    
-        //FIXME negating "x" makes the shadow for jaccard the right orientation for some unknown reason! Python doesn't need this.
-        Core.multiply(rvec, new Scalar(-1., 1., 1.), rvec);
-
-        Main.LOGGER.log(Level.WARNING, "out rvec\n" + rvec.t().dump());
-        Main.LOGGER.log(Level.WARNING, "out tvec\n" + tvec.t().dump());
+            p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec, false);
 
         if( ! this.pose_valid)
         {
             Main.LOGGER.log(Level.WARNING, "pose not valid");
             return;            
         }
+
+        Calib3d.solvePnPRefineVVS(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
+  
+        //FIXME negating "x" makes the shadow for jaccard the right orientation for some unknown reason! Python doesn't need this.
+        Core.multiply(rvec, new Scalar(-1., 1., 1.), rvec);
+
         this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
         this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
+
+        Main.LOGGER.log(Level.WARNING, "out rvec\n" + this.rvec.dump());
+        Main.LOGGER.log(Level.WARNING, "out tvec\n" + this.tvec.dump());
     }
 }
 /*----------------------------------------------------------------------------------------------------------- */

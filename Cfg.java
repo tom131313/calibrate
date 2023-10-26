@@ -29,8 +29,7 @@ public class Cfg
     static final int image_height = 720; // 480
 
     // ChArUco Board pixels = (board_x*square_len, board_y*square_len)
-  
-    static final int board_x = 9;
+      static final int board_x = 9;
     static final int board_y = 6;
     static final int square_len = 280;
     static final int marker_len = 182;
@@ -48,6 +47,7 @@ public class Cfg
 
     static final int wait = 1; // (20 almost works) milliseconds to wait for user keyboard response to a new image
     static final long keyLockoutDelayMillis = 10000L; // allows banging on the keyboard trying to get a response within "wait" and ignore multiple presses
+    static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released
     private Cfg()
     {
         throw new UnsupportedOperationException("This is a utility class");

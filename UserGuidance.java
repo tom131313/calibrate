@@ -44,12 +44,12 @@ public class UserGuidance {
 
     private Calibrator calib;
 
-    private static final String[] AX_NAMES = {"red", "green", "blue"};
-    private static final String[] INTRINSICS = {"fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"};
-    private static final String[] POSE = {"fx", "ry", "rz", "tx", "ty", "tz"};
+    private final String[] AX_NAMES = {"red", "green", "blue"};
+    private final String[] INTRINSICS = {"fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"};
+    private final String[] POSE = {"fx", "ry", "rz", "tx", "ty", "tz"};
 
     // parameters that are optimized by the same board poses
-    private static final int PARAM_GROUPS[][] = {{0, 1, 2, 3}, {4, 5, 6, 7, 8}}; // grouping and numbering the INTRINSICS
+    private final int PARAM_GROUPS[][] = {{0, 1, 2, 3}, {4, 5, 6, 7, 8}}; // grouping and numbering the INTRINSICS
 
     // get geometry from tracker
     private ChArucoDetector tracker;
@@ -138,7 +138,7 @@ public class UserGuidance {
         boolean first = this.calib.keyframes.size() == 2;
 
         // compute the new intrinsics
-        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1)).clone(); // dummy arg to avoid overloaded method
+        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1)); // dummy arg to avoid overloaded method
 
         double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics - just a shorter name to match original
 
@@ -299,24 +299,22 @@ public class UserGuidance {
         }
         this.overlap.put(0, 0, overlapArray);
 
-        // { // debug display
-        // this.overlap.copyTo(Main.testImg2); // test 2 has the warped guidance board b&w
-        // Core.multiply(Main.testImg2, new Scalar(175.), Main.testImg2); // brighten (to gray) so it can be seen by humans
-        // Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
-        // Imgproc.putText(Main.testImg2, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
-        // }
+
         int Aa = Core.countNonZero(this.overlap); // number of on (1) pixels in the warped_board (from above)
 
         Mat tmp = this.board.project(this.tracker.rvec(), // create projected shadow same way as the guidance board but using the estimated pose of the camera image
                                     this.tracker.tvec(), 
                                     true,
                                     Imgproc.INTER_NEAREST);
-                                    
+        // debug display
+        Mat tempImg = new Mat();
         tmp.copyTo(Main.testImg1); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
-        Core.multiply(Main.testImg1, new Scalar(255.), Main.testImg1); // brighten (to white) so it can be seen by humans
-        Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
-        Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
-        
+        this.overlap.copyTo(tempImg); // tempImg has the warped guidance board
+
+        Core.multiply(Main.testImg1, new Scalar(220.), Main.testImg1); // brighten (to near white) so it can be seen by humans
+        Core.multiply(tempImg, new Scalar(130.), tempImg); // brighten (to dark gray) so it can be seen by humans
+        Core.add(Main.testImg1, tempImg, Main.testImg1); // where they overlap is bright white
+
         Main.LOGGER.log(Level.WARNING, "shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
 
         int Ab = Core.countNonZero(tmp); // number of on (1) pixels in the warped shadow board
@@ -327,7 +325,12 @@ public class UserGuidance {
         // Jaccard similarity index
         jaccard = (double)Aab / (double)(Aa + Ab - Aab);
 
+        Imgproc.putText(Main.testImg1, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 4);
+        Imgproc.putText(Main.testImg1, Main.frame + jaccard, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 2);
+
         tmp.release();
+        tempImg.release();
+
         Main.LOGGER.log(Level.WARNING, "jaccard " + jaccard);
     
         return jaccard;
@@ -483,8 +486,13 @@ public class UserGuidance {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-    // this adds the guidance board to the camera image to make the new user display
-    void draw(Mat img, boolean mirror) // force users to specify mirror false instead of defaulting
+    /**
+     * add the guidance board to the camera image to make the new user display
+     * @param img
+     * @param mirror
+     * @throws Exception
+     */
+    void draw(Mat img, boolean mirror) throws Exception // force users to specify mirror false instead of defaulting
     {
         Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
@@ -492,27 +500,49 @@ public class UserGuidance {
         if( ! this.tgt_r.empty())
         {
             // process one row at a time for more cpu efficiency than one element at a time
-            byte[] imgBuffRow = new byte[img.cols()*img.channels()]; // temp buffers for efficient access to a row
-            byte[] board_warpedBuffRow = new byte[this.board_warped.cols()*this.board_warped.channels()];
-            for(int row = 0; row < img.rows(); row++)
+            // byte[] imgBuffRow = new byte[img.cols()*img.channels()]; // temp buffers for efficient access to a row
+            // byte[] board_warpedBuffRow = new byte[this.board_warped.cols()*this.board_warped.channels()];
+            
+            // for(int row = 0; row < img.rows(); row++)
+            // {
+            //     img.get(row, 0, imgBuffRow); // get the row
+            //     this.board_warped.get(row, 0,board_warpedBuffRow);
+            //     for(int col = 0; col < imgBuffRow.length; col++) // process each element of the row
+            //     {
+            //         // if there is a non-black pixel in the warped board then use it in img
+            //         if(board_warpedBuffRow[col] != 0)
+            //         {
+            //             imgBuffRow[col] = board_warpedBuffRow[col];
+            //         }
+            //     }
+            //     img.put(row, 0, imgBuffRow);
+            // }
+
+            // process complete Mats' temp buffers for efficient access
+            byte[] imgBuff = new byte[img.rows()*img.cols()*img.channels()];
+            byte[] board_warpedBuff = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
+
+            if(imgBuff.length != board_warpedBuff.length) throw new Exception("major trouble here"); // debug statement
+
+            img.get(0, 0, imgBuff); // get the Mat
+            this.board_warped.get(0, 0,board_warpedBuff); // get the Mat
+
+            for(int index = 0; index < imgBuff.length; index++)
             {
-                img.get(row, 0, imgBuffRow); // get the row
-                this.board_warped.get(row, 0,board_warpedBuffRow);
-                for(int col = 0; col < imgBuffRow.length; col++) // process each element of the row
+                // if there is a non-black pixel in the warped board then use it in img
+                if(board_warpedBuff[index] != 0)
                 {
-                    // if there is a non-black pixel in the warped board then use it in img
-                    if(board_warpedBuffRow[col] != 0)
-                    {
-                        imgBuffRow[col] = board_warpedBuffRow[col];
-                    }
+                    imgBuff[index] = board_warpedBuff[index];
                 }
-                img.put(row, 0, imgBuffRow);
             }
+            img.put(0, 0, imgBuff); // update the Mat            
         }
+
         if(this.tracker.pose_valid())
         {
             this.tracker.draw_axis(img); // draw axis on the detected board from the camera image
         }
+
         if(mirror)
         {
             Core.flip(img, img, 1);
