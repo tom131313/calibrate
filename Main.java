@@ -20,10 +20,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,7 +62,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String VERSION = "CONVERTED alpha 2"; // change this
+    private static final String VERSION = "CONVERTED alpha 4"; // change this
 
     static
     {
@@ -110,7 +118,7 @@ public class Main {
     // java.util.logging Levels	ALL FINEST FINER	FINE	INFO	CONFIG  WARNING	SEVERE	OFF
     for (String key : classesLog)
         {
-        String value = "FINEST";
+        String value = "SEVERE";
         classLevels.put(key, Level.parse(value));
         }
     }
@@ -129,6 +137,8 @@ public class Main {
     private static final int camId = 0;
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
 
+    AtomicInteger dokeystroke = new AtomicInteger(-1); //FIXME patch for horrible or no response from OpenCV keystroke
+
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -138,8 +148,32 @@ public class Main {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
+//FIXME patch for horrible or no response from OpenCV keystroke
+class Keystroke implements Runnable {
+    public void run()
+    {
+        Scanner keyboard = new Scanner(System.in);
+
+        while(true)
+        {
+            System.out.println("enter c, m, q");
+            String entered = keyboard.next();
+            int xx = entered.charAt(0);
+            if(xx == 99) dokeystroke.set(67);// c 99
+            if(xx == 109) dokeystroke.set(77);// m 109
+            if(xx == 113) dokeystroke.set(27);// q 113
+        }
+    }
+}
     public static void main(String[] args) throws Exception
     {
+        //FIXME patch for horrible or no response from OpenCV keystroke
+        Main x = new Main();
+        Keystroke keystroke = x.new Keystroke();
+        Thread keyboardThread = new Thread(keystroke, "keys");
+        keyboardThread.setDaemon(true);
+        keyboardThread.start();
+
         pw = new PrintWriter("K.csv");
 
         OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
@@ -171,8 +205,9 @@ public class Main {
         camera.setPixelFormat(PixelFormat.kYUYV);
         camera.setResolution(Cfg.image_width, Cfg.image_height);
         // camera.setExposureAuto();
-        camera.setExposureManual(65);
-        // camera.setBrightness(50);
+        camera.setExposureManual(70);
+        camera.setBrightness(70);
+        camera.setFPS(30);
         // Get a CvSink. This will capture Mats from the camera
         JavaCvSink cap = new JavaCvSink("sink1");
         cap.setSource(camera);
@@ -243,6 +278,7 @@ public class Main {
             HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
 
             int k = HighGui.waitKey(Cfg.wait);
+            k = x.dokeystroke.getAndSet(timedOut); //FIXME patch for horrible or no response from OpenCV keystroke
 
             if(k == timedOut)
             {
@@ -257,7 +293,7 @@ public class Main {
             }
             
             // process this key
-            Main.LOGGER.log(Level.WARNING, "Pressed Key " + k);
+            //Main.LOGGER.log(Level.WARNING, "Pressed Key " + k);
             
             allowKeyPressAfterTime = currentTimeMillis + Cfg.keyLockoutDelayMillis; // lockout more presses for a awhile
 
@@ -279,7 +315,7 @@ public class Main {
             }
         } // end grabFrameLoop
 
-        ugui.write(); //FIXME temp just to see what comes out - remove when program working right and converging
+        ugui.write(); //FIXME temp just to see what comes out even if we don't make it to the converged end
         pw.close(); // K debugging
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
@@ -302,7 +338,7 @@ public class Main {
         if (ugui.user_info_text().length() > 0) // is there a message to display?
         {
             if ( ! ugui.user_info_text().equals("initialization")) // rkt stop spamming "initialization" to log
-                Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
+                //Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
 
             Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
             Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
@@ -317,20 +353,38 @@ public class Main {
         
         if( ! testImg1.empty())
         { // add to the display the board/camera overlap image
-            Imgproc.resize(testImg1, testImg1, new Size((double)(Cfg.image_width/10), (double)(Cfg.image_height/10)), 0, 0, Imgproc.INTER_CUBIC);
-            List<Mat> temp1 = new ArrayList<>(3);
+            Imgproc.resize(testImg1, testImg1, new Size(Cfg.image_width*0.1, Cfg.image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
+            List<Mat> temp1 = new ArrayList<>(3); // make the 1 b&w channel into 3 channels
             temp1.add(testImg1);
             temp1.add(testImg1);
             temp1.add(testImg1);
             Mat temp2 = new Mat();
             Core.merge(temp1, temp2);
-            Imgproc.rectangle(temp2,
+            Imgproc.rectangle(temp2, // outline the insert for better visibility
                 new Point(0, 0),
                 new Point(testImg1.cols()-1., testImg1.rows()-1.),
                 new Scalar(255., 255., 0.), 1);
-            temp2.copyTo(out.submat(9*Cfg.image_height/20, 9*Cfg.image_height/20+testImg1.rows(), 0,testImg1.cols()));
+            temp2.copyTo(out.submat((int)(Cfg.image_height*0.45), (int)(Cfg.image_height*0.45)+testImg1.rows(), 0,testImg1.cols()));
             temp2.release();
         }
+
+        // display intrinsics convergence
+        for(int i = 0; i < 9; i++)
+        {
+            Scalar color;
+            if(ugui.pconverged()[i])
+            {
+                color = new Scalar(0, 190, 0);
+            }
+            else
+            {
+                color = new Scalar(0, 0, 255);
+            }
+            Imgproc.rectangle(out, new Point((double)i*20,Cfg.image_height*0.4), new Point((double)(i+1)*20, Cfg.image_height*0.4+20), color, Imgproc.FILLED);
+            Imgproc.putText(out, ugui.INTRINSICS()[i], new Point((double)i*20, Cfg.image_height*0.4+15), Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
+        }
+
+
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -388,6 +442,9 @@ public class Main {
 // System.loadLibrary("opencv_videoio_ffmpeg480_64");
 
 /*
+
+C:\Users\Public\wpilib\2023\jdk\bin\java.exe -jar C:\Users\RKT\frc\FRC2023\Code\Java\Java.jar
+
 cd C:\Users\RKT\frc\FRC2023\Code\Java
 find "repError" CalibrationLog.txt
 find "jaccard" CalibrationLog.txt

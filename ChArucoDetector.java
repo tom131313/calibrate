@@ -93,10 +93,10 @@ public class ChArucoDetector {
 
     public ChArucoDetector()
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
-        this.board.setLegacyPattern(Cfg.legacyPattern); //FIXME shouldn't use - remove when we match the original and we can go our own way
+        // this.board.setLegacyPattern(Cfg.legacyPattern); //FIXME shouldn't use - remove when we match the original and we can go our own way
         this.board.generateImage(this.boardImageSize, this.boardImage);
 
         if(Cfg.writeBoard)
@@ -143,13 +143,13 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void set_intrinsics(Calibrator calib)
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
         this.cdist = calib.cdist();
         Main.Kcsv(Id.__LINE__(), this.K);
-        Main.LOGGER.log(Level.WARNING, "class private K\n" + K.dump());
+        //Main.LOGGER.log(Level.WARNING, "class private K\n" + K.dump());
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -162,7 +162,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void draw_axis(Mat img)
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         Calib3d.drawFrameAxes(img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len);
     }   
@@ -177,7 +177,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void detect_pts(Mat img) throws Exception
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         final List<Mat> markerCorners = new ArrayList();
         final Mat markerIds = new Mat();
@@ -197,7 +197,7 @@ public class ChArucoDetector {
             this.N_pts = this.cids.rows();
         }
 
-        Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
+        //Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
         if(this.N_pts == 0) // maybe use the min N_pts from Cfg
         {
@@ -209,8 +209,8 @@ public class ChArucoDetector {
             return;
         }
 
-        Main.LOGGER.log(Level.WARNING, "detected ccorners\n" + this.ccorners.dump());
-        Main.LOGGER.log(Level.WARNING, "detected cids\n" + this.cids.dump());
+        //Main.LOGGER.log(Level.WARNING, "detected ccorners\n" + this.ccorners.dump());
+        //Main.LOGGER.log(Level.WARNING, "detected cids\n" + this.cids.dump());
         
         // reformat the Mat to a List<Mat> for matchImagePoints
         final List<Mat> ccornersList = new ArrayList<>();
@@ -225,8 +225,8 @@ public class ChArucoDetector {
         // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
         // after copying to MatOfPoint2f. A waste of cpu and memory.
 
-        Main.LOGGER.log(Level.WARNING, "p3d\n" + this.p3d.dump()); // data okay here
-        Main.LOGGER.log(Level.WARNING, "p2d\n" + this.p2d.dump()); // data okay here
+        //Main.LOGGER.log(Level.WARNING, "p3d\n" + this.p3d.dump()); // data okay here
+        //Main.LOGGER.log(Level.WARNING, "p2d\n" + this.p2d.dump()); // data okay here
 
         if(this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
 
@@ -257,7 +257,7 @@ public class ChArucoDetector {
         // // Not sure what original axis=1 norm is. Below is 2 axes which is better, I think
         // Mat diff = new Mat();
         // Core.subtract(this.last_ccorners, this.ccorners, diff);
-        // // Main.LOGGER.log(Level.WARNING, "diffpts " + diff + "\n" + diff.dump());
+        // // //Main.LOGGER.log(Level.WARNING, "diffpts " + diff + "\n" + diff.dump());
 
         // Mat normMat = new Mat(diff.rows(), diff.cols(), CvType.CV_64FC1);
 
@@ -269,11 +269,11 @@ public class ChArucoDetector {
         //     double norm = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
         //     normMat.put(row, col, norm);
         // }
-        // // Main.LOGGER.log(Level.WARNING, "normMat\n" + normMat.dump());
+        // // //Main.LOGGER.log(Level.WARNING, "normMat\n" + normMat.dump());
 
         // this.mean_flow = Core.mean(normMat).val[0];
 
-        Main.LOGGER.log(Level.WARNING, "mean_flow " + this.mean_flow);
+        //Main.LOGGER.log(Level.WARNING, "mean_flow " + this.mean_flow);
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
     }
@@ -371,7 +371,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void detect(Mat img) throws Exception
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         // raw_img never used - not converted
         this.detect_pts(img);
 
@@ -391,7 +391,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public Mat get_pts3d()
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return this.p3d;
     }
@@ -406,7 +406,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public keyframe get_calib_pts()
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return new keyframe(this.ccorners.clone(), this.get_pts3d().clone());
     }
@@ -421,7 +421,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void update_pose() throws Exception
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if(this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
@@ -434,8 +434,8 @@ public class ChArucoDetector {
         MatOfPoint2f p2dReTyped = new MatOfPoint2f(this.p2d);
         MatOfDouble distReTyped = new MatOfDouble(this.cdist);
 
-        Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
-        Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
+        //Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
+        //Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
         
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
@@ -445,7 +445,7 @@ public class ChArucoDetector {
 
         if( ! this.pose_valid)
         {
-            Main.LOGGER.log(Level.WARNING, "pose not valid");
+            //Main.LOGGER.log(Level.WARNING, "pose not valid");
             return;            
         }
 
@@ -457,8 +457,8 @@ public class ChArucoDetector {
         this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
         this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
 
-        Main.LOGGER.log(Level.WARNING, "out rvec\n" + this.rvec.dump());
-        Main.LOGGER.log(Level.WARNING, "out tvec\n" + this.tvec.dump());
+        //Main.LOGGER.log(Level.WARNING, "out rvec\n" + this.rvec.dump());
+        //Main.LOGGER.log(Level.WARNING, "out tvec\n" + this.tvec.dump());
     }
 }
 /*----------------------------------------------------------------------------------------------------------- */

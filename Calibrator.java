@@ -61,7 +61,7 @@ class Calibrator {
 
     Calibrator(Size img_size)
     {
-      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.img_size = img_size;
         // initial fake camera matrix to get things started
@@ -73,7 +73,7 @@ class Calibrator {
         this.Kin.put(2, 2, 1.);
         this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
         this.Kin.copyTo(this.K);
-        Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
+        //Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
         Main.Kcsv(Id.__LINE__(), K);
     }
 /*----------------------------------------------------------------------------------------------------------- */
@@ -87,7 +87,7 @@ class Calibrator {
 /*----------------------------------------------------------------------------------------------------------- */
     private double[] get_intrinsics()
     {
-      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
       double[] intrinsics = {
         this.K.get(0, 0)[0],
         this.K.get(1, 1)[0],
@@ -112,7 +112,7 @@ class Calibrator {
 /*----------------------------------------------------------------------------------------------------------- */
     double[] calibrate(List<keyframe> keyframes) throws Exception // force use of keyframes instead of default None
     {
-      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int flags = this.flags;
 
@@ -144,16 +144,16 @@ class Calibrator {
         }
 
         Main.Kcsv(Id.__LINE__(), K);
-        List<Object> res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
 
-        this.reperr = Double.class.cast(res.get(0)); // magic, I called it double
-        Mat.class.cast(res.get(1)).copyTo(this.K);
-        Mat.class.cast(res.get(2)).copyTo(this.cdist);
-        Main.LOGGER.log(Level.WARNING, "res.get(2) " + res.get(2).toString() + " " + cdist.dump() );
-        List<Mat> rvecsList = (List<Mat>)res.get(3);
-        List<Mat> tvecsList = (List<Mat>)res.get(4);
-        Mat variances= Mat.class.cast(res.get(5)); // variances in part replaces self.PCov in Python
-        // this.N_pts = Integer.class.cast(res.get(6)); // magic I called it int - not used
+        calibrateCameraReturn res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
+ 
+        this.reperr = res.reperr;
+        res.K.copyTo(this.K);
+        res.cdist.copyTo(this.cdist);
+        List<Mat> rvecsList = res.rvecsList;
+        List<Mat> tvecsList = res.tvecsList;
+        Mat variances = res.varianceIntrinsics;
+
         Main.Kcsv(Id.__LINE__(), K);
 
         variances.get(0, 0, this.varIntrinsics); // convert from Mat to double array; this.varIntrinsics replaces self.PCov in Python
@@ -175,7 +175,7 @@ class Calibrator {
 /*----------------------------------------------------------------------------------------------------------- */
     private static double[] index_of_dispersion(double[] mean, double[] variance)
     {
-      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // computes index of dispersion:
       // https://en.wikipedia.org/wiki/Index_of_dispersion
@@ -222,7 +222,7 @@ class Calibrator {
      */
     private static double[] compute_pose_var(List<Mat> rvecs, List<Mat> tvecs)
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         double[] ret = new double[6]; // return 
 
@@ -237,7 +237,7 @@ class Calibrator {
         {
           Calib3d.Rodrigues(r, dst);
           double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
-          Main.LOGGER.log(Level.WARNING, "\nreuler degrees " + Arrays.toString(reuler) + "\nr " + r.t().dump());
+          //Main.LOGGER.log(Level.WARNING, "\nreuler degrees " + Arrays.toString(reuler) + "\nr " + r.t().dump());
           // workaround for the given board so r_x does not oscilate between +-180°
           reuler[0] = reuler[0] % 360.;
           reulers.add(reuler);
@@ -284,7 +284,7 @@ class Calibrator {
 /*----------------------------------------------------------------------------------------------------------- */
     private static double[] stupidVariance(List<double[]> data)
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // always 3 components x, y, z so do all 3 at once
         double[] sum = {0., 0., 0.};
@@ -329,9 +329,9 @@ class Calibrator {
      * @return
      * @throws Exception
      */
-    static List<Object> calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K) throws Exception
+    calibrateCameraReturn calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K) throws Exception
     {
-      Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // split keyframes into its two separate components, image points and object points, for OpenCV calibrateCamera
         // we put them together when detected then we take them apart for calibration.
@@ -357,15 +357,15 @@ class Calibrator {
         TermCriteria criteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 30, DBL_EPSILON);
         double reperr = Double.NaN;
         Main.Kcsv(Id.__LINE__(), K);
-        Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
+        //Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
         try
         {
            reperr = Calib3d.calibrateCameraExtended(
               pts3dFrames, pts2dFrames, img_size, K, cdist, rvecs, tvecs, stdDeviationsIntrinsics, new Mat(), new Mat(), flags, criteria); //FIXME maybe null for the two empty Mats?
 
-          Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-          Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
-          Main.LOGGER.log(Level.WARNING, "repError " + reperr);
+          //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
+          //Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
+          //Main.LOGGER.log(Level.WARNING, "repError " + reperr);
         }
         catch(CvException error)
         {
@@ -375,20 +375,31 @@ class Calibrator {
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
 
-        Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump() + ", N = " + N);
+        //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump() + ", N = " + N);
 
         stdDeviationsIntrinsics.release();
 
-        // return is positional
-        ArrayList<Object> res = new ArrayList<>(7);
-        res.add(reperr); // 0
-        res.add(K); // 1
-        res.add(cdist); // 2
-        res.add(rvecs); // 3
-        res.add(tvecs); // 4
-        res.add(varianceIntrinsics); // 5
-        // res.add(N); // 6 // not used
-        return res;
+        return new calibrateCameraReturn(reperr, K, cdist, rvecs, tvecs, varianceIntrinsics);
+    }
+
+    class calibrateCameraReturn
+    {
+        double reperr;
+        Mat K;
+        Mat cdist;
+        List<Mat> rvecsList;
+        List<Mat> tvecsList;
+        Mat varianceIntrinsics; 
+        calibrateCameraReturn(double reperr, Mat K, Mat cdist, List<Mat> rvecs, List<Mat> tvecs, Mat varianceIntrinsics)
+        {
+            this.reperr = reperr;
+            this.K = K;
+            this.cdist = cdist;
+            this.rvecsList = rvecs;
+            this.tvecsList = tvecs;
+            this.varianceIntrinsics = varianceIntrinsics;
+            // N_pts not used
+        }         
     }
 }
 /*----------------------------------------------------------------------------------------------------------- */
