@@ -493,7 +493,7 @@ public class UserGuidance {
 /*----------------------------------------------------------------------------------------------------------- */
     /**
      * add the guidance board to the camera image to make the new user display
-     * @param img
+     * @param img in/out; the composite of everything Mat that will be displayed to the user
      * @param mirror
      * @throws Exception
      */

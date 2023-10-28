@@ -20,13 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +56,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String VERSION = "CONVERTED alpha 4"; // change this
+    private static final String VERSION = "CONVERTED alpha 5"; // change this
 
     static
     {
@@ -136,35 +130,34 @@ public class Main {
     // Checks for the specified camera and uses it if present. 0 internal, 1 external if there is a 0 internal (sometimes)    
     private static final int camId = 0;
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
-
-    AtomicInteger dokeystroke = new AtomicInteger(-1); //FIXME patch for horrible or no response from OpenCV keystroke
-
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     main                                                                   */
-/*                                     main                                                                   */
-/*                                     main                                                                   */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-//FIXME patch for horrible or no response from OpenCV keystroke
-class Keystroke implements Runnable {
-    public void run()
+    
+    //FIXME patch for horrible or no response from OpenCV keystroke
+    AtomicInteger dokeystroke = new AtomicInteger(-1);
+    class Keystroke implements Runnable
     {
-        Scanner keyboard = new Scanner(System.in);
-
-        while(true)
+        public void run()
         {
-            System.out.println("enter c, m, q");
-            String entered = keyboard.next();
-            int xx = entered.charAt(0);
-            if(xx == 99) dokeystroke.set(67);// c 99
-            if(xx == 109) dokeystroke.set(77);// m 109
-            if(xx == 113) dokeystroke.set(27);// q 113
+            Scanner keyboard = new Scanner(System.in);
+            while(!Thread.interrupted())
+            {
+                System.out.println("enter c, m, q");
+                String entered = keyboard.next();
+                int xx = entered.charAt(0);
+                if(xx == 99) dokeystroke.set(67);// c 99
+                if(xx == 109) dokeystroke.set(77);// m 109
+                if(xx == 113) dokeystroke.set(27);// q 113
+            }
         }
     }
-}
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
+/*                                                                                                            */
+/*                                     main                                                                   */
+/*                                     main                                                                   */
+/*                                     main                                                                   */
+/*                                                                                                            */
+/*----------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------- */
     public static void main(String[] args) throws Exception
     {
         //FIXME patch for horrible or no response from OpenCV keystroke
@@ -278,7 +271,10 @@ class Keystroke implements Runnable {
             HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
 
             int k = HighGui.waitKey(Cfg.wait);
-            k = x.dokeystroke.getAndSet(timedOut); //FIXME patch for horrible or no response from OpenCV keystroke
+            
+            //FIXME patch for horrible or no response from OpenCV keystroke
+            // use the terminal window instead of the image window for key input
+            k = x.dokeystroke.getAndSet(timedOut);
 
             if(k == timedOut)
             {

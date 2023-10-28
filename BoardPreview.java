@@ -76,8 +76,12 @@ class BoardPreview {
 
         Imgproc.warpPerspective(img, imgProjected, H, sz, flags);
 
+        // draw axes on the warped Guidance Board
+        // these are drawn in the wrong corner and drawing before the warpPerspective doesn't work - tiny image in worse spot
         // these axes diagram cover the desired posed (warped) Guidance Board before it is processed. Maybe draw them later and they are in a different position
+        Core.flip(imgProjected, imgProjected, 0); // flip to get axes origin in correct corner BUT the estimated origin is reversed from where it belongs
         Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); // may need rotation vector rvec instead of R
+        Core.flip(imgProjected, imgProjected, 0); // put the img back right
 
         transform.release();
         R.release();
@@ -115,6 +119,7 @@ class BoardPreview {
         // aperture/lens which flips the scene upside down. So after the Imgproc.warpPerspective the img is
         // again upside right.
 
+        // too dark to see low exposure camera images behind it so not used
         // set black pixels to gray; non-black pixels stay the same
 
         // process entire Mat for efficiency
@@ -124,7 +129,7 @@ class BoardPreview {
         {
             if(img1ChannelBuff[index] == 0) // is it black?
             {
-                img1ChannelBuff[index] = 64; // make it gray
+                img1ChannelBuff[index] = 1; // make it gray
             }
         }
         this.img.put(0, 0, img1ChannelBuff);

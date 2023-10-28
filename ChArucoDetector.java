@@ -160,11 +160,16 @@ public class ChArucoDetector {
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
+    /**
+     * Draw axes on the detected ChArUcoBoard from the camera image
+     * @param img
+     */
     public void draw_axis(Mat img)
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        Calib3d.drawFrameAxes(img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len);
+        Calib3d.drawFrameAxes(
+            img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len*4.f, 1);
     }   
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -452,6 +457,9 @@ public class ChArucoDetector {
         Calib3d.solvePnPRefineVVS(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
   
         //FIXME negating "x" makes the shadow for jaccard the right orientation for some unknown reason! Python doesn't need this.
+        // I thought it was related to not having the "flip()" as the BoardPreview needs because the "warpPerspective" flips
+        // the image, but I tried that flip and it was the wrong axis. Still a mystery
+        // removing this and flipping 
         Core.multiply(rvec, new Scalar(-1., 1., 1.), rvec);
 
         this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
