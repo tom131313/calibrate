@@ -35,7 +35,6 @@ import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -56,7 +55,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String VERSION = "CONVERTED alpha 5"; // change this
+    private static final String VERSION = "CONVERTED alpha 6"; // change this
 
     static
     {
@@ -125,30 +124,11 @@ public class Main {
     private static final int keyCapture = 67;
     private static final int keyMirrorToggle = 77;
     private static final int timedOut = -1;  // timed out no key pressed
-    private static long allowKeyPressAfterTime = 0; // time when next key press is allowed - prevents multiple rapid, unintentional presses; allows holding key down for extended period so it is seen by the keywait
-
+  
     // Checks for the specified camera and uses it if present. 0 internal, 1 external if there is a 0 internal (sometimes)    
     private static final int camId = 0;
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
     
-    //FIXME patch for horrible or no response from OpenCV keystroke
-    AtomicInteger dokeystroke = new AtomicInteger(-1);
-    class Keystroke implements Runnable
-    {
-        public void run()
-        {
-            Scanner keyboard = new Scanner(System.in);
-            while(!Thread.interrupted())
-            {
-                System.out.println("enter c, m, q");
-                String entered = keyboard.next();
-                int xx = entered.charAt(0);
-                if(xx == 99) dokeystroke.set(67);// c 99
-                if(xx == 109) dokeystroke.set(77);// m 109
-                if(xx == 113) dokeystroke.set(27);// q 113
-            }
-        }
-    }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -160,13 +140,6 @@ public class Main {
 /*----------------------------------------------------------------------------------------------------------- */
     public static void main(String[] args) throws Exception
     {
-        //FIXME patch for horrible or no response from OpenCV keystroke
-        Main x = new Main();
-        Keystroke keystroke = x.new Keystroke();
-        Thread keyboardThread = new Thread(keystroke, "keys");
-        keyboardThread.setDaemon(true);
-        keyboardThread.start();
-
         pw = new PrintWriter("K.csv");
 
         OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
@@ -268,13 +241,9 @@ public class Main {
 
             displayOverlay(out, ugui);
 
-            HighGui.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
+            HighGuiX.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
 
-            int k = HighGui.waitKey(Cfg.wait);
-            
-            //FIXME patch for horrible or no response from OpenCV keystroke
-            // use the terminal window instead of the image window for key input
-            k = x.dokeystroke.getAndSet(timedOut);
+            int k = HighGuiX.waitKey(Cfg.wait);
 
             if(k == timedOut)
             {
@@ -282,17 +251,6 @@ public class Main {
             }
             
             // have a key
-            long currentTimeMillis = System.currentTimeMillis();
-            if(currentTimeMillis < allowKeyPressAfterTime)
-            {// smarter way is check for SAME key pressed rapidly but this checking for any key pressed is good enough for now
-                continue; // a key pressed soon after previous press so ignore it
-            }
-            
-            // process this key
-            //Main.LOGGER.log(Level.WARNING, "Pressed Key " + k);
-            
-            allowKeyPressAfterTime = currentTimeMillis + Cfg.keyLockoutDelayMillis; // lockout more presses for a awhile
-
             switch(k)
             {
                 case keyTerminate: // terminate key pressed to stop loop immediately

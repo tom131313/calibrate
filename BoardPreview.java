@@ -119,7 +119,7 @@ class BoardPreview {
         // aperture/lens which flips the scene upside down. So after the Imgproc.warpPerspective the img is
         // again upside right.
 
-        // too dark to see low exposure camera images behind it so not used
+        // light to much to see low exposure camera images behind it so reduce almost to nothing. Can't set to 0 - messes up other places that check 0 or not 0
         // set black pixels to gray; non-black pixels stay the same
 
         // process entire Mat for efficiency
@@ -127,9 +127,16 @@ class BoardPreview {
         this.img.get(0, 0, img1ChannelBuff); // get the row, all channels
         for(int index = 0; index < img1ChannelBuff.length; index++) // process each element of the row
         {
+            // if the camera image is dimmer then the guidance board needs to be dimmer.
+            // if the camera image is bright then the guidance board needs to be bright.
             if(img1ChannelBuff[index] == 0) // is it black?
             {
-                img1ChannelBuff[index] = 1; // make it gray
+                img1ChannelBuff[index] = 1; // make it gray - I'd like to make this 0 so it's easy to see the camera image
+                // behind it but that messes up the shadow board logic that relies on non-zero pixels. Need major surgery to fix
+            }
+            else
+            {
+                img1ChannelBuff[index] = 127; // make the bright green subdued.
             }
         }
         this.img.put(0, 0, img1ChannelBuff);

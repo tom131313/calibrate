@@ -243,7 +243,7 @@ class Calibrator {
           reulers.add(reuler);
         }
 
-        double[] varReuler = stupidVariance(reulers);
+        double[] varReuler = simpleVariance(reulers);
 
         for(int i=0; i <3; i++)
         {
@@ -263,7 +263,7 @@ class Calibrator {
           translations.add(tvec);
         }
           
-        double[] varTvecs = stupidVariance(translations);
+        double[] varTvecs = simpleVariance(translations);
         for(int i = 3; i < 6; i++)
         {
           ret[i] = varTvecs[i-3];
@@ -278,11 +278,17 @@ class Calibrator {
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
-/*                                     stupidVariance                                                         */
+/*                                     simpleVariance                                                         */
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-    private static double[] stupidVariance(List<double[]> data)
+    /**
+     * Variance of each axis of a list of 3-D points
+     * [Could be generalized to any number of dimensions with little change.]
+     * @param data
+     * @return variances in a 3 element array
+     */
+    private static double[] simpleVariance(List<double[]> data)
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
