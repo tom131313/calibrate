@@ -24,8 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -55,7 +53,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String VERSION = "CONVERTED alpha 6"; // change this
+    private static final String VERSION = "CONVERTED alpha 7"; // change this
 
     static
     {
@@ -241,7 +239,7 @@ public class Main {
 
             displayOverlay(out, ugui);
 
-            HighGuiX.imshow("PoseCalibJ", out); // added J to name to distinguish Java images from Python during debugging
+            HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
 
             int k = HighGuiX.waitKey(Cfg.wait);
 

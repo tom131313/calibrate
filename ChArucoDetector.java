@@ -205,12 +205,12 @@ public class ChArucoDetector {
         //Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
         if(this.N_pts == 0) // maybe use the min N_pts from Cfg
-        {
+        {// allow comparison with last good detection - ignoring frames with no detected corners say because of blur.
             // for optical flow calculation
-            this.last_ccorners.release();
-            this.last_cids.release();
-            this.last_ccorners = new Mat();
-            this.last_cids = new Mat();
+            // this.last_ccorners.release();
+            // this.last_cids.release();
+            // this.last_ccorners = new Mat();
+            // this.last_cids = new Mat();
             return;
         }
 
