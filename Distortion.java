@@ -86,7 +86,7 @@ class Distortion
             int h = aabb.height;
             //Main.LOGGER.log(Level.WARNING, "processing Rect aabb " + aabb);
 
-            if (!mask.empty() // amount of mask already filled where this contour would fill
+            if ( ! mask.empty() // amount of mask already filled where this contour would fill
                 && (double)Core.countNonZero(mask.submat(y, y+h, x, x+w)) / (double)(w*h) > Cfg.MAX_OVERLAP)
             {
                 contours.remove(mx); // largest contour wouldn't contribute enough in the right places so skip it

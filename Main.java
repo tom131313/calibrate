@@ -191,7 +191,7 @@ public class Main {
         boolean save = false; // indicator for user pressed the "c" key to capture (save) manually
 
         grabFrameLoop:
-        while (!Thread.interrupted())
+        while ( ! Thread.interrupted())
         {
             frameNumber++;
             frame = String.format("%05d ", frameNumber);

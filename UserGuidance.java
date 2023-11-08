@@ -213,7 +213,7 @@ public class UserGuidance {
                 {
                     if (rel_pstd[p] > 0 && rel_pstd[p] < this.var_terminate)
                     {    
-                        if (! this.pconverged[p])
+                        if ( ! this.pconverged[p])
                           {
                             converged.append(this.INTRINSICS[p]);
                             this.pconverged[p] = true;

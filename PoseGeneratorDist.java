@@ -392,7 +392,7 @@ public class PoseGeneratorDist {
         double aspect = src_ext[0] / src_ext[1]; // w/h of the full ChArUcoBoard // [2520; 1680; 2520] => 1.5
 
         // match aspect ratio of tgt to src, but keep tl
-        if (!rot90)
+        if ( ! rot90)
         {
             tgt_rect.height = (int)(tgt_rect.width / aspect); // adapt height
         }

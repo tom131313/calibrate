@@ -92,7 +92,7 @@ public class ArrayUtils
 	{
 		for (boolean element : array)
 		{
-			if (!element) return false;
+			if ( ! element) return false;
 		}
 		return true;
 	}
