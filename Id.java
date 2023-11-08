@@ -24,9 +24,9 @@ static String __LINE__()
 
 	final StackTraceElement[] ste = Thread.currentThread().getStackTrace();
 	String returnLine="";
-	for (int i=0; i<ste.length; i++)
+	for (int i = 0; i < ste.length; i++)
 		if (ste[i].getMethodName().equals("__LINE__")) {
-			returnLine = returnLine + ste[i+1].getFileName() +'@'+ ste[i+1].getLineNumber();
+			returnLine = returnLine + ste[i + 1].getFileName() +'@'+ ste[i+1].getLineNumber();
 			break;
 		}
 	return returnLine;

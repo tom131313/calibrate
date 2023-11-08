@@ -1,8 +1,6 @@
 // projects a 2D object (image) according to parameters - generate styled board image
 package calibrator;
 
-import static calibrator.ArrayUtils.brief;
-
 import java.util.logging.Level;
 
 import org.opencv.calib3d.Calib3d;
@@ -125,11 +123,11 @@ class BoardPreview {
         // process entire Mat for efficiency
         byte[] img1ChannelBuff = new byte[this.img.rows()*this.img.cols()*this.img.channels()]; // temp buffer for more efficient access
         this.img.get(0, 0, img1ChannelBuff); // get the row, all channels
-        for(int index = 0; index < img1ChannelBuff.length; index++) // process each element of the row
+        for (int index = 0; index < img1ChannelBuff.length; index++) // process each element of the row
         {
             // if the camera image is dimmer then the guidance board needs to be dimmer.
             // if the camera image is bright then the guidance board needs to be bright.
-            if(img1ChannelBuff[index] == 0) // is it black?
+            if (img1ChannelBuff[index] == 0) // is it black?
             {
                 img1ChannelBuff[index] = 1; // make it gray - I'd like to make this 0 so it's easy to see the camera image
                 // behind it but that messes up the shadow board logic that relies on non-zero pixels. Need major surgery to fix
@@ -147,10 +145,10 @@ class BoardPreview {
         byte[] img3ChannelBuff = new byte[this.img.rows()*this.img.cols()*this.img.channels()]; // temp buffers for efficient access
         // process one row at a time for efficiency
         this.img.get(0, 0, img3ChannelBuff); // get the row, all channels
-        for(int index = 0; index < img3ChannelBuff.length; index+=3) // process each triplet (channels) of the row
+        for (int index = 0; index < img3ChannelBuff.length; index += 3) // process each triplet (channels) of the row
         {
             img3ChannelBuff[index] = 0; // B
-            img3ChannelBuff[index+2] = 0; // R
+            img3ChannelBuff[index + 2] = 0; // R
         }
         this.img.put(0, 0, img3ChannelBuff);
 
@@ -179,18 +177,18 @@ class BoardPreview {
         scale.put(0, 0, this.SIZE.width/sz.width);
         scale.put(1, 1, this.SIZE.height/sz.height);
         scale.put(2, 2, 1.);
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         Core.gemm(scale, K, 1., new Mat(), 0.,K);
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         sz = this.SIZE;
         //Main.LOGGER.log(Level.WARNING, "K scaled\n" + K.dump());
         //Main.LOGGER.log(Level.WARNING, "Knew null " + (this.Knew == null)); // matches to here
 
         this.Knew = Calib3d.getOptimalNewCameraMatrix(K, cdist, sz, 1.); // .2% higher than Python for same input
         //Main.LOGGER.log(Level.WARNING, "Knew " + this.Knew + "\n" + this.Knew.dump());
-        Main.Kcsv(Id.__LINE__(), this.Knew);
+        //Main.Kcsv(Id.__LINE__(), this.Knew);
         this.maps = Distortion.make_distort_map(K, sz, cdist, this.Knew);
-        Main.Kcsv(Id.__LINE__(), this.Knew);
+        //Main.Kcsv(Id.__LINE__(), this.Knew);
         //Main.LOGGER.log(Level.WARNING, "Knew " + this.Knew + "\n" + this.Knew.dump()); // same as input to make_distort_map
         //Main.LOGGER.log(Level.WARNING, "maps " + this.maps + "\n" + brief(this.maps));
     }

@@ -84,12 +84,30 @@ public class UserGuidance {
     private Mat tgt_t = new Mat();
 
     // getters
-    boolean converged(){return converged;}
-    String user_info_text(){return user_info_text;}
-    Mat tgt_r(){return tgt_r;}
-    Mat tgt_t(){return tgt_t;}
-    boolean[] pconverged(){return pconverged;}
-    String[] INTRINSICS(){return INTRINSICS;}
+    boolean converged()
+    {
+        return converged;
+    }
+    String user_info_text()
+    {
+        return user_info_text;
+    }
+    Mat tgt_r()
+    {
+        return tgt_r;
+    }
+    Mat tgt_t()
+    {
+        return tgt_t;
+    }
+    boolean[] pconverged()
+    {
+        return pconverged;
+    }
+    String[] INTRINSICS()
+    {
+        return INTRINSICS;
+    }
 
     UserGuidance(ChArucoDetector tracker, double var_terminate) throws Exception // force use of var_terminate=0.1 instead of defaulting
     {
@@ -99,8 +117,6 @@ public class UserGuidance {
         this.var_terminate = var_terminate;
         this.calib = new Calibrator(tracker.img_size);
         this.pconverged = new boolean[this.calib.nintr()]; // initialized to false by Java
-        // Arrays.fill(this.pconverged, false);
-
         this.allpts = (Cfg.board_x-1)*(Cfg.board_y-1); // board w = 9 h = 6 => 54 squares; 8x5 => 40 interior corners
         this.square_len = Cfg.square_len;
         this.marker_len = Cfg.marker_len;
@@ -135,7 +151,7 @@ public class UserGuidance {
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        if(this.calib.keyframes.size() < 2) // need at least 2 keyframes
+        if (this.calib.keyframes.size() < 2) // need at least 2 keyframes
         {
             return;
         }
@@ -150,70 +166,70 @@ public class UserGuidance {
 
         double[] rel_pstd = new double[pvar.length];
 
-        if( ! first)
+        if ( ! first)
         {      
             double total_var_prev = Arrays.stream(pvar_prev).sum();
             double total_var = Arrays.stream(pvar).sum();
 
-            if(total_var > total_var_prev)
+            if (total_var > total_var_prev)
             {
                 //Main.LOGGER.log(Level.WARNING, "note: total var degraded");
             }
             // check for convergence
-            for(int i = 0; i < pvar.length; i++)
+            for (int i = 0; i < pvar.length; i++)
             {
                 rel_pstd[i] = 1 - Math.sqrt(pvar[i]) / Math.sqrt(pvar_prev[i]); //relative change to each std dev
             }
 
             //Main.LOGGER.log(Level.WARNING, "relative stddev " + Arrays.toString(rel_pstd));
             
-            if(rel_pstd[this.tgt_param] < 0)
+            if (rel_pstd[this.tgt_param] < 0)
             {
                 //Main.LOGGER.log(Level.WARNING, this.INTRINSICS[this.tgt_param] + " degraded");
             }
 
             // g0(p0 p1 p2 p3)  g1(p4 p5 p6 p7 p8)
-            for(int[] g : this.PARAM_GROUPS) // loop through all groups (2 groups)
+            for (int[] g : this.PARAM_GROUPS) // loop through all groups (2 groups)
             {
                 // check if tgt_parm in this group
                 boolean inGroup = false; // first assume not in this group
-                for(int p : g) // loop through whole group (4 or 5 items)
+                for (int p : g) // loop through whole group (4 or 5 items)
                 {
-                    if(this.tgt_param == p)
+                    if (this.tgt_param == p)
                     {
                         inGroup = true; // found it in this group
                         break; // no need to check further
                     }
                 }
 
-                if( ! inGroup)
+                if ( ! inGroup)
                 {
                     continue; // not in this group so move on to next group            
                 }
 
                 StringBuilder converged = new StringBuilder();
 
-                for(int p : g)
+                for (int p : g)
                 {
-                    if(rel_pstd[p] > 0 && rel_pstd[p] < this.var_terminate)
+                    if (rel_pstd[p] > 0 && rel_pstd[p] < this.var_terminate)
                     {    
-                        if(! this.pconverged[p])
+                        if (! this.pconverged[p])
                           {
                             converged.append(this.INTRINSICS[p]);
                             this.pconverged[p] = true;
                           }
                     }
                 }
-                if( ! converged.isEmpty())
+                if ( ! converged.isEmpty())
                 {
                     //Main.LOGGER.log(Level.WARNING, "{" + converged + "} converged");
                 }
             }
         }
         // if an intrinsic has converged, then set it to 0 so it can't be selected (again) as the max 
-        for(int i = 0; i < this.pconverged.length; i++)
+        for (int i = 0; i < this.pconverged.length; i++)
         {
-            if(this.pconverged[i])
+            if (this.pconverged[i])
             {
                 index_of_dispersion[i] = 0.;
             }
@@ -284,10 +300,10 @@ public class UserGuidance {
         
         double jaccard = 0.;
     
-        if( ! this.tracker.pose_valid())
+        if ( ! this.tracker.pose_valid())
             return jaccard;
 
-        if(this.tgt_r.empty())
+        if (this.tgt_r.empty())
             return jaccard;
     
         byte[] board_warpedArray = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
@@ -296,9 +312,9 @@ public class UserGuidance {
         byte[] overlapArray = new byte[this.overlap.rows()*this.overlap.cols()]; // 1 channel; java sets this to all zeros
 
         int indexBoard_warpedArray = 1; // start position; extracting channel 1 (of 0, 1, 2)
-        for(int row = 0; row < overlapArray.length; row++)
+        for (int row = 0; row < overlapArray.length; row++)
         {
-            if(board_warpedArray[indexBoard_warpedArray] != 0)
+            if (board_warpedArray[indexBoard_warpedArray] != 0)
             {
                 overlapArray[row] = 1;
             }
@@ -358,13 +374,13 @@ public class UserGuidance {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // first time need to see at least half of the interior corners or force
-        if((this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2))
-        {
+        if ((this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2))
+        {Main.LOGGER.log(Level.WARNING, "initial calibrate");
             // try to estimate intrinsic params from single frame
             this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()));
 
-            if( /*! np.isnan(this.calib.K()).any() &&*/ this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be
-            {
+            if ( /*! np.isnan(this.calib.K()).any() &&*/ this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be
+            {Main.LOGGER.log(Level.WARNING, "initial set_next_pose and intrinsics");
                 this.set_next_pose();  // update target pose
                 this.tracker.set_intrinsics(this.calib);
                 this.min_reperr_init = this.calib.reperr();
@@ -375,7 +391,7 @@ public class UserGuidance {
 
         double pose_close_to_tgt = this.pose_close_to_tgt();
 
-        if(pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
+        if (pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
         {
             this.pose_reached = true;
         }
@@ -383,7 +399,7 @@ public class UserGuidance {
         // and 15 points per frame from then on
         int n_required = ((this.calib.nintr() + 2 * 6) * 5 + 3) / (2 * 2); // 27
 
-        if(this.calib.keyframes.size() >= 2)
+        if (this.calib.keyframes.size() >= 2)
         {
             n_required = 6 / 2 * 5; // yup - that's a 15 rkt
         }
@@ -402,7 +418,7 @@ public class UserGuidance {
             // ", pose_reached " + this.pose_reached +
             // ", force " + force);
 
-        if( ! this.capture)
+        if ( ! this.capture)
         {
             return false;            
         }
@@ -417,7 +433,7 @@ public class UserGuidance {
 
         this.converged = isAllTrue(this.pconverged);
 
-        if(this.converged)
+        if (this.converged)
         {
             this.tgt_r.release();
             this.tgt_r = new Mat(); // clear the rotation
@@ -446,15 +462,15 @@ public class UserGuidance {
 
         this.user_info_text = "";
 
-        if(this.calib.keyframes.size() < 2)
+        if (this.calib.keyframes.size() < 2)
         {
             this.user_info_text = "initialization";
         }
-        else if( ! this.converged)
+        else if ( ! this.converged)
         {
             String action = "";
             int axis;
-            if(this.tgt_param < 2)
+            if (this.tgt_param < 2)
             {
                 action = "rotate";
                 // do not consider r_z as it does not add any information
@@ -502,21 +518,21 @@ public class UserGuidance {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // assumes both img and board are 3 color channels BGR
-        if( ! this.tgt_r.empty())
+        if ( ! this.tgt_r.empty())
         {
             // process complete Mats' temp buffers for efficient access
             byte[] imgBuff = new byte[img.rows()*img.cols()*img.channels()];
             byte[] board_warpedBuff = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
 
-            if(imgBuff.length != board_warpedBuff.length) throw new Exception("major trouble here"); // debug statement
+            if (imgBuff.length != board_warpedBuff.length) throw new Exception("major trouble here"); // debug statement
 
             img.get(0, 0, imgBuff); // get the Mat
             this.board_warped.get(0, 0,board_warpedBuff); // get the Mat
 
-            for(int index = 0; index < imgBuff.length; index++)
+            for (int index = 0; index < imgBuff.length; index++)
             {
                 // if there is a non-black pixel in the warped board then use it in img
-                if(board_warpedBuff[index] != 0)
+                if (board_warpedBuff[index] != 0)
                 {
                     imgBuff[index] = board_warpedBuff[index];
                 }
@@ -524,12 +540,12 @@ public class UserGuidance {
             img.put(0, 0, imgBuff); // update the Mat            
         }
 
-        if(this.tracker.pose_valid())
+        if (this.tracker.pose_valid())
         {
             this.tracker.draw_axis(img); // draw axes on the detected board from the camera image
         }
 
-        if(mirror)
+        if (mirror)
         {
             Core.flip(img, img, 1);
         }
@@ -606,9 +622,9 @@ public class UserGuidance {
         StringBuilder flags_str = new StringBuilder("flags: ");
         int unknownFlags = flagsCalibration; // initially assume all flags are unknown to the hashmap
 
-        for(Map.Entry<Integer, String> flag : flags.entrySet())
+        for (Map.Entry<Integer, String> flag : flags.entrySet())
         {
-            if((flagsCalibration & flag.getKey()) == flag.getKey())
+            if ((flagsCalibration & flag.getKey()) == flag.getKey())
             {
                 flags_str.append(flag.getValue());
                 unknownFlags -= flag.getKey(); // this flag is known so un-mark unknown flags
@@ -616,7 +632,7 @@ public class UserGuidance {
         }
 
         flags_str.append(String.format("\nflags: %08x", flagsCalibration));
-        if(unknownFlags != 0)
+        if (unknownFlags != 0)
         {
             flags_str.append(String.format("; unknown flag usage = %08x", unknownFlags));          
         }

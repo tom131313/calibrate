@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -53,7 +54,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String VERSION = "CONVERTED alpha 7"; // change this
+    private static final String VERSION = "beta 1"; // change this
 
     static
     {
@@ -109,7 +110,7 @@ public class Main {
     // java.util.logging Levels	ALL FINEST FINER	FINE	INFO	CONFIG  WARNING	SEVERE	OFF
     for (String key : classesLog)
         {
-        String value = "SEVERE";
+        String value = "ALL";
         classLevels.put(key, Level.parse(value));
         }
     }
@@ -194,14 +195,14 @@ public class Main {
         {
             frameNumber++;
             frame = String.format("%05d ", frameNumber);
-            if(frameNumber%Cfg.garbageCollectionFrames == 0) System.gc();
+            if (frameNumber%Cfg.garbageCollectionFrames == 0) System.gc();
 
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
 
             long status = cap.grabFrame(_img, 0.5);
             if (status != 0)
             {
-                if(_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
+                if (_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
                     // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC);
                     Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
@@ -243,13 +244,13 @@ public class Main {
 
             int k = HighGuiX.waitKey(Cfg.wait);
 
-            if(k == timedOut)
+            if (k == timedOut)
             {
                 continue; // no key press to process
             }
             
             // have a key
-            switch(k)
+            switch (k)
             {
                 case keyTerminate: // terminate key pressed to stop loop immediately
                         break grabFrameLoop;
@@ -266,6 +267,12 @@ public class Main {
                         break;
             }
         } // end grabFrameLoop
+
+        Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
+        Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
+        Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 1);
+        HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
+        int k = HighGuiX.waitKey(5000);
 
         ugui.write(); //FIXME temp just to see what comes out even if we don't make it to the converged end
         pw.close(); // K debugging
@@ -296,14 +303,20 @@ public class Main {
             Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
         }
 
-        Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
-        Imgproc.putText(out, ugui.tgt_r().dump()+ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+        // //FIXME these guidance pose angles aren't right; bad conversion from tgt_r for some reason
+        // // maybe save the original angles from pose gen so they are butchered before getting here.
+        // Mat dst = new Mat();
+        // Calib3d.Rodrigues(ugui.tgt_r(), dst);
+        // double[] euler = Calib3d.RQDecomp3x3(dst, new Mat(), new Mat()); // always returns euler.length = 3
+
+        // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
+        // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
         
         // write a frame to a file name java<frame nbr>.jpg
         // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
         // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
         
-        if( ! testImg1.empty())
+        if ( ! testImg1.empty())
         { // add to the display the board/camera overlap image
             Imgproc.resize(testImg1, testImg1, new Size(Cfg.image_width*0.1, Cfg.image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
             List<Mat> temp1 = new ArrayList<>(3); // make the 1 b&w channel into 3 channels
@@ -321,10 +334,10 @@ public class Main {
         }
 
         // display intrinsics convergence
-        for(int i = 0; i < 9; i++)
+        for (int i = 0; i < 9; i++)
         {
             Scalar color;
-            if(ugui.pconverged()[i])
+            if (ugui.pconverged()[i])
             {
                 color = new Scalar(0, 190, 0);
             }
@@ -367,7 +380,7 @@ public class Main {
     public static void Kcsv(String line, Mat K)
     {
         counter++;
-        if(counter == 1) // first time switch for columns' header
+        if (counter == 1) // first time switch for columns' header
         {
             Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence"); // K's column names
         }

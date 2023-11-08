@@ -1,9 +1,6 @@
 package calibrator;
 
-import static calibrator.ArrayUtils.brief;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -113,7 +110,7 @@ public class PoseGeneratorDist {
         //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
         //Main.LOGGER.log(Level.WARNING, "Z " + Z);
 
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
 
         Calib3d.undistortPoints(p, p, K, cdist);
 
@@ -201,7 +198,7 @@ public class PoseGeneratorDist {
         // translate board to its center
         Mat Tc = Mat.eye(4, 4, CvType.CV_64FC1);
         Mat Tc1x3 = Tc.submat(3, 4, 0, 3);
-        Mat Tc3x1 = new Mat(); // temp for Rodrigues output
+        Mat Tc3x1 = new Mat();
         Mat translateToBoardCenter = new Mat(bbox.rows(), bbox.cols(), bbox.type()); // matching bbox for element by element multiply
         translateToBoardCenter.put(0, 0, -0.5, -0.5, 0.);
         translateToBoardCenter = bbox.mul(translateToBoardCenter);
@@ -299,9 +296,9 @@ public class PoseGeneratorDist {
         Mat KB = new Mat(); // ignore principal point
         Mat bboxZeroZ = new Mat(3, 1, CvType.CV_64FC1);
         bboxZeroZ.put(0, 0, bbox.get(0, 0)[0], bbox.get(1, 0)[0], 0.);
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         Core.gemm(K, bboxZeroZ,1., new Mat(), 0., KB);
-        Main.Kcsv(Id.__LINE__(), KB);
+        //Main.Kcsv(Id.__LINE__(), KB);
         double KBx = KB.get(0, 0)[0];
         double KBy = KB.get(1, 0)[0];
         double Z = Math.min(KBx/img_size.width, KBy/img_size.height);
@@ -356,7 +353,7 @@ public class PoseGeneratorDist {
         //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
         //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
         //Main.LOGGER.log(Level.WARNING, "img_sz " + img_sz.toString()); // camera screen image size
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
 
         double[] src_ext = new double[(int)src_extParm.total()];
         src_extParm.get(0, 0, src_ext);
@@ -367,7 +364,7 @@ public class PoseGeneratorDist {
 
         //Main.LOGGER.log(Level.WARNING, "rot90 " + rot90);
 
-        if(rot90)
+        if (rot90)
         {
             // flip width and height
             // src_ext = src_ext.clone(); // cloning not needed in this implementation since already hiding parameter src_extParm
@@ -580,7 +577,7 @@ public class PoseGeneratorDist {
         //Main.LOGGER.log(Level.WARNING, "tgt_param " + tgt_param);
         //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
         //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         if (nk == 0)
         {
             // x is camera pointing ahead up/down; y is camera pointing left/right; z is camera rotated (Z is axis from camera to target)
@@ -653,7 +650,7 @@ public class PoseGeneratorDist {
         Rect bounds = Distortion.loc_from_dist(pts, dpts, this.mask, false, 1.); // ignore previously used masked off areas
         /********************************************************************************************************* */
 
-        if(bounds == null)
+        if (bounds == null)
         {
             Main.LOGGER.log(Level.SEVERE, "bounds is null, pose not contributing; guessing what to do");
             return get_pose(bbox, nk, 3, K, cdist); // best guess of what the author meant to do (drop the axis)
@@ -767,10 +764,10 @@ Rotation axis v is the normalized input vector: v = rod2/theta = [a/theta, b/the
     //         EulerAnglesToRotationMatrix.EulerOrder.ORDER_XYZ,
     //         M );
     //     System.out.println("no Rodrigues XYZ\n");     
-    //     for(int i = 0; i < M[0].length; i++)
+    //     for (int i = 0; i < M[0].length; i++)
     //     {
     //         System.out.print(i + "| ");
-    //         for(int j = 0; j < M[1].length; j++)
+    //         for (int j = 0; j < M[1].length; j++)
     //             System.out.print(M[i][j] + " "); // if XYZ order, same output exactly as Java orbital_pose below
 
     //         System.out.println("|");
@@ -800,12 +797,12 @@ The principal point of symmetry (POS), also known as the calibrated principal po
 //  {
 //      int axis;
 //      axis = 0;
-//      for(int i = 0; i<20; i++)
+//      for (int i = 0; i < 20; i++)
 //      {
 //          //Main.LOGGER.log(Level.WARNING, String.valueOf(gb[axis].gen_bin()));
 //      }
 //      axis = 1;
-//      for(int i = 0; i<20; i++)
+//      for (int i = 0; i < 20; i++)
 //      {
 //          //Main.LOGGER.log(Level.WARNING, String.valueOf(gb[axis].gen_bin()));
 //      }

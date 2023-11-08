@@ -1,7 +1,6 @@
 package calibrator;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -11,7 +10,6 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.opencv.core.TermCriteria;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -50,14 +48,38 @@ class Calibrator {
       {Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN};
 
     // getters
-    Size img_size(){return this.img_size;}
-    int nintr(){return this.nintr;}
-    double reperr(){return this.reperr;}
-    double[] varIntrinsics(){return this.varIntrinsics;}
-    double[] pose_var(){return this.pose_var;}
-    int flags(){return this.flags;}
-    Mat K(){return this.K;}
-    Mat cdist(){return this.cdist;}
+    Size img_size()
+    {
+      return this.img_size;
+    }
+    int nintr()
+    {
+      return this.nintr;
+    }
+    double reperr()
+    {
+      return this.reperr;
+    }
+    double[] varIntrinsics()
+    {
+      return this.varIntrinsics;
+    }
+    double[] pose_var()
+    {
+      return this.pose_var;
+    }
+    int flags()
+    {
+      return this.flags;
+    }
+    Mat K()
+    {
+      return this.K;
+    }
+    Mat cdist()
+    {
+      return this.cdist;
+    }
 
     Calibrator(Size img_size)
     {
@@ -74,7 +96,7 @@ class Calibrator {
         this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
         this.Kin.copyTo(this.K);
         //Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
     }
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
@@ -116,25 +138,25 @@ class Calibrator {
 
         int flags = this.flags;
 
-        if( keyframes.isEmpty())
+        if ( keyframes.isEmpty())
         {
           keyframes.addAll(this.keyframes);
         }
 
-        if(keyframes.isEmpty())
+        if (keyframes.isEmpty())
         {
           throw new Exception("keyframes is empty");
         }
 
         int nkeyframes = keyframes.size();
 
-        if(nkeyframes <= 1)
+        if (nkeyframes <= 1)
         {
             // restrict first calibration to K matrix parameters
             flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
         }
 
-        if(nkeyframes <= 1)
+        if (nkeyframes <= 1)
         {
             // with only one frame we just estimate the focal length
             flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT;
@@ -143,7 +165,7 @@ class Calibrator {
             flags |= Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
         }
 
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
 
         calibrateCameraReturn res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
  
@@ -154,7 +176,7 @@ class Calibrator {
         List<Mat> tvecsList = res.tvecsList;
         Mat variances = res.varianceIntrinsics;
 
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
 
         variances.get(0, 0, this.varIntrinsics); // convert from Mat to double array; this.varIntrinsics replaces self.PCov in Python
 
@@ -180,14 +202,14 @@ class Calibrator {
       // computes index of dispersion:
       // https://en.wikipedia.org/wiki/Index_of_dispersion
       // compute the 9 VMR's
-      if(mean.length != variance.length)
+      if (mean.length != variance.length)
       {
         Main.LOGGER.log(Level.SEVERE, "mean and variance not the same size");
       }
       double[] VMR = new double[9];
-      for(int i=0; i<mean.length; i++)
+      for (int i = 0; i < mean.length; i++)
       {
-        VMR[i] = variance[i] /  (Math.abs(mean[i]) > 0 ? Math.abs(mean[i]) : 1.);
+        VMR[i] = variance[i] / (Math.abs(mean[i]) > 0 ? Math.abs(mean[i]) : 1.);
       }
 
       return VMR;
@@ -233,7 +255,7 @@ class Calibrator {
         Mat mtxR = new Mat();
         Mat mtxQ = new Mat();
 
-        for(Mat r:rvecs)
+        for (Mat r : rvecs)
         {
           Calib3d.Rodrigues(r, dst);
           double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
@@ -245,18 +267,18 @@ class Calibrator {
 
         double[] varReuler = simpleVariance(reulers);
 
-        for(int i=0; i <3; i++)
+        for (int i = 0; i < 3; i++)
         {
           ret[i] = varReuler[i];
         }
 
         List<double[]> translations = new ArrayList<>(50);
-        for(Mat t:tvecs)
+        for (Mat t : tvecs)
         {
           double[] tvec = new double[3];
           t.get(0, 0, tvec);
 
-          for(int i=0; i <3; i++)
+          for (int i = 0; i < 3; i++)
           {
             tvec[i] /= 10.; // [mm]      // divide by 254 to get inches - rkt?
           }
@@ -264,9 +286,9 @@ class Calibrator {
         }
           
         double[] varTvecs = simpleVariance(translations);
-        for(int i = 3; i < 6; i++)
+        for (int i = 3; i < 6; i++)
         {
-          ret[i] = varTvecs[i-3];
+          ret[i] = varTvecs[i - 3];
         }
 
         dst.release();
@@ -295,9 +317,9 @@ class Calibrator {
         // always 3 components x, y, z so do all 3 at once
         double[] sum = {0., 0., 0.};
         double[] sumSqr = {0., 0., 0.};
-        for(double[] datum:data)
+        for (double[] datum : data)
         {
-          for(int i=0; i<3; i++)
+          for (int i = 0; i < 3; i++)
           {
             sum[i] += datum[i];
           }
@@ -305,11 +327,11 @@ class Calibrator {
 
         double[] mean = {sum[0]/data.size(), sum[1]/data.size(), sum[2]/data.size()};
 
-        for(double[] datum:data)
+        for (double[] datum : data)
         {
-          for(int i=0; i<3; i++)
+          for (int i = 0; i < 3; i++)
           {
-            sumSqr[i] += Math.pow(datum[i]-mean[i], 2);
+            sumSqr[i] += Math.pow(datum[i] - mean[i], 2);
           }
         }
 
@@ -350,24 +372,26 @@ class Calibrator {
         {
             pts2dFrames.add(keyframe.p2d());
             pts3dFrames.add(keyframe.p3d());
-            N += keyframe.p2d().rows();
+            N += keyframe.p2d().rows(); // total points - all frames (poses/views) and all points in those poses
         }
 
-        if(N <= 4) throw new Exception("not enough total points");
+        if (N <= 4) throw new Exception("not enough total points");
 
         Mat cdist = new Mat();
         List<Mat> rvecs = new ArrayList<>();
         List<Mat> tvecs = new ArrayList<>();
         Mat stdDeviationsIntrinsics = new Mat();
-        double DBL_EPSILON = Math.ulp(1.);
-        TermCriteria criteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 30, DBL_EPSILON);
         double reperr = Double.NaN;
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         //Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
         try
         {
            reperr = Calib3d.calibrateCameraExtended(
-              pts3dFrames, pts2dFrames, img_size, K, cdist, rvecs, tvecs, stdDeviationsIntrinsics, new Mat(), new Mat(), flags, criteria); //FIXME maybe null for the two empty Mats?
+            pts3dFrames, pts2dFrames,
+            img_size, K, cdist,
+            rvecs, tvecs,
+            stdDeviationsIntrinsics, new Mat(), new Mat(),
+            flags, Cfg.calibrateCameraCriteria); //FIXME maybe null for the two empty Mats?
 
           //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
           //Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
@@ -377,7 +401,7 @@ class Calibrator {
         {
           Main.LOGGER.log(Level.SEVERE, Id.__LINE__() + " " + error.toString());
         }
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
 

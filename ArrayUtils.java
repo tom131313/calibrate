@@ -90,9 +90,9 @@ public class ArrayUtils
 	 */
 	static boolean isAllTrue(boolean[] array)
 	{
-		for(boolean element : array)
+		for (boolean element : array)
 		{
-			if(!element) return false;
+			if (!element) return false;
 		}
 		return true;
 	}
@@ -122,7 +122,7 @@ public class ArrayUtils
 		int[] matRowI = null;
 		short[] matRowS = null;
 
-		switch(CvType.depth(mat.type()))
+		switch (CvType.depth(mat.type()))
 		{
 			case CvType.CV_64F: // double
 				matRowD = new double[mat.channels()*mat.cols()];
@@ -155,12 +155,12 @@ public class ArrayUtils
 		int printCountCol = 0;
 		boolean skippedRow = false;
 
-		for(int row = 0; row < mat.rows(); row++)
+		for (int row = 0; row < mat.rows(); row++)
 		{
-			if(row > 3 && row < Math.max(row, mat.rows()-4))
+			if (row > 3 && row < Math.max(row, mat.rows()-4))
 			{
 				skippedRow = true;
-				if(printCountRow % 2000 == 0)
+				if (printCountRow % 2000 == 0)
 				{
 					printCountRow = 0;
 					sb.append(".r.");
@@ -168,13 +168,13 @@ public class ArrayUtils
 				printCountRow++;
 				continue;
 			}
-			if(skippedRow)
+			if (skippedRow)
 			{
 				sb.append("\n");
 				skippedRow = false;
 			}
 
-			switch(CvType.depth(mat.type()))
+			switch (CvType.depth(mat.type()))
 			{
 				case CvType.CV_64F: // double
 					mat.get(row, 0, matRowD);
@@ -202,11 +202,11 @@ public class ArrayUtils
 					return "ArrayUtils.brief(Mat) should not be here.";
 			}
 			printCountCol = 0;
-			for(int colC = 0; colC < mat.cols()*mat.channels(); colC++)
+			for (int colC = 0; colC < mat.cols()*mat.channels(); colC++)
 			{
-				if(colC > 10 && colC < Math.max(colC, mat.cols()*mat.channels()-10))
+				if (colC > 10 && colC < Math.max(colC, mat.cols()*mat.channels()-10))
 				{
-					if(printCountCol % 2000 == 0)
+					if (printCountCol % 2000 == 0)
 					{
 						printCountCol = 0;
 						sb.append(".c. ");
@@ -214,7 +214,7 @@ public class ArrayUtils
 					printCountCol++;
 					continue;
 				}
-				switch(CvType.depth(mat.type()))
+				switch (CvType.depth(mat.type()))
 				{
 					case CvType.CV_64F: // double
 						sb.append(matRowD[colC]);

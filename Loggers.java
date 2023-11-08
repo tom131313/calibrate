@@ -108,16 +108,16 @@ public final class Loggers {
             String ClassName = record.getSourceClassName();
             // System.out.println(">" + ClassName + "<");
             // don't want to see any java awt or swing messages - might be slightly dangerous, though. could suppress bad ones
-            if(ClassName.startsWith("java.awt")) return false;
-            if(ClassName.startsWith("java.io")) return false;
-            if(ClassName.startsWith("sun")) return false;
-            if(ClassName.startsWith("javax")) return false;            
-            if(Main.outOverride2ndStageClassFilter) return true; // this filter allows all messages it sees
+            if (ClassName.startsWith("java.awt")) return false;
+            if (ClassName.startsWith("java.io")) return false;
+            if (ClassName.startsWith("sun")) return false;
+            if (ClassName.startsWith("javax")) return false;            
+            if (Main.outOverride2ndStageClassFilter) return true; // this filter allows all messages it sees
             // var method = record.getSourceClassName().replaceFirst("team4237.", "");
 
-            if(Main.classLevels.get(ClassName) != null) // use level if specified by user
+            if (Main.classLevels.get(ClassName) != null) // use level if specified by user
             {
-                if(record.getLevel().intValue() >= Main.classLevels.get(ClassName).intValue())
+                if (record.getLevel().intValue() >= Main.classLevels.get(ClassName).intValue())
                     return true;
                     else return false;
             }
@@ -131,18 +131,18 @@ public final class Loggers {
             String ClassName = record.getSourceClassName();
             // System.out.println(">" + ClassName + "<");
             // don't want to see any java awt or swing messages - might be slightly dangerous, though. could suppress bad ones
-            if(ClassName.startsWith("java.awt")) return false;
-            if(ClassName.startsWith("java.io")) return false;
-            if(ClassName.startsWith("sun")) return false;
-            if(ClassName.startsWith("javax")) return false;            
-            if(Main.errOverride2ndStageClassFilter) return true; // this filter allows all messages it sees
-            if(Main.classLevels.get(ClassName) != null) // use level if specified by user
+            if (ClassName.startsWith("java.awt")) return false;
+            if (ClassName.startsWith("java.io")) return false;
+            if (ClassName.startsWith("sun")) return false;
+            if (ClassName.startsWith("javax")) return false;            
+            if (Main.errOverride2ndStageClassFilter) return true; // this filter allows all messages it sees
+            if (Main.classLevels.get(ClassName) != null) // use level if specified by user
             {
-                if(record.getLevel().intValue() >= Main.classLevels.get(ClassName).intValue())
+                if (record.getLevel().intValue() >= Main.classLevels.get(ClassName).intValue())
                     return true;
                     else return false;
             }
-            // if(record.getMessage().equals("robot driving messages not being sent to roboRIO")) return false;
+            // if (record.getMessage().equals("robot driving messages not being sent to roboRIO")) return false;
             return true;
         }
     };

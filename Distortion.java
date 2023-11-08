@@ -16,8 +16,6 @@ import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import static calibrator.ArrayUtils.brief;
-
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 /*                                                                                                            */
@@ -63,11 +61,12 @@ class Distortion
             // look for contour with largest area
             double areaContourMax = -1.; // indicate no max at the start
             int mx = -1; // indicate no max at the start
-            for(int i = 0; i < contours.size(); i++)
+            for (int i = 0; i < contours.size(); i++)
             {
-                long areaContour = contours.get(i).total();
+                // long areaContour = contours.get(i).total(); // original area was just the count of the points in the contour
+                double areaContour = Imgproc.contourArea(contours.get(i)); // this might be better area but watch for area = 0.0 if only 2 points in contour
 
-                if( areaContour >= areaContourMax)
+                if ( areaContour >= areaContourMax)
                 {
                     // new max and its location
                     areaContourMax = areaContour;
@@ -87,7 +86,7 @@ class Distortion
             int h = aabb.height;
             //Main.LOGGER.log(Level.WARNING, "processing Rect aabb " + aabb);
 
-            if(!mask.empty() // amount of mask already filled where this contour would fill
+            if (!mask.empty() // amount of mask already filled where this contour would fill
                 && (double)Core.countNonZero(mask.submat(y, y+h, x, x+w)) / (double)(w*h) > Cfg.MAX_OVERLAP)
             {
                 contours.remove(mx); // largest contour wouldn't contribute enough in the right places so skip it
@@ -144,10 +143,10 @@ class Distortion
         float[] ptsMeshGrid = new float[w*c]; // intermediate 1d version of 2d points for a column; X, Y pair
         int indexRectangularRowChannel; // one row of the rectangular grid
         int indexLinearRow = 0; // rows in the long skinny Mat
-        for(int y = 0; y < h; y++) // traverse all rows of the rectangle grid
+        for (int y = 0; y < h; y++) // traverse all rows of the rectangle grid
         {
             indexRectangularRowChannel = 0;
-            for(int x = 0; x < w; x++) // traverse all columns of the rectangle grid
+            for (int x = 0; x < w; x++) // traverse all columns of the rectangle grid
             {
                 ptsMeshGrid[indexRectangularRowChannel++] = x;
                 ptsMeshGrid[indexRectangularRowChannel++] = y;
@@ -159,11 +158,11 @@ class Distortion
 
         MatOfPoint2f dpts = new MatOfPoint2f();
 
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K);
         Calib3d.undistortPoints(pts, dpts, K, dist, new Mat(), Knew);
 
         Mat dpts2D = dpts.reshape(2, h);
-        Main.Kcsv(Id.__LINE__(), Knew);
+        //Main.Kcsv(Id.__LINE__(), Knew);
         //Main.LOGGER.log(Level.WARNING, "pts " + pts + "\n" + brief(pts));
         //Main.LOGGER.log(Level.WARNING, "dpts " + dpts + "\n" + brief(dpts));
         //Main.LOGGER.log(Level.WARNING, "returning dpts2D " + dpts2D + brief(dpts2D));
@@ -190,10 +189,10 @@ class Distortion
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        Main.Kcsv(Id.__LINE__(), K);
-        Main.Kcsv(Id.__LINE__(), Knew);
+        //Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), Knew);
         // best I can tell step is always 20 (subsample) and never 1 so this should not be executed
-        if(step == 1) throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
+        if (step == 1) throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
         // make smaller 2-D Mat of x,y points from full size image Mat
         // the values in the smaller Mat are the original x, y coordinates from the larger Mat
 
@@ -208,9 +207,9 @@ class Distortion
         float[] ptsMeshGrid = new float[w*h*c]; // intermediate 2d points
 
         indexLinearRow = 0;
-        for(float y = 0.f; y<h; y+=step)
+        for (float y = 0.f; y < h; y += step)
         {
-            for(float x = 0.f; x<w; x+=step)
+            for (float x = 0.f; x < w; x += step)
             {
                 ptsMeshGrid[indexLinearRow++] = x;
                 ptsMeshGrid[indexLinearRow++] = y;
@@ -293,8 +292,8 @@ class Distortion
         Mat normMat = new Mat(pts.rows(), pts.cols(), CvType.CV_32FC1);
         //Main.LOGGER.log(Level.WARNING, "normMat empty " + normMat);
 
-        for(int row = 0; row < pts.rows(); row++)
-        for(int col = 0; col < pts.cols(); col++)
+        for (int row = 0; row < pts.rows(); row++)
+        for (int col = 0; col < pts.cols(); col++)
         {
             float[] point = new float[2]; // get the 2 channels of data x in 0 and y in 1
             diffpts.get(row, col, point);
@@ -373,25 +372,3 @@ class Distortion
 /*                                                                                                            */
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
-
-// Parking lot
-
-//////////////////////////////////
-            // for get_bounds this is likely a start of better but something to consider later:
-            // use true area instead of counting the perimeter segments
-            // var areaContour = Imgproc.contourArea(contours.get(i)); // this might be better area but watch for area = 0.0 if only 2 points in contour
-
-            // use true contour instead of bounding rect
-            // if(!mask.empty())
-            // {
-            //     Mat tempContour = Mat.zeros(thresh.rows(), thresh.cols(), thresh.type());
-            //     Imgproc.drawContours(tempContour, contours, locMax, new Scalar(1.), 0, Imgproc.FILLED);
-            //     Core.bitwise_and(tempContour, mask, tempContour); // overlap of thresh's contour and mask
-            //     var countOverlapPixels =Core.countNonZero(tempContour);
-            //     if (countOverlapPixels/areaContourMax > MAX_OVERLAP)
-            //         {
-            //             contours.remove(locMax);
-            //             continue;
-            //         }
-            // }
-/////////////////////////////////

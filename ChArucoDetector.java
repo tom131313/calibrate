@@ -84,31 +84,62 @@ public class ChArucoDetector {
     private double mean_flow = Double.MAX_VALUE; // mean flow of the same corners that are detected in consecutive frames (relaxed from original)
 
     // getters
-    int N_pts(){return N_pts;}
-    Size board_sz(){return board_sz;}
-    boolean pose_valid(){return this.pose_valid;}
-    Mat rvec(){return rvec;}
-    Mat tvec(){return tvec;}
-    double mean_flow(){return this.mean_flow;}
+    int N_pts()
+    {
+        return N_pts;
+    }
+    Size board_sz()
+    {
+        return board_sz;
+    }
+    boolean pose_valid()
+    {
+        return this.pose_valid;
+    }
+    Mat rvec()
+    {
+        return rvec;
+    }
+    Mat tvec()
+    {
+        return tvec;
+    }
+    double mean_flow()
+    {
+        return this.mean_flow;
+    }
 
     public ChArucoDetector()
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
-        // this.board.setLegacyPattern(Cfg.legacyPattern); //FIXME shouldn't use - remove when we match the original and we can go our own way
         this.board.generateImage(this.boardImageSize, this.boardImage);
 
-        if(Cfg.writeBoard)
+        if (Cfg.writeBoard)
         {
             // write ChArUco Board to file for print to use for calibration
-            final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
-            final String file = "ChArUcoBoard.jpg";
+            final String file = "ChArUcoBoard";
+
+            final MatOfInt writeBoardParamsJpg = new MatOfInt( // pair-wise; param1, value1, ...
+                Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // no compression
+
             Imgcodecs.imwrite(
-            file,
+            file + ".jpg",
             this.boardImage,
-            writeBoardParams);
-            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file ChArUcoBoard.jpg");
+            writeBoardParamsJpg);
+            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".jpg");
+
+            final MatOfInt writeBoardParamsTiff = new MatOfInt( // pair-wise; param1, value1, ...
+                Imgcodecs.IMWRITE_TIFF_COMPRESSION, 1, // no compression
+                Imgcodecs.IMWRITE_TIFF_XDPI, 250,
+                Imgcodecs.IMWRITE_TIFF_YDPI, 250);
+
+            Imgcodecs.imwrite(
+            file + ".tiff",
+            this.boardImage,
+            writeBoardParamsTiff);
+            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".tiff");
         }
         /// end create board
 
@@ -143,7 +174,7 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void set_intrinsics(Calibrator calib)
     {
-        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
@@ -197,20 +228,15 @@ public class ChArucoDetector {
         this.N_pts = 0;
         this.mean_flow = Double.MAX_VALUE;
 
-        if( ! this.cids.empty() && this.cids.rows() > 0) // double check since there was some unknown failure to get the N_pts set right
+        if ( ! this.cids.empty() && this.cids.rows() > 0) // double check since there was some unknown failure to get the N_pts set right
         {
             this.N_pts = this.cids.rows();
         }
 
         //Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
     
-        if(this.N_pts == 0) // maybe use the min N_pts from Cfg
-        {// allow comparison with last good detection - ignoring frames with no detected corners say because of blur.
-            // for optical flow calculation
-            // this.last_ccorners.release();
-            // this.last_cids.release();
-            // this.last_ccorners = new Mat();
-            // this.last_cids = new Mat();
+        if (this.N_pts == 0) // maybe use the min N_pts from Cfg
+        {
             return;
         }
 
@@ -219,7 +245,7 @@ public class ChArucoDetector {
         
         // reformat the Mat to a List<Mat> for matchImagePoints
         final List<Mat> ccornersList = new ArrayList<>();
-        for(int i = 0; i < this.ccorners.total(); i++) {
+        for (int i = 0; i < this.ccorners.total(); i++) {
           ccornersList.add(this.ccorners.row(i));
         }
 
@@ -233,52 +259,13 @@ public class ChArucoDetector {
         //Main.LOGGER.log(Level.WARNING, "p3d\n" + this.p3d.dump()); // data okay here
         //Main.LOGGER.log(Level.WARNING, "p2d\n" + this.p2d.dump()); // data okay here
 
-        if(this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
+        if (this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
 
         // compute mean flow of the image for the check for stillness elsewhere
         computeMeanFlow(); // the rkt way - relaxed criteria from original
 
-        // abandoned the original algorithm in favor of more relaxed version - rkt
-        // // mean flow if the same corners are detected in consecutive frames
-        // // relaxed criterion to same number of corners and not necessarily the same corners - rkt
-        // if(this.last_cids.total() != this.cids.total())
-        // {
-        //     this.ccorners.copyTo(this.last_ccorners);
-        //     this.cids.copyTo(this.last_cids);
-        //     return;
-        // }
-        // for(int row = 0; row < this.last_cids.rows(); row++)
-        // for(int col = 0; col < this.last_cids.cols(); col++)
-        // {
-        //     if(this.last_cids.get(row, col)[0] != this.cids.get(row, col)[0])
-        //     {
-        //         this.ccorners.copyTo(this.last_ccorners);
-        //         this.cids.copyTo(this.last_cids);
-        //         return;                
-        //     }
-        // }
+        // abandoned the original algorithm in favor of more relaxed version
 
-        // // calculate mean flow.
-        // // Not sure what original axis=1 norm is. Below is 2 axes which is better, I think
-        // Mat diff = new Mat();
-        // Core.subtract(this.last_ccorners, this.ccorners, diff);
-        // // //Main.LOGGER.log(Level.WARNING, "diffpts " + diff + "\n" + diff.dump());
-
-        // Mat normMat = new Mat(diff.rows(), diff.cols(), CvType.CV_64FC1);
-
-        // for(int row =0; row < diff.rows(); row++)
-        // for(int col = 0; col < diff.cols(); col++)
-        // {
-        //     float[] point = new float[2]; // get the 2 channels of data x in 0 and y in 1
-        //     diff.get(row, col, point);
-        //     double norm = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
-        //     normMat.put(row, col, norm);
-        // }
-        // // //Main.LOGGER.log(Level.WARNING, "normMat\n" + normMat.dump());
-
-        // this.mean_flow = Core.mean(normMat).val[0];
-
-        //Main.LOGGER.log(Level.WARNING, "mean_flow " + this.mean_flow);
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
     }
@@ -297,7 +284,7 @@ public class ChArucoDetector {
 
         this.mean_flow = Double.MAX_VALUE;
 
-        if(last_cids.rows() >= 1 && cids.rows() >= 1) // handles the first time and other cases
+        if (last_cids.rows() >= 1 && cids.rows() >= 1) // handles the first time and other cases
         {
             // get all the last cids and ccorners and all the current cids and ccorners in arrays.
             // do all the computations in the arrays.
@@ -315,7 +302,7 @@ public class ChArucoDetector {
 
             // mean flow of only the corners in common that are detected in consecutive frames
             // relaxed criterion from original need of exactly the same corners in successive frames - rkt
-            if(this.last_cids.total() <= 0 || this.cids.total() <= 0)
+            if (this.last_cids.total() <= 0 || this.cids.total() <= 0)
             {
                 return; // one of them has no corners to compare to
             }
@@ -328,7 +315,7 @@ public class ChArucoDetector {
             // merge/match last_cids and cids; assume they are already sorted ascending
             while(indexCurrent< this.cids.rows() && indexLast< this.last_cids.rows())
             {
-                if(cidsArray[indexCurrent] == last_cidsArray[indexLast])
+                if (cidsArray[indexCurrent] == last_cidsArray[indexLast])
                 {// great we have matching cids to compare then bump both to stay in sync
                     double diffX = ccornersArray[2*indexCurrent  ] - last_ccornersArray[2*indexLast  ]; // current - last
                     double diffY = ccornersArray[2*indexCurrent+1] - last_ccornersArray[2*indexLast+1]; // current - last
@@ -340,13 +327,13 @@ public class ChArucoDetector {
                     continue;
                 }
                 else
-                if(cidsArray[indexCurrent] < last_cidsArray[indexLast])
+                if (cidsArray[indexCurrent] < last_cidsArray[indexLast])
                 {// missing corresponding last so bump current to catch up to last
                     indexCurrent++;
                     continue;
                 }
                 else
-                if(cidsArray[indexCurrent] > last_cidsArray[indexLast])
+                if (cidsArray[indexCurrent] > last_cidsArray[indexLast])
                 {// missing corresponding current so bump last to catch up to current
                     indexLast++;
                     continue;
@@ -354,7 +341,7 @@ public class ChArucoDetector {
                 Main.LOGGER.log(Level.SEVERE, "Can't be here; 3-way 'if' failed");
             }
 
-            if(countMatchingCids > 0           // allow some missing cids from either list by a Jaccard index similarity
+            if (countMatchingCids > 0           // allow some missing cids from either list by a Jaccard index similarity
                 && (countMatchingCids/(this.last_cids.rows() + this.cids.rows() - countMatchingCids)) > Cfg.matchStillCidsMin)
             {
                 this.mean_flow /= countMatchingCids; // mean of the sum of the norms
@@ -380,7 +367,7 @@ public class ChArucoDetector {
         // raw_img never used - not converted
         this.detect_pts(img);
 
-        if(this.intrinsic_valid)
+        if (this.intrinsic_valid)
         {
             this.update_pose();
         }
@@ -426,9 +413,9 @@ public class ChArucoDetector {
 /*----------------------------------------------------------------------------------------------------------- */
     public void update_pose() throws Exception
     {
-        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        if(this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
+        if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
             Main.LOGGER.log(Level.SEVERE, "too few corners ", this.N_pts);
             this.pose_valid = false;
@@ -444,18 +431,101 @@ public class ChArucoDetector {
         
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
+        Main.Kcsv(Id.__LINE__(), K);
+        // C++:  bool cv::solvePnPRansac(vector_Point3f objectPoints, vector_Point2f imagePoints, Mat cameraMatrix,
+        // vector_double distCoeffs, Mat& rvec, Mat& tvec, bool useExtrinsicGuess = false,
+        // int iterationsCount = 100, float reprojectionError = 8.0, double confidence = 0.99,
+        // Mat& inliers = Mat(), int flags = SOLVEPNP_ITERATIVE)
+
+        //private static native boolean solvePnPRansac_0(
+        //long objectPoints_mat_nativeObj, long imagePoints_mat_nativeObj,
+        //long cameraMatrix_nativeObj, long distCoeffs_mat_nativeObj, long rvec_nativeObj, long tvec_nativeObj,
+        //boolean useExtrinsicGuess, int iterationsCount, float reprojectionError, double confidence,
+        //long inliers_nativeObj, int flags);
+
+        Mat inLiers = new Mat();
 
         this.pose_valid = Calib3d.solvePnPRansac(
-            p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec, false);
+            p3dReTyped, p2dReTyped,
+            this.K, distReTyped,
+            rvec, tvec,
+            false, 100, 8.0f, 0.99, inLiers, Calib3d.SOLVEPNP_ITERATIVE);
 
-        if( ! this.pose_valid)
+        // Main.LOGGER.log(Level.WARNING, "inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
+        
+        if ( ! this.pose_valid)
         {
             //Main.LOGGER.log(Level.WARNING, "pose not valid");
             return;            
         }
 
-        Calib3d.solvePnPRefineVVS(p3dReTyped, p2dReTyped, this.K, distReTyped, rvec, tvec);
-  
+        // C++:  void cv::solvePnPRefineVVS(Mat objectPoints, Mat imagePoints,
+        //  Mat cameraMatrix, Mat distCoeffs, Mat& rvec, Mat& tvec,
+        // TermCriteria criteria = TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 20, FLT_EPSILON), double VVSlambda = 1)
+
+        //private static native void solvePnPRefineVVS_0(long objectPoints_nativeObj, long imagePoints_nativeObj,
+        // long cameraMatrix_nativeObj, long distCoeffs_nativeObj, long rvec_nativeObj, long tvec_nativeObj,
+        // int criteria_type, int criteria_maxCount, double criteria_epsilon, double VVSlambda);
+
+        // public static void solvePnPRefineVVS(Mat objectPoints, Mat imagePoints, Mat cameraMatrix, Mat distCoeffs, Mat rvec, Mat tvec,
+        //  TermCriteria criteria, double VVSlambda) {
+        //     solvePnPRefineVVS_0(objectPoints.nativeObj, imagePoints.nativeObj, cameraMatrix.nativeObj, distCoeffs.nativeObj, rvec.nativeObj, tvec.nativeObj, criteria.type, criteria.maxCount, criteria.epsilon, VVSlambda);
+        // }
+
+        // compress the object and image mats with only the in liers
+        // if the same use the original mats if inliers < all then Compression
+        
+        // if (inLiers.rows() == p3dReTyped.rows())
+        // {
+            Calib3d.solvePnPRefineVVS(
+                p3dReTyped, p2dReTyped,
+                this.K, distReTyped,
+                rvec, tvec,
+                Cfg.solvePnPRefineVVSCriteria, Cfg.solvePnPRefineVVSLambda
+                );
+        // }
+        // else
+        // {
+        //     MatOfPoint3f p3dInLiers = new MatOfPoint3f();
+        //     p3dInLiers.alloc(inLiers.rows());
+        //     MatOfPoint2f p2dInLiers = new MatOfPoint2f();
+        //     p2dInLiers.alloc(inLiers.rows());
+
+        //     float[] p3dArray = new float[p3dReTyped.rows()*p3dReTyped.channels()]; 
+        //     float[] p2dArray = new float[p2dReTyped.rows()*p2dReTyped.channels()];
+        //     float[] p3dInLiersArray = new float[inLiers.rows()*p3dInLiers.channels()]; 
+        //     float[] p2dInLiersArray = new float[inLiers.rows()*p2dInLiers.channels()];
+        //     int[] inLiersArray = new int[inLiers.rows()];
+
+        //     p3dReTyped.get(0, 0, p3dArray);
+        //     p2dReTyped.get(0, 0, p2dArray);
+        //     inLiers.get(0, 0, inLiersArray);
+
+        // int detectedCornerIndex;
+        // for (int inLierIndex = 0; inLierIndex < inLiers.rows()*p3dReTyped.channels(); inLierIndex += p3dReTyped.channels())
+        // {
+        //     detectedCornerIndex = inLiersArray[inLierIndex/p3dReTyped.channels()]*p3dReTyped.channels();
+        //     p3dInLiersArray[inLierIndex    ] = p3dArray[detectedCornerIndex  ];
+        //     p3dInLiersArray[inLierIndex + 1] = p3dArray[detectedCornerIndex+1];
+        //     p3dInLiersArray[inLierIndex + 2] = p3dArray[detectedCornerIndex+2];
+        // }
+        // for (int inLierIndex = 0; inLierIndex < inLiers.rows()*p2dReTyped.channels(); inLierIndex += p2dReTyped.channels())
+        // {
+        //     detectedCornerIndex = inLiersArray[inLierIndex/p2dReTyped.channels()]*p2dReTyped.channels();
+        //     p2dInLiersArray[inLierIndex    ] = p2dArray[detectedCornerIndex  ];
+        //     p2dInLiersArray[inLierIndex + 1] = p2dArray[detectedCornerIndex + 1];
+        // }
+        // p3dInLiers.put(0, 0, p3dInLiersArray);
+        // p2dInLiers.put(0, 0, p2dInLiersArray);
+
+        // Calib3d.solvePnPRefineVVS(
+        //     p3dInLiers, p2dInLiers,
+        //     this.K, distReTyped,
+        //     rvec, tvec,
+        //     criteria, 1.
+        //     );
+        // }
+
         //FIXME negating "x" makes the shadow for jaccard the right orientation for some unknown reason! Python doesn't need this.
         // I thought it was related to not having the "flip()" as the BoardPreview needs because the "warpPerspective" flips
         // the image, but I tried that flip and it was the wrong axis. Still a mystery
