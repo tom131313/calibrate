@@ -4,7 +4,7 @@
 
 //FIXME detector needs at least 6 points to keep solvePnP happy. UserGuidance needs 15 or more. Why not just one min?
 
-package calibrator;
+package org.photonvision.calibrator;
 
 // changed method name oribital_pose to orbital_pose - rkt
 // didn't change some other misspellings
@@ -27,13 +27,13 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -54,11 +54,17 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*----------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------- */
 public class Main {
-    private static final String VERSION = "beta 1"; // change this
+    private static final String VERSION = "beta 2"; // change this
 
     static
     {
-    System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
+/* RPi libraries */
+    TestUtils.loadLibraries();
+/* */
+
+/* RPi doesn't use this; might not hurt, though, but comment out works */
+    // System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
+/* */
     }
 
     private static PrintWriter pw; // K debugging
@@ -95,14 +101,14 @@ public class Main {
 
     // classes to specify log level
     private static final String[] classesLog = { 
-        "calibrator.PoseGeneratorDist",
-        "calibrator.BoardPreview",
-        "calibrator.Distortion",
-        "calibrator.ChArucoDetector",
-        "calibrator.UserGuidance",
-        "calibrator.Calibrator",
-        "calibrator.Cfg",
-        "calibrator.Main"
+        "org.photonvision.calibrator.PoseGeneratorDist",
+        "org.photonvision.calibrator.BoardPreview",
+        "org.photonvision.calibrator.Distortion",
+        "org.photonvision.calibrator.ChArucoDetector",
+        "org.photonvision.calibrator.UserGuidance",
+        "org.photonvision.calibrator.Calibrator",
+        "org.photonvision.calibrator.Cfg",
+        "org.photonvision.calibrator.Main"
         };
     static final Map<String, Level> classLevels = new HashMap<String, Level>(15);
     static { 
@@ -156,18 +162,24 @@ public class Main {
 
         Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
 
-        // not sure which of these are required for the camera server so leave them all in
-        NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
-        WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
-        WPIMathJNI.Helper.setExtractOnStaticLoad(false);
-        CameraServerJNI.Helper.setExtractOnStaticLoad(false);
-        CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+/* RPi doesn't uses these libraries */
+        // NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
+        // WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
+        // WPIMathJNI.Helper.setExtractOnStaticLoad(false);
+        // CameraServerJNI.Helper.setExtractOnStaticLoad(false);
+        // CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+/* */
         // var inst = NetworkTableInstance.getDefault(); // not using NT in this program
 
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(camId);
-        camera.setPixelFormat(PixelFormat.kYUYV);
+/* RPi uses PixelFormat.kMJPEG */
+        camera.setPixelFormat(PixelFormat.kMJPEG);
+
+        // camera.setPixelFormat(PixelFormat.kYUYV);
+/* */
+
         camera.setResolution(Cfg.image_width, Cfg.image_height);
         // camera.setExposureAuto();
         camera.setExposureManual(70);
@@ -239,10 +251,10 @@ public class Main {
             }
 
             displayOverlay(out, ugui);
+/* use HighGuiX for Windows */
+            HighGui.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
 
-            HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
-
-            int k = HighGuiX.waitKey(Cfg.wait);
+            int k = HighGui.waitKey(Cfg.wait);
 
             if (k == timedOut)
             {

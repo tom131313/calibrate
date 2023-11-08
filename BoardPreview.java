@@ -1,5 +1,5 @@
 // projects a 2D object (image) according to parameters - generate styled board image
-package calibrator;
+package org.photonvision.calibrator;
 
 import java.util.logging.Level;
 

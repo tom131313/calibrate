@@ -1,4 +1,4 @@
-package calibrator;
+package org.photonvision.calibrator;
 
 import org.opencv.core.Mat;
 import org.opencv.highgui.ImageWindow;

@@ -1,4 +1,4 @@
-package calibrator;
+package org.photonvision.calibrator;
 
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles;

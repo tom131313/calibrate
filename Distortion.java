@@ -1,4 +1,4 @@
-package calibrator;
+package org.photonvision.calibrator;
 
 import java.util.ArrayList;
 import java.util.List;

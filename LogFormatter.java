@@ -1,4 +1,4 @@
-package calibrator;
+package org.photonvision.calibrator;
 // copied Java supplied SimpleFormatter and changed it slightly for a new format
 // could make it more general purpose like the SimpleFormatter could have been
 import java.io.*;
@@ -163,6 +163,11 @@ public class LogFormatter extends Formatter {
             record.getThrown().printStackTrace(pw);
             pw.close();
             throwable = sw.toString();
+        }
+        int start = source.indexOf("org.photonvision.calibrator.");
+        if (start >= 0)
+        {
+          source = source.substring(start + "org.photonvision.calibrator.".length());
         }
         return String.format(format,
                              zdt,

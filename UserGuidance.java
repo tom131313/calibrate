@@ -1,8 +1,8 @@
-package calibrator;
+package org.photonvision.calibrator;
 
-import static calibrator.ArrayUtils.argmax;
-import static calibrator.ArrayUtils.argmin;
-import static calibrator.ArrayUtils.isAllTrue;
+import static org.photonvision.calibrator.ArrayUtils.argmax;
+import static org.photonvision.calibrator.ArrayUtils.argmin;
+import static org.photonvision.calibrator.ArrayUtils.isAllTrue;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
