@@ -283,8 +283,8 @@ public class Main {
         Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
         Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
         Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 1);
-        HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
-        int k = HighGuiX.waitKey(5000);
+        HighGui.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
+        int k = HighGui.waitKey(5000);
 
         ugui.write(); //FIXME temp just to see what comes out even if we don't make it to the converged end
         pw.close(); // K debugging
