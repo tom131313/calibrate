@@ -581,11 +581,14 @@ https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
 //  https://github.com/mcm001/photonvision/tree/2023-10-30_pose_calib_integration
 //  I made this by running 
 // gradlew clean
-//  then
+//  then for RPi
 // gradlew shadowjar -PArchOverride=linuxarm64
+//  or for Windows
+// gradlew shadowjar
+
 //  inside the photonvision project's root directory
 //  that spits the jar out into photon-server/build/libs
-//  you should be able to stop the photonvision service with 
+//  you should be able to stop the RPi photonvision service with 
 // sudo service photonvision stop
 //  and then 
 // java -jar photonvision-dev-v2024.1.1-beta-3.1-5-ga99e85a8-linuxarm64.jar
