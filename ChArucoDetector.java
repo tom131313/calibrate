@@ -1,8 +1,13 @@
 package org.photonvision.calibrator;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.zip.CRC32;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -22,25 +27,25 @@ import org.opencv.objdetect.Dictionary;
 import org.opencv.objdetect.Objdetect;
 import org.opencv.objdetect.RefineParameters;
 
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     ChArucoDetector class                                                  */
-/*                                     ChArucoDetector class                                                  */
-/*                                     ChArucoDetector class                                                  */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     ChArucoDetector class                                       */
+/*                                     ChArucoDetector class                                       */
+/*                                     ChArucoDetector class                                       */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
 public class ChArucoDetector {
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     ChArucoDetector constructor                                            */
-/*                                     ChArucoDetector constructor                                            */
-/*                                     ChArucoDetector constructor                                            */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     ChArucoDetector constructor                                 */
+/*                                     ChArucoDetector constructor                                 */
+/*                                     ChArucoDetector constructor                                 */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
  
     // configuration
@@ -109,9 +114,9 @@ public class ChArucoDetector {
         return this.mean_flow;
     }
 
-    public ChArucoDetector()
+    public ChArucoDetector() throws FileNotFoundException, IOException
     {
-        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
         this.board.generateImage(this.boardImageSize, this.boardImage);
@@ -120,26 +125,155 @@ public class ChArucoDetector {
         {
             // write ChArUco Board to file for print to use for calibration
             final String file = "ChArUcoBoard";
+            
+            // /* jpg */
+            // final MatOfInt writeBoardParamsJpg = new MatOfInt( // pair-wise; param1, value1, ...
+            //     Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // no compression
 
-            final MatOfInt writeBoardParamsJpg = new MatOfInt( // pair-wise; param1, value1, ...
-                Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // no compression
+            // Imgcodecs.imwrite(
+            // file + ".jpg",
+            // this.boardImage,
+            // writeBoardParamsJpg);
+            // Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".jpg");
 
-            Imgcodecs.imwrite(
-            file + ".jpg",
-            this.boardImage,
-            writeBoardParamsJpg);
-            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".jpg");
+            // if ( ! Cfg.isPV) // no tiff writer in PV RPi OpenCV
+            // {
+            //     /* tiff */
+            //     final MatOfInt writeBoardParamsTiff = new MatOfInt( // pair-wise; param1, value1, ...
+            //     Imgcodecs.IMWRITE_TIFF_COMPRESSION, 1, // no compression
+            //     Imgcodecs.IMWRITE_TIFF_XDPI, Cfg.guidanceTiffDPIx,
+            //     Imgcodecs.IMWRITE_TIFF_YDPI, Cfg.guidanceTiffDPIy);
 
-            final MatOfInt writeBoardParamsTiff = new MatOfInt( // pair-wise; param1, value1, ...
-                Imgcodecs.IMWRITE_TIFF_COMPRESSION, 1, // no compression
-                Imgcodecs.IMWRITE_TIFF_XDPI, 250,
-                Imgcodecs.IMWRITE_TIFF_YDPI, 250);
+            //     Imgcodecs.imwrite(
+            //     file + ".tiff",
+            //     this.boardImage,
+            //     writeBoardParamsTiff);
+            //     Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".tiff");
+            // }
 
-            Imgcodecs.imwrite(
-            file + ".tiff",
-            this.boardImage,
-            writeBoardParamsTiff);
-            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".tiff");
+            /* PNG */
+            File outputFile = new File(file + ".png");
+            FileOutputStream outputStreamPNG = new FileOutputStream(outputFile);
+
+            byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
+
+            CRC32 crc32 = new CRC32();
+
+            // SIGNATURE
+            final byte[] signaturePNG =
+                {
+                (byte)0x89, (byte)0x50, (byte)0x4e, (byte)0x47, (byte)0x0d, (byte)0x0a, (byte)0x1a, (byte)0x0a // PNG magic number
+                };
+            outputStreamPNG.write(signaturePNG);
+
+            // HEADER
+            byte[] IHDR =
+            {
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // length
+                (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // IHDR
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder 2520
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder 1680
+                (byte)0x08,                                     // bit depth
+                (byte)0x00,                                     // color type - grey scale
+                (byte)0x00,                                     // compression method
+                (byte)0x00,                                     // filter method (default/only one?)
+                (byte)0x00,                                     // interlace method
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
+            };
+            // fetch the length data for the IHDR
+            int ihdrWidthOffset = 8;
+            int ihdrHeightOffset = 12;
+            ArrayUtils.intToByteArray(boardImage.cols(), IHDR, ihdrWidthOffset);
+            ArrayUtils.intToByteArray(boardImage.rows(), IHDR, ihdrHeightOffset);
+    
+            crc32.reset();
+            crc32.update(IHDR, 4, IHDR.length-8); // skip the beginning 4 for length and ending 4 for crc
+            ArrayUtils.intToByteArray((int)crc32.getValue(), IHDR, IHDR.length-4);
+            outputStreamPNG.write(IHDR);
+
+            // PHYSICAL RESOLUTION
+            byte[] PHYS = // varies with the requested resolution [pixels per meter]
+                {
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // length
+                (byte)0x70, (byte)0x48, (byte)0x59, (byte)0x73, // pHYs
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // x res [pixels per unit] place holder
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // y res [pixels per unit] place holder
+                (byte)0x01,                                     // units [unit is meter]
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
+                };
+            int physXresOffset = 8;
+            int physYresOffset = 12;
+            ArrayUtils.intToByteArray(Cfg.resXDPM, PHYS, physXresOffset);
+            ArrayUtils.intToByteArray(Cfg.resYDPM, PHYS, physYresOffset);
+
+            crc32.reset();
+            crc32.update(PHYS, 4, PHYS.length-8); // skip the beginning 4 for length and ending 4 for crc
+            ArrayUtils.intToByteArray((int)crc32.getValue(), PHYS, PHYS.length - 4);
+            outputStreamPNG.write(PHYS);
+
+            // DATA
+            //The complete filtered PNG image is represented by a single zlib datastream that is stored in a number of IDAT chunks.
+
+            // create the filtered, compressed datastream
+            // boardImage.setTo(new Scalar(255)); // testing
+            boardImage.get(0, 0, boardByte); // board from OpenCV Mat
+
+            // filter type begins each row so step through all the rows adding the filter type to each row
+            byte[] boardByteFilter = new byte[boardImage.rows() + boardByte.length];
+            int flatIndex = 0;
+            int flatIndexFilter = 0;
+            for (int row = 0; row < boardImage.rows(); row++)
+            {
+                boardByteFilter[flatIndexFilter++] = 0x00; // filter type none begins each row          
+                for (int col = 0; col < boardImage.cols(); col++)
+                {
+                    boardByteFilter[flatIndexFilter++] = boardByte[flatIndex++];
+                }
+            }
+            // complete filtered PNG image is represented by a single zlib compression datastream
+            byte[] boardCompressed = ArrayUtils.compress(boardByteFilter);
+
+            // chunk the compressed datastream
+            // chunking not necessary for the ChArUcoBoard but it's potentially good for other uses
+            int chunkSize = 0;
+            int chunkSizeMax = 100_000; // arbitrary "small" number
+            int dataWritten = 0;
+
+            while (dataWritten < boardCompressed.length) // chunk until done
+            {
+                chunkSize = Math.min(chunkSizeMax, boardCompressed.length - dataWritten); // max or what's left in the last chunk
+
+                byte[] IDAT = new byte[4 + 4 + chunkSize + 4]; // 4 length + 4 "IDAT" + chunk length + 4 CRC
+
+                ArrayUtils.intToByteArray(chunkSize, IDAT, 0); // stash length of the chunk data in first 4 bytes
+                IDAT[4] = (byte)("IDAT".charAt(0));
+                IDAT[5] = (byte)("IDAT".charAt(1));
+                IDAT[6] = (byte)("IDAT".charAt(2));
+                IDAT[7] = (byte)("IDAT".charAt(3));
+                for(int i=0; i < chunkSize; i++)
+                {
+                    IDAT[8 + i] = boardCompressed[dataWritten + i]; // stash data from where we left off to its place in the chunk
+                }
+
+                crc32.reset();
+                crc32.update(IDAT, 4, IDAT.length - 8); // skip the beginning 4 for length and ending 4 for crc
+                ArrayUtils.intToByteArray((int)crc32.getValue(), IDAT, IDAT.length - 4); // crc in last 4 bytes  
+
+                outputStreamPNG.write(IDAT);
+                dataWritten += chunkSize;
+           }
+
+            // END
+            final byte[] IEND =
+                {
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // length
+                (byte)0x49, (byte)0x45, (byte)0x4e, (byte)0x44, // IEND
+                (byte)0xae, (byte)0x42, (byte)0x60, (byte)0x82  // crc
+                };
+            
+            outputStreamPNG.write(IEND);
+
+            outputStreamPNG.close();
         }
         /// end create board
 
@@ -163,18 +297,18 @@ public class ChArucoDetector {
         Main.LOGGER.log(Level.CONFIG, "" + detector.getRefineParameters().get_checkAllOrders()); // true default
         Main.LOGGER.log(Level.CONFIG, "" + detector.getRefineParameters().get_errorCorrectionRate()); // 3.0 default
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     set_intrinsics                                                         */
-/*                                     set_intrinsics                                                         */
-/*                                     set_intrinsics                                                         */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     set_intrinsics                                              */
+/*                                     set_intrinsics                                              */
+/*                                     set_intrinsics                                              */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public void set_intrinsics(Calibrator calib)
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
@@ -182,15 +316,15 @@ public class ChArucoDetector {
         Main.Kcsv(Id.__LINE__(), this.K);
         //Main.LOGGER.log(Level.WARNING, "class private K\n" + K.dump());
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     draw_axis                                                              */
-/*                                     draw_axis                                                              */
-/*                                     draw_axis                                                              */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     draw_axis                                                   */
+/*                                     draw_axis                                                   */
+/*                                     draw_axis                                                   */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     /**
      * Draw axes on the detected ChArUcoBoard from the camera image
      * @param img
@@ -202,15 +336,15 @@ public class ChArucoDetector {
         Calib3d.drawFrameAxes(
             img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len*4.f, 1);
     }   
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     detect_pts                                                             */
-/*                                     detect_pts                                                             */
-/*                                     detect_pts                                                             */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     detect_pts                                                  */
+/*                                     detect_pts                                                  */
+/*                                     detect_pts                                                  */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public void detect_pts(Mat img) throws Exception
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
@@ -269,15 +403,15 @@ public class ChArucoDetector {
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     computeMeanFlow                                                        */
-/*                                     computeMeanFlow                                                        */
-/*                                     computeMeanFlow                                                        */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     computeMeanFlow                                             */
+/*                                     computeMeanFlow                                             */
+/*                                     computeMeanFlow                                             */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public void computeMeanFlow()
     {
         // cids: int 1 col, 1 channel; ccorners: float 1 col, 2 channels (x, y)
@@ -352,15 +486,15 @@ public class ChArucoDetector {
             }
         }
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     detect                                                                 */
-/*                                     detect                                                                 */
-/*                                     detect                                                                 */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     detect                                                      */
+/*                                     detect                                                      */
+/*                                     detect                                                      */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public void detect(Mat img) throws Exception
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
@@ -372,52 +506,52 @@ public class ChArucoDetector {
             this.update_pose();
         }
     } 
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                    get_pts3d                                                               */
-/*                                    get_pts3d                                                               */
-/*                                    get_pts3d                                                               */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                    get_pts3d                                                    */
+/*                                    get_pts3d                                                    */
+/*                                    get_pts3d                                                    */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public Mat get_pts3d()
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return this.p3d;
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     get_calib_pts                                                          */
-/*                                     get_calib_pts                                                          */
-/*                                     get_calib_pts                                                          */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     get_calib_pts                                               */
+/*                                     get_calib_pts                                               */
+/*                                     get_calib_pts                                               */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public keyframe get_calib_pts()
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return new keyframe(this.ccorners.clone(), this.get_pts3d().clone());
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     update_pose                                                            */
-/*                                     update_pose                                                            */
-/*                                     update_pose                                                            */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     update_pose                                                 */
+/*                                     update_pose                                                 */
+/*                                     update_pose                                                 */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public void update_pose() throws Exception
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
-            Main.LOGGER.log(Level.SEVERE, "too few corners ", this.N_pts);
+            Main.LOGGER.log(Level.SEVERE, "too few corners " + this.N_pts);
             this.pose_valid = false;
             return;
         }
@@ -539,15 +673,15 @@ public class ChArucoDetector {
         //Main.LOGGER.log(Level.WARNING, "out tvec\n" + this.tvec.dump());
     }
 }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     End ChArucoDetector class                                              */
-/*                                     End ChArucoDetector class                                              */
-/*                                     End ChArucoDetector class                                              */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     End ChArucoDetector class                                   */
+/*                                     End ChArucoDetector class                                   */
+/*                                     End ChArucoDetector class                                   */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
 /*
 Python & Java
 pose gen orbital_pose
@@ -571,3 +705,18 @@ solvePnP
 // The reprojection error is the RMS error between where the points would be projected using the intrinsic coefficients and
 // where they are in the real image. Typically you should expect an RMS error of less than 0.5px - I can routinely get around 
 // 0.1px with machine vision cameras.
+
+// read or write specific byte in a file
+// try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+//     raf.seek(5); // Go to byte at offset position 5.
+//     byte b = raf.readByte();
+//     raf.write(70); // Write byte 70 (overwrites original byte at this offset).
+// }
+
+            // // WRITE PNG FILE
+            // for(byte b:signaturePNG) System.out.format("%02x", b); System.out.println();
+            // for(byte b:IHDR) System.out.format("%02x", b); System.out.println();
+            // for(byte b:PHYS) System.out.format("%02x", b); System.out.println();
+            // for(byte b:IDAT) System.out.format("%02x", b); System.out.println();
+            // for(byte b:IEND) System.out.format("%02x", b); System.out.println();
+

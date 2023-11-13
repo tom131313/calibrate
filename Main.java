@@ -21,50 +21,64 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
+
+/* RPi libraries */
+// import org.photonvision.common.util.TestUtils;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.CameraServerJNI;
+import edu.wpi.first.cscore.CvSource;
+import edu.wpi.first.cscore.MjpegServer;
 import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.cscore.VideoMode.PixelFormat;
 import edu.wpi.first.math.WPIMathJNI;
 import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.util.CombinedRuntimeLoader;
 import edu.wpi.first.util.WPIUtilJNI;
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     Main class                                                             */
-/*                                     Main class                                                             */
-/*                                     Main class                                                             */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     Main class                                                  */
+/*                                     Main class                                                  */
+/*                                     Main class                                                  */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 2"; // change this
+    private static final String VERSION = "beta 6"; // change this
 
     static
     {
-/* RPi libraries */
-    TestUtils.loadLibraries();
-/* */
-
-/* RPi doesn't use this; might not hurt, though, but comment out works */
-    // System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
-/* */
+        if (Cfg.isPV)
+        {
+            org.photonvision.common.util.TestUtils.loadLibraries();
+        }
+        else
+        {
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
+        }
     }
 
     private static PrintWriter pw; // K debugging
@@ -125,26 +139,131 @@ public class Main {
     // END LOGGER STUFF
 
     // keyboard mapping returns from waitKey
-    private static final int keyTerminate = 27;
+    private static final int keyTerminate = 81;
     private static final int keyCapture = 67;
     private static final int keyMirrorToggle = 77;
+    private static final int keyTerminateScanner = 113;
+    private static final int keyCaptureScanner = 99;
+    private static final int keyMirrorToggleScanner = 109;
     private static final int timedOut = -1;  // timed out no key pressed
   
-    // Checks for the specified camera and uses it if present. 0 internal, 1 external if there is a 0 internal (sometimes)    
-    private static final int camId = 0;
+    // Java Scanner alternative to OpenCV keyboard usage that is not in PV headless (AWT is missing)
+    AtomicInteger dokeystroke = new AtomicInteger(-1);
+    class Keystroke implements Runnable
+    {
+        public void run()
+        {
+            Scanner keyboard = new Scanner(System.in);
+            while(!Thread.interrupted())
+            {
+                System.out.println("enter c, m, q");
+                String entered = keyboard.next();
+                int keyScanner = entered.charAt(0);
+                // map Scanner character codes to OpenCV character codes
+                if(keyScanner == keyCaptureScanner) dokeystroke.set(keyCapture);
+                if(keyScanner == keyMirrorToggleScanner) dokeystroke.set(keyMirrorToggle);
+                if(keyScanner == keyTerminateScanner) dokeystroke.set(keyTerminate);
+            }
+            keyboard.close();
+        }
+    }
+
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
-    
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     main                                                                   */
-/*                                     main                                                                   */
-/*                                     main                                                                   */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     handleArgs                                                  */
+/*                                     handleArgs                                                  */
+/*                                     handleArgs                                                  */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+    private static boolean handleArgs(String[] args) throws ParseException {
+
+        final var options = new Options();
+        options.addOption("h", "help", false, "Show this help text and exit");
+        options.addOption("width", true, "camera image width (1280)");
+        options.addOption("height", true, "camera image height (720)");
+        options.addOption("dpmX", true, "print width pixels per meter (9843=250 DPI)");
+        options.addOption("dpmY", true, "print height pixels per meter (9843=250 DPI");
+        options.addOption("pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
+        options.addOption("cameraID", true, "camera id (0)");
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (cmd.hasOption("help")) {
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("java -jar photonvision.jar [options]", options);
+            return false; // exit program
+        }
+        else
+        if ( cmd.hasOption("width")) {
+            Cfg.image_width = Integer.parseInt(cmd.getOptionValue("width"));
+        }
+        else
+        if (cmd.hasOption("height")) {
+            Cfg.image_height = Integer.parseInt(cmd.getOptionValue("height"));
+        }
+        else
+        if (cmd.hasOption("dpmX")) {
+            Cfg.resXDPM = Integer.parseInt(cmd.getOptionValue("dpmX"));
+        }
+        else
+        if (cmd.hasOption("dpmY")) {
+            Cfg.resYDPM = Integer.parseInt(cmd.getOptionValue("dpmY"));
+        }
+        else
+        if (cmd.hasOption("pxFmt")) {
+            Cfg.pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt"));
+        }
+        else
+        if (cmd.hasOption("cameraId")) {
+            Cfg.camId = Integer.parseInt(cmd.getOptionValue("cameraId"));
+        }
+
+        return true;
+    }
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     main                                                        */
+/*                                     main                                                        */
+/*                                     main                                                        */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public static void main(String[] args) throws Exception
     {
+        try {
+            if (!handleArgs(args)) {
+                System.exit(0);
+            }
+        } catch (ParseException e) {
+            LOGGER.log(Level.SEVERE, "Failed to parse command-line options!", e);
+        }
+
+        Main MainInstance;
+        Keystroke keystroke;
+        Thread keyboardThread;
+
+        CvSource networkDisplay;
+        MjpegServer mjpegServer;
+
+        if (Cfg.isPV)
+        {
+            MainInstance = new Main();
+            keystroke = MainInstance.new Keystroke();
+            keyboardThread = new Thread(keystroke, "keys");
+            keyboardThread.setDaemon(true);
+            keyboardThread.start();
+
+            networkDisplay = new CvSource("calibPV", /*VideoMode.*/PixelFormat.kMJPEG,
+                    Cfg.image_height, Cfg.image_width, 30);
+            mjpegServer = new MjpegServer("serve_DriverView", 1185);
+            mjpegServer.setSource(networkDisplay);
+            // MjpegServer openCVserver = CameraServer.getInstance().startAutomaticCapture(outputStream);
+        }
+
         pw = new PrintWriter("K.csv");
 
         OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
@@ -162,23 +281,22 @@ public class Main {
 
         Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
 
-/* RPi doesn't uses these libraries */
-        // NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
-        // WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
-        // WPIMathJNI.Helper.setExtractOnStaticLoad(false);
-        // CameraServerJNI.Helper.setExtractOnStaticLoad(false);
-        // CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
-/* */
+
+        if ( ! Cfg.isPV) // PV has its own way to get these libraries */
+        {
+        NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
+        WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
+        WPIMathJNI.Helper.setExtractOnStaticLoad(false);
+        CameraServerJNI.Helper.setExtractOnStaticLoad(false);
+        CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+        }
         // var inst = NetworkTableInstance.getDefault(); // not using NT in this program
 
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
-        final UsbCamera camera = CameraServer.startAutomaticCapture(camId);
-/* RPi uses PixelFormat.kMJPEG */
-        camera.setPixelFormat(PixelFormat.kMJPEG);
+        final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId);
 
-        // camera.setPixelFormat(PixelFormat.kYUYV);
-/* */
+        camera.setPixelFormat(Cfg.pixelFormat);
 
         camera.setResolution(Cfg.image_width, Cfg.image_height);
         // camera.setExposureAuto();
@@ -251,10 +369,19 @@ public class Main {
             }
 
             displayOverlay(out, ugui);
-/* use HighGuiX for Windows */
-            HighGui.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
 
-            int k = HighGui.waitKey(Cfg.wait);
+            int k;
+            if (Cfg.isPV)
+            {                    
+            networkDisplay.putFrame(out);
+
+            k = MainInstance.dokeystroke.getAndSet(timedOut);
+            }
+            else // use HighGuiX for Windows
+            {
+            HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
+            k = HighGuiX.waitKey(Cfg.wait);
+            }
 
             if (k == timedOut)
             {
@@ -280,27 +407,33 @@ public class Main {
             }
         } // end grabFrameLoop
 
-        Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
-        Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
-        Imgproc.putText(out, "COMPLETED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 1);
-        HighGui.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
-        int k = HighGui.waitKey(5000);
-
+        Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
+        Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
+        Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 2);
+        if (Cfg.isPV)
+        {         
+            networkDisplay.putFrame(out);
+        }
+        else // use HighGuiX for Windows
+        {
+            HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
+            HighGuiX.waitKey(5000);
+        }
         ugui.write(); //FIXME temp just to see what comes out even if we don't make it to the converged end
         pw.close(); // K debugging
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
     }   
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     displayOverlay                                                         */
-/*                                     displayOverlay                                                         */
-/*                                     displayOverlay                                                         */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     displayOverlay                                              */
+/*                                     displayOverlay                                              */
+/*                                     displayOverlay                                              */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
     public static void displayOverlay(Mat out, UserGuidance ugui)
     {
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
@@ -308,9 +441,10 @@ public class Main {
 
         if (ugui.user_info_text().length() > 0) // is there a message to display?
         {
-            if ( ! ugui.user_info_text().equals("initialization")) // rkt stop spamming "initialization" to log
-                //Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
-
+            // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
+            // {
+            //     Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
+            // }
             Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
             Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
         }
@@ -363,15 +497,15 @@ public class Main {
 
 
     }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     Kcsv                                                                   */
-/*                                     Kcsv                                                                   */
-/*                                     Kcsv                                                                   */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     Kcsv                                                        */
+/*                                     Kcsv                                                        */
+/*                                     Kcsv                                                        */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
 /**
  * Print the K camera matrix Mat to a file defined in variable "pw" in CSV format.
  * [500, 0, 319.75;
@@ -401,15 +535,15 @@ public class Main {
         Main.pw.println(Main.frame + ", \"" + line + "\", " + Kdump + ", " + counter);
     }
 }
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
-/*                                                                                                            */
-/*                                     End Main class                                                         */
-/*                                     End Main class                                                         */
-/*                                     End Main class                                                         */
-/*                                                                                                            */
-/*----------------------------------------------------------------------------------------------------------- */
-/*----------------------------------------------------------------------------------------------------------- */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     End Main class                                              */
+/*                                     End Main class                                              */
+/*                                     End Main class                                              */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
 
 // Parking lot
 
@@ -443,3 +577,73 @@ All rotations in 3-D can be represented by four elements: a three-element axis o
 
 https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
   */
+
+//  https://github.com/mcm001/photonvision/tree/2023-10-30_pose_calib_integration
+//  I made this by running 
+// gradlew clean
+//  then
+// gradlew shadowjar -PArchOverride=linuxarm64
+//  inside the photonvision project's root directory
+//  that spits the jar out into photon-server/build/libs
+//  you should be able to stop the photonvision service with 
+// sudo service photonvision stop
+//  and then 
+// java -jar photonvision-dev-v2024.1.1-beta-3.1-5-ga99e85a8-linuxarm64.jar
+//  is all you should need 
+
+
+// AWT setup If you're on the main display, then
+// export DISPLAY=:0.0
+// or if you're using csh or tcsh
+// setenv DISPLAY :0.0
+// before running your app.
+
+/*
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.highgui.HighGui;
+
+public class Main {
+    static
+    {
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+    }
+
+    Mat image = Mat.ones(100, 100, CvType.CV_8UC1);
+    
+    void main(String[] args)
+    {
+        HighGui.imshow("mywindow", image);
+        HighGui.waitKey(10000);
+    }
+}
+ */
+// import java.util.zip.*;
+// import java.io.*;
+
+// import java.io.*;
+// import java.util.*;
+// import java.util.zip.*;
+
+// public class CompressionTest
+// {
+// 	public static void main(String[] args)
+// 	{
+// 		Compressor compressor = new Compressor();
+
+// 		String stringToCompress = "This is a test!";
+// 		//String stringToCompress = "When in the course of human events, it becomes necessary for one people to dissolve the bands that bind them...";
+
+// 		System.out.println("stringToCompress'" + stringToCompress + "'");
+
+// 		byte[] bytesCompressed = compressor.compress(stringToCompress);
+
+// 		System.out.println("bytesCompressed");
+// 		Console.writeBytesAsHexadecimal(bytesCompressed);
+
+// 		String stringDecompressed = compressor.decompressToString(bytesCompressed);
+
+// 		System.out.println("stringDecompressed'" + stringDecompressed + "'");
+// 	}
+// }
