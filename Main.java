@@ -36,6 +36,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -43,9 +44,6 @@ import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-
-/* RPi libraries */
-// import org.photonvision.common.util.TestUtils;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.CameraServerJNI;
@@ -57,6 +55,7 @@ import edu.wpi.first.math.WPIMathJNI;
 import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.util.CombinedRuntimeLoader;
 import edu.wpi.first.util.WPIUtilJNI;
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -67,7 +66,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 6"; // change this
+    private static final String VERSION = "beta 7"; // change this
 
     static
     {
@@ -154,15 +153,24 @@ public class Main {
         public void run()
         {
             Scanner keyboard = new Scanner(System.in);
-            while(!Thread.interrupted())
+            while( ! Thread.interrupted())
             {
-                System.out.println("enter c, m, q");
+                System.out.println("Pose may auto capture otherwise, press c (capture), m (mirror), q (quit) then the Enter key");
                 String entered = keyboard.next();
                 int keyScanner = entered.charAt(0);
                 // map Scanner character codes to OpenCV character codes
-                if(keyScanner == keyCaptureScanner) dokeystroke.set(keyCapture);
-                if(keyScanner == keyMirrorToggleScanner) dokeystroke.set(keyMirrorToggle);
-                if(keyScanner == keyTerminateScanner) dokeystroke.set(keyTerminate);
+                if (keyScanner == keyCaptureScanner)
+                {
+                    dokeystroke.set(keyCapture);
+                }
+                if (keyScanner == keyMirrorToggleScanner)
+                {
+                    dokeystroke.set(keyMirrorToggle);
+                }
+                if (keyScanner == keyTerminateScanner)
+                {
+                    dokeystroke.set(keyTerminate);
+                }
             }
             keyboard.close();
         }
@@ -235,7 +243,7 @@ public class Main {
     public static void main(String[] args) throws Exception
     {
         try {
-            if (!handleArgs(args)) {
+            if ( ! handleArgs(args)) {
                 System.exit(0);
             }
         } catch (ParseException e) {
@@ -280,7 +288,6 @@ public class Main {
         }
 
         Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
-
 
         if ( ! Cfg.isPV) // PV has its own way to get these libraries */
         {
@@ -419,7 +426,7 @@ public class Main {
             HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
             HighGuiX.waitKey(5000);
         }
-        ugui.write(); //FIXME temp just to see what comes out even if we don't make it to the converged end
+        // ugui.write(); // temp just to see what comes out even if we don't make it to the converged end
         pw.close(); // K debugging
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
@@ -600,53 +607,3 @@ https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
 // or if you're using csh or tcsh
 // setenv DISPLAY :0.0
 // before running your app.
-
-/*
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.highgui.HighGui;
-
-public class Main {
-    static
-    {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-    }
-
-    Mat image = Mat.ones(100, 100, CvType.CV_8UC1);
-    
-    void main(String[] args)
-    {
-        HighGui.imshow("mywindow", image);
-        HighGui.waitKey(10000);
-    }
-}
- */
-// import java.util.zip.*;
-// import java.io.*;
-
-// import java.io.*;
-// import java.util.*;
-// import java.util.zip.*;
-
-// public class CompressionTest
-// {
-// 	public static void main(String[] args)
-// 	{
-// 		Compressor compressor = new Compressor();
-
-// 		String stringToCompress = "This is a test!";
-// 		//String stringToCompress = "When in the course of human events, it becomes necessary for one people to dissolve the bands that bind them...";
-
-// 		System.out.println("stringToCompress'" + stringToCompress + "'");
-
-// 		byte[] bytesCompressed = compressor.compress(stringToCompress);
-
-// 		System.out.println("bytesCompressed");
-// 		Console.writeBytesAsHexadecimal(bytesCompressed);
-
-// 		String stringDecompressed = compressor.decompressToString(bytesCompressed);
-
-// 		System.out.println("stringDecompressed'" + stringDecompressed + "'");
-// 	}
-// }

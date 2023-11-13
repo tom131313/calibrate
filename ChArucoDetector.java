@@ -274,6 +274,7 @@ public class ChArucoDetector {
             outputStreamPNG.write(IEND);
 
             outputStreamPNG.close();
+            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".png");
         }
         /// end create board
 
@@ -551,7 +552,7 @@ public class ChArucoDetector {
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
-            Main.LOGGER.log(Level.SEVERE, "too few corners " + this.N_pts);
+            Main.LOGGER.log(Level.SEVERE, "too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
             this.pose_valid = false;
             return;
         }
@@ -713,10 +714,21 @@ solvePnP
 //     raf.write(70); // Write byte 70 (overwrites original byte at this offset).
 // }
 
-            // // WRITE PNG FILE
-            // for(byte b:signaturePNG) System.out.format("%02x", b); System.out.println();
-            // for(byte b:IHDR) System.out.format("%02x", b); System.out.println();
-            // for(byte b:PHYS) System.out.format("%02x", b); System.out.println();
-            // for(byte b:IDAT) System.out.format("%02x", b); System.out.println();
-            // for(byte b:IEND) System.out.format("%02x", b); System.out.println();
-
+// import java.io.*;
+// import java.util.*;
+// import java.util.zip.*;
+// public class CompressionTest
+// {
+// 	public static void main(String[] args)
+// 	{
+// 		Compressor compressor = new Compressor();
+// 		String stringToCompress = "This is a test!";
+// 		//String stringToCompress = "When in the course of human events, it becomes necessary for one people to dissolve the bands that bind them...";
+// 		System.out.println("stringToCompress'" + stringToCompress + "'");
+// 		byte[] bytesCompressed = compressor.compress(stringToCompress);
+// 		System.out.println("bytesCompressed");
+// 		Console.writeBytesAsHexadecimal(bytesCompressed);
+// 		String stringDecompressed = compressor.decompressToString(bytesCompressed);
+// 		System.out.println("stringDecompressed'" + stringDecompressed + "'");
+// 	}
+// }
