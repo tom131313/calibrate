@@ -193,7 +193,7 @@ public class Main {
 
         if (cmd.hasOption("help")) {
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("java -jar photonvision.jar [options]", options);
+            formatter.printHelp("java -jar <your jar file>.jar [options]", options);
             return false; // exit program
         }
         else
