@@ -21,7 +21,7 @@ Other terminal (keyboard) input are 'm' for mirror view if that helps you align 
 
 The display of the guidance board and camera view are on a browser's port 1185. For example, 127.0.0.1:1185?action=stream or just 127.0.0.1:1185 to see the camera parameters, too. (This is standard WPILib camera server stuff so you can adust your camera parameters there.)
 
-If you run this on a system with PhotonVision running then stop PhotonVision. (linux commnad is `sudo service photonvision stop`)
+If you run this on a system with PhotonVision running then stop PhotonVision. (linux command is `sudo service photonvision stop`)
 
 References:
 
