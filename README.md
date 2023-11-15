@@ -1,11 +1,11 @@
 # Java Camera Calibrator
 
-run from a terminal window the photonvision-dev-calib-winx64.jar (Windows PC) or photonvision-dev-calib-linuxarm64.jar (RPi, etc.)
+run from a terminal window either the Windows jar or Linux arm64 jar (RPi, etc.)
 
 java -jar <the right jar file> [options]
 
 Options are listed with -help, for example, on a Windows PC:
-java -jar photonvision-dev-calib-winx64.jar -help
+java -jar calib-photonvision-dev-beta-X-winx64.jar -help
 
 Options included for changing the numeric camera Id, camera pixel format, wide, height, ChArUcoBoard printing size.
 
