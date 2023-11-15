@@ -13,12 +13,10 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
-import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.MatOfPoint3f;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.objdetect.CharucoBoard;
 import org.opencv.objdetect.CharucoDetector;
 import org.opencv.objdetect.CharucoParameters;
@@ -116,7 +114,7 @@ public class ChArucoDetector {
 
     public ChArucoDetector() throws FileNotFoundException, IOException
     {
-        Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
         this.board.generateImage(this.boardImageSize, this.boardImage);
@@ -171,8 +169,8 @@ public class ChArucoDetector {
             {
                 (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // length
                 (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // IHDR
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder 2520
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder 1680
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder
                 (byte)0x08,                                     // bit depth
                 (byte)0x00,                                     // color type - grey scale
                 (byte)0x00,                                     // compression method
@@ -215,7 +213,7 @@ public class ChArucoDetector {
             //The complete filtered PNG image is represented by a single zlib datastream that is stored in a number of IDAT chunks.
 
             // create the filtered, compressed datastream
-            // boardImage.setTo(new Scalar(255)); // testing
+
             boardImage.get(0, 0, boardByte); // board from OpenCV Mat
 
             // filter type begins each row so step through all the rows adding the filter type to each row
@@ -309,13 +307,14 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void set_intrinsics(Calibrator calib)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
         this.cdist = calib.cdist();
-        Main.Kcsv(Id.__LINE__(), this.K);
-        //Main.LOGGER.log(Level.WARNING, "class private K\n" + K.dump());
+        //Main.Kcsv(Id.__LINE__(), calib.K());
+        //Main.Kcsv(Id.__LINE__(), this.K);
+        //Main.LOGGER.log(Level.WARNING, "K\n" + this.K.dump() + "\n" + calib.K().dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -548,11 +547,12 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void update_pose() throws Exception
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
-            Main.LOGGER.log(Level.SEVERE, "too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
+            // Main.LOGGER.log(Level.SEVERE, "too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
+            Main.fewCorners = true;
             this.pose_valid = false;
             return;
         }
@@ -566,7 +566,7 @@ public class ChArucoDetector {
         
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
-        Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), this.K);
         // C++:  bool cv::solvePnPRansac(vector_Point3f objectPoints, vector_Point2f imagePoints, Mat cameraMatrix,
         // vector_double distCoeffs, Mat& rvec, Mat& tvec, bool useExtrinsicGuess = false,
         // int iterationsCount = 100, float reprojectionError = 8.0, double confidence = 0.99,
@@ -586,7 +586,7 @@ public class ChArucoDetector {
             rvec, tvec,
             false, 100, 8.0f, 0.99, inLiers, Calib3d.SOLVEPNP_ITERATIVE);
 
-        // Main.LOGGER.log(Level.WARNING, "inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
+        //Main.LOGGER.log(Level.WARNING, "inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
         
         if ( ! this.pose_valid)
         {

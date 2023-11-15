@@ -14,12 +14,12 @@ package org.photonvision.calibrator;
 // dry run not implemented
 // sampled distortion map with step = 1 (full map - not sampled) not implemented
 // added clone to this.get_pts3d()
+// changed K and Knew usage in create_maps - likely had misused the K variable
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,7 +36,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -66,7 +65,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 7"; // change this
+    private static final String VERSION = "beta 8"; // change this
 
     static
     {
@@ -80,9 +79,9 @@ public class Main {
         }
     }
 
-    private static PrintWriter pw; // K debugging
-    private static int counter = 0; // K debugging
-    static Mat testImg1 = new Mat(); // testing only
+    // private static PrintWriter pw; // K debugging
+    // private static int counter = 0; // K debugging
+    static Mat progressInsert = new Mat(); // testing only
 
     // LOGGER STUFF
     private static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
@@ -136,6 +135,8 @@ public class Main {
     private static int frameNumber = 0;
     static String frame = "00000 ";
     // END LOGGER STUFF
+
+    static boolean fewCorners = true;
 
     // keyboard mapping returns from waitKey
     private static final int keyTerminate = 81;
@@ -272,7 +273,7 @@ public class Main {
             // MjpegServer openCVserver = CameraServer.getInstance().startAutomaticCapture(outputStream);
         }
 
-        pw = new PrintWriter("K.csv");
+        // pw = new PrintWriter("K.csv");
 
         OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
         // add the file that is a running duplicate of System.err
@@ -427,7 +428,7 @@ public class Main {
             HighGuiX.waitKey(5000);
         }
         // ugui.write(); // temp just to see what comes out even if we don't make it to the converged end
-        pw.close(); // K debugging
+        // pw.close(); // K debugging
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
@@ -446,15 +447,28 @@ public class Main {
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
 
+        String message = "";
+
+        if (fewCorners)
+        {
+            message = "moving or bad aim\n";
+            fewCorners = false;
+        }
+        
         if (ugui.user_info_text().length() > 0) // is there a message to display?
         {
             // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
             // {
-            //     Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
+            //Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
             // }
-            Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, ugui.user_info_text(), new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+            message += ugui.user_info_text();
         }
+
+        if (message.length() > 0)
+        {
+            Imgproc.putText(out, message, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+            Imgproc.putText(out, message, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+        } 
 
         // //FIXME these guidance pose angles aren't right; bad conversion from tgt_r for some reason
         // // maybe save the original angles from pose gen so they are butchered before getting here.
@@ -469,20 +483,20 @@ public class Main {
         // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
         // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
         
-        if ( ! testImg1.empty())
+        if ( ! progressInsert.empty())
         { // add to the display the board/camera overlap image
-            Imgproc.resize(testImg1, testImg1, new Size(Cfg.image_width*0.1, Cfg.image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
+            Imgproc.resize(progressInsert, progressInsert, new Size(Cfg.image_width*0.1, Cfg.image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
             List<Mat> temp1 = new ArrayList<>(3); // make the 1 b&w channel into 3 channels
-            temp1.add(testImg1);
-            temp1.add(testImg1);
-            temp1.add(testImg1);
+            temp1.add(progressInsert);
+            temp1.add(progressInsert);
+            temp1.add(progressInsert);
             Mat temp2 = new Mat();
             Core.merge(temp1, temp2);
             Imgproc.rectangle(temp2, // outline the insert for better visibility
                 new Point(0, 0),
-                new Point(testImg1.cols()-1., testImg1.rows()-1.),
+                new Point(progressInsert.cols()-1., progressInsert.rows()-1.),
                 new Scalar(255., 255., 0.), 1);
-            temp2.copyTo(out.submat((int)(Cfg.image_height*0.45), (int)(Cfg.image_height*0.45)+testImg1.rows(), 0,testImg1.cols()));
+            temp2.copyTo(out.submat((int)(Cfg.image_height*0.45), (int)(Cfg.image_height*0.45)+progressInsert.rows(), 0,progressInsert.cols()));
             temp2.release();
         }
 
@@ -501,8 +515,6 @@ public class Main {
             Imgproc.rectangle(out, new Point((double)i*20,Cfg.image_height*0.4), new Point((double)(i+1)*20, Cfg.image_height*0.4+20), color, Imgproc.FILLED);
             Imgproc.putText(out, ugui.INTRINSICS()[i], new Point((double)i*20, Cfg.image_height*0.4+15), Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
         }
-
-
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -530,17 +542,17 @@ public class Main {
  * @param line Input "comment" line that could be used to identify the location in the program
  * @param K Input 3x3 camera matrix Mat. Doesn't have to be 3x3 but assumptions are made about changing the "[];\n"
  */
-    public static void Kcsv(String line, Mat K)
-    {
-        counter++;
-        if (counter == 1) // first time switch for columns' header
-        {
-            Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence"); // K's column names
-        }
-        String Kdump = K.dump();
-        Kdump = Kdump.replace("[", "").replace("]", "").replace(";", ",").replace("\n", "");
-        Main.pw.println(Main.frame + ", \"" + line + "\", " + Kdump + ", " + counter);
-    }
+    // public static void Kcsv(String line, Mat K)
+    // {
+    //     counter++;
+    //     if (counter == 1) // first time switch for columns' header
+    //     {
+    //         Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence"); // K's column names
+    //     }
+    //     String Kdump = K.dump();
+    //     Kdump = Kdump.replace("[", "").replace("]", "").replace(";", ",").replace("\n", "");
+    //     Main.pw.println(Main.frame + ", \"" + line + "\", " + Kdump + ", " + counter);
+    // }
 }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -585,6 +597,34 @@ All rotations in 3-D can be represented by four elements: a three-element axis o
 https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
   */
 
+//   Java Camera Calibrator
+// run from a terminal window the photonvision-dev-calib-winx64.jar (Windows PC) or photonvision-dev-calib-linuxarm64.jar (RPi, etc.)
+// java -jar [options]
+// Options are listed with -help, for example, on a Windows PC: java -jar photonvision-dev-calib-winx64.jar -help
+// Options included for changing the numeric camera Id, camera pixel format, wide, height, ChArUcoBoard printing size.
+// Run the program to make a ChArUcoBoard.png file that can be printed.
+// Run the program and aim the camera at the printed board in the pose that matches the guidance board on the computer
+//  screen. It may be easier to align a fixed camera and hold and move the baord.
+// // If the guidance board and the camera image match, the program should auto-capture that information. The (lack of
+//  always) auto capture leaves something to be desired and the user can force capture by pressing "c" and Enter on the
+//   computer terminal window that was used to start the program. I suggest pressing 'c' after the program starts and it's
+//    ready for a press Enter when the poses align but failed to auto capture. The black and white insert shows what the
+//     poses are of the guidance board (exactly right) and the estimated camera view (not always right - want to help me
+//      get this better? It has to do with how the program is dynamically adjusting the estimated camera matrix).
+// // The nine red camera intrinsic parameters turn green when the poses provide enough information. Usually after about
+//  15 carefully aligned poses.
+// // Other terminal (keyboard) input are 'm' for mirror view if that helps you align the camera to the guidance and 'q'
+//  to quit.
+// // The display of the guidance board and camera view are on a browser's port 1185. For example,
+//  127.0.0.1:1185?action=stream or just 127.0.0.1:1185 to see the camera parameters, too. (This is standard WPILib
+//   camera server stuff so you can adust your camera parameters there.)
+// If you run this on a system with PhotonVision running then stop PhotonVision. (linux command is sudo service
+//  photonvision stop)
+// References:
+// https://arxiv.org/pdf/1907.04096.pdf
+// https://www.calibdb.net/#
+// https://github.com/paroj/pose_calib
+
 //  https://github.com/mcm001/photonvision/tree/2023-10-30_pose_calib_integration
 //  I made this by running 
 // gradlew clean
@@ -600,10 +640,3 @@ https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
 //  and then 
 // java -jar photonvision-dev-v2024.1.1-beta-3.1-5-ga99e85a8-linuxarm64.jar
 //  is all you should need 
-
-
-// AWT setup If you're on the main display, then
-// export DISPLAY=:0.0
-// or if you're using csh or tcsh
-// setenv DISPLAY :0.0
-// before running your app.

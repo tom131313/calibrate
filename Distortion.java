@@ -307,7 +307,7 @@ class Distortion
 
         Mat diff = new Mat();
         Core.normalize(normMat, diff, 0, 255, Core.NORM_MINMAX, CvType.CV_8U);
-        // //Main.LOGGER.log(Level.WARNING, "diff " + diff.dump());
+        //Main.LOGGER.log(Level.WARNING, "diff " + diff.dump());
         //Main.LOGGER.log(Level.WARNING, "normMat normalized=diff " + diff);
 
         Rect bounds = null;

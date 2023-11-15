@@ -60,9 +60,9 @@ public class Cfg
     
     // user config for convergence criteria
     static final int pt_min_markers = 1;
-    static final double matchStillCidsMin = 0.8; // exclusive, Jaccard similarity of current and previous corner ids lists for mean flow calc 
+    static final double matchStillCidsMin = 0.85; // exclusive, Jaccard similarity of current and previous corner ids lists for mean flow calc 
     static final double mean_flow_max = 3.; // exclusive, larger is more movement allowed
-    static final double pose_close_to_tgt_min = 0.8; // exclusive. was 0.85 overlap - the Jaccard score between shadow and actual img
+    static final double pose_close_to_tgt_min = 0.85; // exclusive.  - the Jaccard score between shadow and actual img
     static final double MAX_OVERLAP = 0.9; // maximum fraction of distortion mask overlapping with this pose before pose considered not contributing enough to help fill distortion mask
     static final double minCorners = 6; // min for solvePnP (original needed 4 or 5 w/o solvePnP) but another place requires many more
 

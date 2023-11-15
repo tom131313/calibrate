@@ -1,6 +1,7 @@
 package org.photonvision.calibrator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -121,6 +122,9 @@ class Calibrator {
         this.cdist.get(0, 3)[0],
         this.cdist.get(0, 4)[0]
         };
+      //Main.Kcsv(Id.__LINE__(), this.K);
+      //Main.LOGGER.log(Level.WARNING, "K\n" + K.dump());
+      //Main.LOGGER.log(Level.WARNING, Arrays.toString(intrinsics));
       return intrinsics;
     }
 /*-------------------------------------------------------------------------------------------------*/
@@ -165,7 +169,10 @@ class Calibrator {
             flags |= Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
         }
 
-        //Main.Kcsv(Id.__LINE__(), K);
+        if (nkeyframes == 2) //FIXME rkt testing frame 2 pose estimate improvement
+        {
+          flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT | Calib3d.CALIB_FIX_FOCAL_LENGTH;
+        }
 
         calibrateCameraReturn res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
  
@@ -175,8 +182,6 @@ class Calibrator {
         List<Mat> rvecsList = res.rvecsList;
         List<Mat> tvecsList = res.tvecsList;
         Mat variances = res.varianceIntrinsics;
-
-        //Main.Kcsv(Id.__LINE__(), K);
 
         variances.get(0, 0, this.varIntrinsics); // convert from Mat to double array; this.varIntrinsics replaces self.PCov in Python
 
@@ -384,7 +389,8 @@ class Calibrator {
         List<Mat> tvecs = new ArrayList<>();
         Mat stdDeviationsIntrinsics = new Mat();
         double reperr = Double.NaN;
-        //Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K); // K input to calibration
+        //Main.LOGGER.log(Level.WARNING, "K input to calibration\n" + K.dump());
         //Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
         try
         {
@@ -403,7 +409,8 @@ class Calibrator {
         {
           Main.LOGGER.log(Level.SEVERE, Id.__LINE__() + " " + error.toString());
         }
-        //Main.Kcsv(Id.__LINE__(), K);
+        //Main.Kcsv(Id.__LINE__(), K); // K output from calibrtation
+        //Main.LOGGER.log(Level.WARNING, "K output from calibration\n" + K.dump());
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
 

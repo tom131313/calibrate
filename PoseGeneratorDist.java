@@ -114,6 +114,8 @@ public class PoseGeneratorDist {
 
         Calib3d.undistortPoints(p, p, K, cdist);
 
+        //Main.Kcsv(Id.__LINE__(), K);
+
         //Main.LOGGER.log(Level.WARNING, "p out " + p.dump());
 
         double[] pXY = p.get(0, 0); // get X and Y channels for the point (ravel)
@@ -204,17 +206,17 @@ public class PoseGeneratorDist {
         translateToBoardCenter = bbox.mul(translateToBoardCenter);
         //Main.LOGGER.log(Level.WARNING, "translateToBoardCenter\n" + translateToBoardCenter.dump());
 
-        // //Main.LOGGER.log(Level.WARNING, "R " + R.dump());
-        // //Main.LOGGER.log(Level.WARNING, "R3x3 " + R3x3.dump());
-        // //Main.LOGGER.log(Level.WARNING, "Tc " + Tc.dump());
-        // //Main.LOGGER.log(Level.WARNING, "Tc1x3 " + Tc1x3.dump());
+        //Main.LOGGER.log(Level.WARNING, "R " + R.dump());
+        //Main.LOGGER.log(Level.WARNING, "R3x3 " + R3x3.dump());
+        //Main.LOGGER.log(Level.WARNING, "Tc " + Tc.dump());
+        //Main.LOGGER.log(Level.WARNING, "Tc1x3 " + Tc1x3.dump());
 
         /*************************************************************************************** */
         Core.gemm(R3x3, translateToBoardCenter, 1., new Mat(), 0.,Tc3x1);
         Tc3x1.t().copyTo(Tc1x3); // update Tc
         /*************************************************************************************** */
-        // //Main.LOGGER.log(Level.WARNING, "Tc " + Tc.dump());
-        // //Main.LOGGER.log(Level.WARNING, "Tc1x3 " + Tc1x3.dump());
+        //Main.LOGGER.log(Level.WARNING, "Tc " + Tc.dump());
+        //Main.LOGGER.log(Level.WARNING, "Tc1x3 " + Tc1x3.dump());
 
         // translate board to center of image
 
@@ -225,9 +227,9 @@ public class PoseGeneratorDist {
         translateToImageCenter.put(0, 0, -0.5, -0.5, Z);
         bbox.mul(translateToImageCenter).t().copyTo(T1x3);   
         /*************************************************************************************** */
-        // //Main.LOGGER.log(Level.WARNING, "translateToImageCenter " + translateToImageCenter.dump());
-        // //Main.LOGGER.log(Level.WARNING, "T1x3 " + T1x3.dump());
-        // //Main.LOGGER.log(Level.WARNING, "T " + T.dump());
+        //Main.LOGGER.log(Level.WARNING, "translateToImageCenter " + translateToImageCenter.dump());
+        //Main.LOGGER.log(Level.WARNING, "T1x3 " + T1x3.dump());
+        //Main.LOGGER.log(Level.WARNING, "T " + T.dump());
 
         // rotate center of board
         Mat Rf = new Mat();
@@ -237,7 +239,7 @@ public class PoseGeneratorDist {
         Core.gemm(Rf, Tc, 1., new Mat(), 0.,Rf);
         Core.gemm(Rf, T, 1., new Mat(), 0.,Rf);
         /*************************************************************************************** */
-        // //Main.LOGGER.log(Level.WARNING, "Rf " + Rf.dump());
+        //Main.LOGGER.log(Level.WARNING, "Rf " + Rf.dump());
 
         // return cv2.Rodrigues(Rf[:3, :3])[0].ravel(), Rf[3, :3]
         Mat Rf3x3 = Rf.submat(0, 3, 0, 3);
@@ -578,6 +580,8 @@ public class PoseGeneratorDist {
         //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
         //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
         //Main.Kcsv(Id.__LINE__(), K);
+
+        // first frame will be orbital pose from fixed angles
         if (nk == 0)
         {
             // x is camera pointing ahead up/down; y is camera pointing left/right; z is camera rotated (Z is axis from camera to target)
@@ -587,6 +591,8 @@ public class PoseGeneratorDist {
             return orbital_pose(bbox, 0., Math.PI/4., this.orbitalZ, Math.PI/8./*probably this.rz*/);
             /********************************************************************************************************* */
         }
+
+        //second frame will be full screen planar based on the K estimated from the first frame
         if (nk == 1)
         {
             // init sequence: second keyframe
@@ -595,6 +601,9 @@ public class PoseGeneratorDist {
             return pose_planar_fullscreen(K, cdist, this.img_size, bbox);
             /********************************************************************************************************* */
         }
+
+        // poses for all the frames after the first two
+        // pose will be based on the parameter being analyzed
         if (tgt_param < 4)
         {
             // orbital pose is used for focal length
@@ -776,22 +785,16 @@ Rotation axis v is the normalized input vector: v = rod2/theta = [a/theta, b/the
     // }
 
 /*
-CV_8U - 8-bit unsigned integers ( 0..255 )
-CV_8S - 8-bit signed integers ( -128..127 )
-CV_16U - 16-bit unsigned integers ( 0..65535 )
-CV_16S - 16-bit signed integers ( -32768..32767 )
-CV_32S - 32-bit signed integers ( -2147483648..2147483647 )
-CV_32F - 32-bit floating-point numbers ( -FLT_MAX..FLT_MAX, INF, NAN )
-CV_64F - 64-bit floating-point numbers ( -DBL_MAX..DBL_MAX, INF, NAN )
- */
-/*
-Defining the principal point
+Defining the principal point:
 The principal point is the point on the image plane onto which the perspective center is projected. It is also the point from which the focal length of the lens is measured.
 
 Near the principal point is the principal point of autocollimation (PPA). This is defined as the image position where the optical axis intersects the image plane.
 
-The principal point of symmetry (POS), also known as the calibrated principal point, is the point on the image where a ray of light travelling perpendicular to the image plane passes through the focal point of the lens and intersects the film. In a perfectly assembled camera, the principal point of symmetry would be where the lines of opposing fiducial marks on an image intersect, also known as the indicated principal point (IPP). However, in most cameras a slight offset occurs. The perspective effects in the image are radial about this point.
- */
+The principal point of symmetry (POS), also known as the calibrated principal point, is the point on the image where a ray of light travelling perpendicular to the image
+plane passes through the focal point of the lens and intersects the film. In a perfectly assembled camera, the principal point of symmetry would be where the lines of
+opposing fiducial marks on an image intersect, also known as the indicated principal point (IPP). However, in most cameras a slight offset occurs. The perspective effects
+in the image are radial about this point.
+*/
 
 // Gen_Bin tester
 // PoseGeneratorDist pgd = new PoseGeneratorDist(new Size(1280., 720.));

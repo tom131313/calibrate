@@ -85,7 +85,7 @@ class BoardPreview {
         R.release();
         H.release();
 
-        // //Main.LOGGER.log(Level.WARNING, "returning imgProjected\n" + brief(imgProjected));
+        //Main.LOGGER.log(Level.WARNING, "returning imgProjected\n" + brief(imgProjected));
 
         return imgProjected;
     }
@@ -105,7 +105,7 @@ class BoardPreview {
     private Mat img = new Mat();
     private Mat shadow; // used for overlap score
     private Mat maps; // 2D version used for remap function
-    private Mat Knew;
+    private Mat Knew = new Mat();
     BoardPreview(Mat img)
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
@@ -179,19 +179,13 @@ class BoardPreview {
         scale.put(1, 1, this.SIZE.height/sz.height);
         scale.put(2, 2, 1.);
         //Main.Kcsv(Id.__LINE__(), K);
-        Core.gemm(scale, K, 1., new Mat(), 0.,K);
-        //Main.Kcsv(Id.__LINE__(), K);
+        // Core.gemm(scale, K, 1., new Mat(), 0.,K);
+        //FIXME Knew and K are suspect. What's the right answer to making Knew without trashing K????
+        Core.gemm(scale, K, 1., new Mat(), 0.,this.Knew);
         sz = this.SIZE;
-        //Main.LOGGER.log(Level.WARNING, "K scaled\n" + K.dump());
-        //Main.LOGGER.log(Level.WARNING, "Knew null " + (this.Knew == null)); // matches to here
+        this.Knew = Calib3d.getOptimalNewCameraMatrix(Knew, cdist, sz, 1.); // .2% higher than Python for same input
 
-        this.Knew = Calib3d.getOptimalNewCameraMatrix(K, cdist, sz, 1.); // .2% higher than Python for same input
-        //Main.LOGGER.log(Level.WARNING, "Knew " + this.Knew + "\n" + this.Knew.dump());
-        //Main.Kcsv(Id.__LINE__(), this.Knew);
-        this.maps = Distortion.make_distort_map(K, sz, cdist, this.Knew);
-        //Main.Kcsv(Id.__LINE__(), this.Knew);
-        //Main.LOGGER.log(Level.WARNING, "Knew " + this.Knew + "\n" + this.Knew.dump()); // same as input to make_distort_map
-        //Main.LOGGER.log(Level.WARNING, "maps " + this.maps + "\n" + brief(this.maps));
+        this.maps = Distortion.make_distort_map(Knew, sz, cdist, this.Knew);
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -222,12 +216,12 @@ class BoardPreview {
         // Imgproc.remap(img, img, maps[0]/*X*/, maps[1]/*Y*/, inter);// maybe X Mat and Y Mat somehow; separate channels?
 
         Imgproc.remap(img, img, this.maps, new Mat(), inter);// 1st arg can be XY with no 2nd arg (original has separate X and Y arguments)
-        // //Main.LOGGER.log(Level.WARNING, "img after remap " + img + "\n" + brief(img));
+        //Main.LOGGER.log(Level.WARNING, "img after remap " + img + "\n" + brief(img));
 
         // maps (2, 480, 640)
         Imgproc.resize(img, img, this.sz, 0, 0, inter);
 
-        // //Main.LOGGER.log(Level.WARNING, "returning img after resize " + img + "\n" + brief(img));
+        //Main.LOGGER.log(Level.WARNING, "returning img after resize " + img + "\n" + brief(img));
 
         return img;
     }

@@ -332,12 +332,12 @@ public class UserGuidance {
                                     Imgproc.INTER_NEAREST);
         // debug display
         Mat tempImg = new Mat();
-        tmp.copyTo(Main.testImg1); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
+        tmp.copyTo(Main.progressInsert); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
         this.overlap.copyTo(tempImg); // tempImg has the warped guidance board
 
-        Core.multiply(Main.testImg1, new Scalar(220.), Main.testImg1); // brighten (to near white) so it can be seen by humans
+        Core.multiply(Main.progressInsert, new Scalar(220.), Main.progressInsert); // brighten (to near white) so it can be seen by humans
         Core.multiply(tempImg, new Scalar(130.), tempImg); // brighten (to dark gray) so it can be seen by humans
-        Core.add(Main.testImg1, tempImg, Main.testImg1); // where they overlap is bright white
+        Core.add(Main.progressInsert, tempImg, Main.progressInsert); // where they overlap is bright white
 
         //Main.LOGGER.log(Level.WARNING, "shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
 
@@ -377,13 +377,13 @@ public class UserGuidance {
         // first time need to see at least half of the interior corners or force
         if ((this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2))
         {
-            // Main.LOGGER.log(Level.WARNING, "initial calibrate");
+            //Main.LOGGER.log(Level.WARNING, "initial calibrate");
             // try to estimate intrinsic params from single frame
             this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()));
 
             if ( /*! np.isnan(this.calib.K()).any() &&*/ this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be
             {
-                // Main.LOGGER.log(Level.WARNING, "initial set_next_pose and intrinsics");
+                //Main.LOGGER.log(Level.WARNING, "initial set_next_pose and intrinsics");
                 this.set_next_pose();  // update target pose
                 this.tracker.set_intrinsics(this.calib);
                 this.min_reperr_init = this.calib.reperr();
@@ -413,7 +413,7 @@ public class UserGuidance {
 
         this.capture = this.pose_reached && (this.still || force);
 
-        // Main.LOGGER.log(Level.WARNING,
+        //Main.LOGGER.log(Level.WARNING,
         //     "corners " + this.tracker.N_pts() +
         //     ", pose_close_to_tgt " + pose_close_to_tgt +
         //     ", still " + this.still +
@@ -422,12 +422,12 @@ public class UserGuidance {
         //     ", force " + force);
 
         if ( ! this.capture)
-        {
+        {  
             return false;            
         }
 
         this.calib.keyframes.add(this.tracker.get_calib_pts());
-
+        //Main.LOGGER.log(Level.WARNING, "keyframe captured " + this.calib.keyframes.size());
         // update calibration with all keyframe
         this.calibrate();
 
