@@ -69,7 +69,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 9.2"; // change this
+    private static final String VERSION = "beta 9-3"; // change this
     
     static
     {
@@ -431,9 +431,12 @@ public class Main {
         Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
         Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 2);
         if (Cfg.isPV)
-        {         
+        {
+            for (int runOut = 0; runOut < 100; runOut++) // last frame won't display so repeat it a bunch of times to see it
+            {
             networkDisplay.putFrame(out);
-            Thread.sleep(5000L);
+            Thread.sleep(50L);                
+            }
             networkDisplay.close();
         }
         else
