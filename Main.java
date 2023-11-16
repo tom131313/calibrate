@@ -69,7 +69,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 9"; // change this
+    private static final String VERSION = "beta 9.2"; // change this
     
     static
     {
