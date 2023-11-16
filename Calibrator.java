@@ -11,6 +11,7 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
+import org.photonvision.calibrator.PoseGeneratorDist.Pose;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -144,7 +145,7 @@ class Calibrator {
 
         if ( keyframes.isEmpty())
         {
-          keyframes.addAll(this.keyframes);
+          keyframes.addAll(this.keyframes); // gives size 1 keyframe for the first 2 poses so hard to tell the 2nd pose is in action since it's still #1
         }
 
         if (keyframes.isEmpty())
@@ -154,24 +155,42 @@ class Calibrator {
 
         int nkeyframes = keyframes.size();
 
-        if (nkeyframes <= 1)
-        {
-            // restrict first calibration to K matrix parameters
-            flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
-        }
+        // if (nkeyframes <= 1)
+        // {
+        //     // restrict first calibration to K matrix parameters
+        //     flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
+        // }
 
-        if (nkeyframes <= 1)
-        {
-            // with only one frame we just estimate the focal length
-            flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT;
+        // if (nkeyframes <= 1)
+        // {
+        //     // with only one frame we just estimate the focal length
+        //     flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT;
 
-            flags |= Calib3d.CALIB_ZERO_TANGENT_DIST;
-            flags |= Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
-        }
+        //     flags |= Calib3d.CALIB_ZERO_TANGENT_DIST;
+        //     flags |= Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
+        // }
 
-        if (nkeyframes == 2) //FIXME rkt testing frame 2 pose estimate improvement
+        // initialization process
+        if (nkeyframes <= 1) // all the early frames are #1
         {
-          flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT | Calib3d.CALIB_FIX_FOCAL_LENGTH;
+            switch (PoseGeneratorDist.pose)
+            {
+                // a first time switch through each of these might be appropriate but it works okay without it.
+                case ORBITAL:
+                    // restrict early orbital calibrations to K matrix parameters and don't mess with distortion
+                    flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
+                    flags |= Calib3d.CALIB_ZERO_TANGENT_DIST | Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
+                    break;
+                
+                case PLANAR_FULL_SCREEN:
+                    // restrict early planar calibrations to distortion and don't mess with focal length
+                    flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT | Calib3d.CALIB_FIX_FOCAL_LENGTH;
+                    break;
+
+                default:
+                    Main.LOGGER.log(Level.SEVERE, "unknown initial pose " + PoseGeneratorDist.pose);
+                    break;
+            }
         }
 
         calibrateCameraReturn res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
@@ -399,7 +418,7 @@ class Calibrator {
             img_size, K, cdist,
             rvecs, tvecs,
             stdDeviationsIntrinsics, new Mat(), new Mat(),
-            flags, Cfg.calibrateCameraCriteria); //FIXME maybe null for the two empty Mats?
+            flags, Cfg.calibrateCameraCriteria);
 
           //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
           //Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);

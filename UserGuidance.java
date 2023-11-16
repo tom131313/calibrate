@@ -422,7 +422,7 @@ public class UserGuidance {
         //     ", force " + force);
 
         if ( ! this.capture)
-        {  
+        {
             return false;            
         }
 

@@ -122,7 +122,7 @@ public class ChArucoDetector {
         if (Cfg.writeBoard)
         {
             // write ChArUco Board to file for print to use for calibration
-            final String file = "ChArUcoBoard";
+            final String boardFile = Cfg.boardFile;
             
             // /* jpg */
             // final MatOfInt writeBoardParamsJpg = new MatOfInt( // pair-wise; param1, value1, ...
@@ -150,8 +150,9 @@ public class ChArucoDetector {
             // }
 
             /* PNG */
-            File outputFile = new File(file + ".png");
-            FileOutputStream outputStreamPNG = new FileOutputStream(outputFile);
+            final String boardFilePNG = boardFile + ".png";
+            FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
+            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + boardFilePNG);
 
             byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
 
@@ -272,7 +273,6 @@ public class ChArucoDetector {
             outputStreamPNG.write(IEND);
 
             outputStreamPNG.close();
-            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".png");
         }
         /// end create board
 
@@ -281,20 +281,17 @@ public class ChArucoDetector {
         final RefineParameters refineParams = new RefineParameters();
         final CharucoParameters charucoParams = new CharucoParameters();
 
-        charucoParams.set_minMarkers(Cfg.pt_min_markers);
-        charucoParams.set_tryRefineMarkers(true);
+        charucoParams.set_minMarkers(Cfg.pt_min_markers); // 2 default
+        charucoParams.set_tryRefineMarkers(Cfg.tryRefineMarkers); // false default
         // charucoParams.set_cameraMatrix();
         // charucoParams.set_distCoeffs();
-        detectParams.set_cornerRefinementMaxIterations(2000);
-        detectParams.set_cornerRefinementMethod(Objdetect.CORNER_REFINE_CONTOUR); // 2
+        detectParams.set_cornerRefinementMaxIterations(Cfg.cornerRefinementMaxIterations); // 30 default
+        detectParams.set_cornerRefinementMethod(Cfg.cornerRefinementMethod); // 0 default
+        refineParams.set_checkAllOrders(Cfg.checkAllOrders); // true default
+        refineParams.set_errorCorrectionRate(Cfg.errorCorrectionRate); // 3.0 default
+        refineParams.set_minRepDistance(Cfg.minRepDistance); // 10.0 default
+
         detector = new CharucoDetector(this.board, charucoParams, detectParams, refineParams);
-        
-        Main.LOGGER.log(Level.CONFIG, "" + detector.getCharucoParameters().get_minMarkers()); // 2 default
-        Main.LOGGER.log(Level.CONFIG, "" + detector.getCharucoParameters().get_tryRefineMarkers()); // false default
-        Main.LOGGER.log(Level.CONFIG, "" + detector.getDetectorParameters().get_cornerRefinementMaxIterations()); // 30 default
-        Main.LOGGER.log(Level.CONFIG, "" + detector.getDetectorParameters().get_cornerRefinementMethod()); // 0 default
-        Main.LOGGER.log(Level.CONFIG, "" + detector.getRefineParameters().get_checkAllOrders()); // true default
-        Main.LOGGER.log(Level.CONFIG, "" + detector.getRefineParameters().get_errorCorrectionRate()); // 3.0 default
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/

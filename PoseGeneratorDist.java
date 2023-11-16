@@ -25,6 +25,9 @@ import org.opencv.core.Size;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class PoseGeneratorDist {
+
+    enum Pose {NONE, ORBITAL, PLANAR_FULL_SCREEN, FROM_BOUNDS};
+    static Pose pose = Pose.NONE; // probably shouldn't be static but they are used in a static method and there is only one instantiation
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -151,6 +154,7 @@ public class PoseGeneratorDist {
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
+        pose = Pose.ORBITAL;
         //Main.LOGGER.log(Level.WARNING, "bbox " + bbox + "\n" + bbox.dump());
         //Main.LOGGER.log(Level.WARNING, "rx " + rx);
         //Main.LOGGER.log(Level.WARNING, "ry " + ry);
@@ -287,7 +291,7 @@ public class PoseGeneratorDist {
     private static List<Mat> pose_planar_fullscreen(Mat K, Mat cdist, Size img_size, Mat bbox)
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-
+        pose = Pose.PLANAR_FULL_SCREEN;
         // don't use the principal point throughout just have X and Y no Z until it's calculated in the middle
         // compute a new Z
         //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
@@ -350,6 +354,7 @@ public class PoseGeneratorDist {
     private pose_from_boundsReturn pose_from_bounds(Mat src_extParm, Rect tgt_rect, Mat K, Mat cdist, Size img_sz)
     {
         //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        pose = Pose.FROM_BOUNDS;
         //Main.LOGGER.log(Level.WARNING, "src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
         //Main.LOGGER.log(Level.WARNING, "tgt_rect " + tgt_rect); // guidance board posed
         //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());

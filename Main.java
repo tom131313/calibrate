@@ -6,20 +6,24 @@
 
 package org.photonvision.calibrator;
 
-// changed method name oribital_pose to orbital_pose - rkt
+// changed method name oribital_pose to orbital_pose
 // didn't change some other misspellings
 // changed a couple of other "bugs" (maybe, I think)
 // used current OpenCV methods. Some old ones were removed.
 // didn't convert some unused methods and variables
 // dry run not implemented
+// used OpenCV variances (standard deviations) for intrinsics instead of the Jacobian manipulations
 // sampled distortion map with step = 1 (full map - not sampled) not implemented
 // added clone to this.get_pts3d()
-// changed K and Knew usage in create_maps - likely had misused the K variable
+// changed K and Knew usage in create_maps - likely had misused and trashed the K variable
+// modified calibration flags usage for early poses
+// changed (corrected?, I am hopeful) pose_from_bounds scaling of rotated
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -65,8 +69,14 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 8"; // change this
-
+    private static final String VERSION = "beta 9"; // change this
+    
+    static
+    {
+        System.out.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
+        System.err.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
+    }
+    
     static
     {
         if (Cfg.isPV)
@@ -84,8 +94,6 @@ public class Main {
     static Mat progressInsert = new Mat(); // testing only
 
     // LOGGER STUFF
-    private static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
-
     static final Logger LOGGER = Logger.getLogger("");
     private static final String outFormat = "%7$s%4$-7s [%3$s %2$s] %5$s %6$s%n";
     private static final String outTail = "THE END OF THE LOG\n";
@@ -153,27 +161,30 @@ public class Main {
     {
         public void run()
         {
-            Scanner keyboard = new Scanner(System.in);
-            while( ! Thread.interrupted())
+            try (Scanner keyboard = new Scanner(System.in))
             {
-                System.out.println("Pose may auto capture otherwise, press c (capture), m (mirror), q (quit) then the Enter key");
-                String entered = keyboard.next();
-                int keyScanner = entered.charAt(0);
-                // map Scanner character codes to OpenCV character codes
-                if (keyScanner == keyCaptureScanner)
+                while( ! Thread.interrupted())
                 {
-                    dokeystroke.set(keyCapture);
+                    System.out.println("Pose should auto capture otherwise, press c (capture), m (mirror), q (quit) then the Enter key");
+                    String entered = keyboard.next();
+                    int keyScanner = entered.charAt(0);
+                    // map Scanner character codes to OpenCV character codes
+                    if (keyScanner == keyCaptureScanner)
+                    {
+                        dokeystroke.set(keyCapture);
+                    }
+                    if (keyScanner == keyMirrorToggleScanner)
+                    {
+                        dokeystroke.set(keyMirrorToggle);
+                    }
+                    if (keyScanner == keyTerminateScanner)
+                    {
+                        dokeystroke.set(keyTerminate);
+                    }
                 }
-                if (keyScanner == keyMirrorToggleScanner)
-                {
-                    dokeystroke.set(keyMirrorToggle);
-                }
-                if (keyScanner == keyTerminateScanner)
-                {
-                    dokeystroke.set(keyTerminate);
-                }
-            }
-            keyboard.close();
+            } catch(Exception e) {Main.LOGGER.log(Level.SEVERE,
+                "Terminal keyboard closed (Ctrl-c) or doesn't exist (jar file not run from command line)", e);}
+            // keyboard.close();
         }
     }
 
@@ -243,6 +254,31 @@ public class Main {
 /*-------------------------------------------------------------------------------------------------*/
     public static void main(String[] args) throws Exception
     {
+        Main MainInstance;
+        Keystroke keystroke;
+        Thread keyboardThread;
+
+        CvSource networkDisplay;
+        MjpegServer mjpegServer;
+
+        OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
+        // add the file that is a running duplicate of System.err
+        try { // create a stream with the 2 substreams
+            copySystemErr = new BufferedOutputStream(new FileOutputStream(Cfg.logFile, true));
+            TeePrintStream errStreamCopied = new TeePrintStream(
+                                System.err,
+                                copySystemErr,
+                                true);
+            System.setErr(errStreamCopied); // use the duplicating stream as System.err
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
+        Main.LOGGER.log(Level.SEVERE, "logs accumulate in file " + Cfg.logFile);
+
+        // pw = new PrintWriter("K.csv");
+
         try {
             if ( ! handleArgs(args)) {
                 System.exit(0);
@@ -251,13 +287,7 @@ public class Main {
             LOGGER.log(Level.SEVERE, "Failed to parse command-line options!", e);
         }
 
-        Main MainInstance;
-        Keystroke keystroke;
-        Thread keyboardThread;
-
-        CvSource networkDisplay;
-        MjpegServer mjpegServer;
-
+        // keyboard handler for PV using the web interface
         if (Cfg.isPV)
         {
             MainInstance = new Main();
@@ -272,23 +302,6 @@ public class Main {
             mjpegServer.setSource(networkDisplay);
             // MjpegServer openCVserver = CameraServer.getInstance().startAutomaticCapture(outputStream);
         }
-
-        // pw = new PrintWriter("K.csv");
-
-        OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
-        // add the file that is a running duplicate of System.err
-        try { // create a stream with the 2 substreams
-            copySystemErr = new BufferedOutputStream(new FileOutputStream(logFile, true));
-            TeePrintStream errStreamCopied = new TeePrintStream(
-                                System.err,
-                                copySystemErr,
-                                true);
-            System.setErr(errStreamCopied); // use the duplicating stream as System.err
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
 
         if ( ! Cfg.isPV) // PV has its own way to get these libraries */
         {
