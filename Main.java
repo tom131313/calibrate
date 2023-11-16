@@ -382,26 +382,25 @@ public class Main {
 
             ugui.update(force); // calibrate
             
-            if (ugui.converged()) // are we there yet?
-            {
-                ugui.write(); // write all the calibration data
-
-                break grabFrameLoop; // the end - rkt addition; the original kept looping somehow
-            }
-
             displayOverlay(out, ugui);
 
             int k;
             if (Cfg.isPV)
             {                    
             networkDisplay.putFrame(out);
-
             k = MainInstance.dokeystroke.getAndSet(timedOut);
             }
-            else // use HighGuiX for Windows
+            else
             {
             HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
             k = HighGuiX.waitKey(Cfg.wait);
+            }
+
+            if (ugui.converged()) // are we there yet?
+            {
+                ugui.write(); // write all the calibration data
+
+                break grabFrameLoop; // the end - rkt addition; the original kept looping somehow
             }
 
             if (k == timedOut)
@@ -434,8 +433,10 @@ public class Main {
         if (Cfg.isPV)
         {         
             networkDisplay.putFrame(out);
+            Thread.sleep(5000L);
+            networkDisplay.close();
         }
-        else // use HighGuiX for Windows
+        else
         {
             HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
             HighGuiX.waitKey(5000);
@@ -460,28 +461,24 @@ public class Main {
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
         Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
 
-        String message = "";
-
-        if (fewCorners)
-        {
-            message = "moving or bad aim\n";
-            fewCorners = false;
-        }
-        
         if (ugui.user_info_text().length() > 0) // is there a message to display?
         {
             // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
             // {
             //Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
             // }
-            message += ugui.user_info_text();
-        }
-
-        if (message.length() > 0)
-        {
-            Imgproc.putText(out, message, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, message, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+            String message1 = ugui.user_info_text();
+            Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+            Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
         } 
+
+        if (fewCorners)
+        {
+            String message2 = "moving or bad aim\n";
+            Imgproc.putText(out, message2, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+            Imgproc.putText(out, message2, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+            fewCorners = false;
+        }
 
         // //FIXME these guidance pose angles aren't right; bad conversion from tgt_r for some reason
         // // maybe save the original angles from pose gen so they are butchered before getting here.
