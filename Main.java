@@ -69,7 +69,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 9-3"; // change this
+    private static final String VERSION = "beta 9-4"; // change this
     
     static
     {
@@ -77,21 +77,21 @@ public class Main {
         System.err.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
     }
     
-    static
-    {
-        if (Cfg.isPV)
-        {
-            org.photonvision.common.util.TestUtils.loadLibraries();
-        }
-        else
-        {
-            System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
-        }
-    }
+    // static
+    // {
+    //     if (Cfg.isPV)
+    //     {
+    //         org.photonvision.common.util.TestUtils.loadLibraries();
+    //     }
+    //     else
+    //     {
+    //         System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
+    //     }
+    // }
 
     // private static PrintWriter pw; // K debugging
     // private static int counter = 0; // K debugging
-    static Mat progressInsert = new Mat(); // testing only
+    static Mat progressInsert;
 
     // LOGGER STUFF
     static final Logger LOGGER = Logger.getLogger("");
@@ -208,6 +208,7 @@ public class Main {
         options.addOption("dpmY", true, "print height pixels per meter (9843=250 DPI");
         options.addOption("pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
         options.addOption("cameraID", true, "camera id (0)");
+        options.addOption("isPV", true, "using PV environment (true)");
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
 
@@ -240,6 +241,10 @@ public class Main {
         if (cmd.hasOption("cameraId")) {
             Cfg.camId = Integer.parseInt(cmd.getOptionValue("cameraId"));
         }
+        else
+        if( cmd.hasOption("isPV")) {
+            Cfg.isPV = Boolean.parseBoolean(cmd.getOptionValue("isPV"));
+        }
 
         return true;
     }
@@ -254,11 +259,11 @@ public class Main {
 /*-------------------------------------------------------------------------------------------------*/
     public static void main(String[] args) throws Exception
     {
-        Main MainInstance;
+        Main MainInstance = null;
         Keystroke keystroke;
         Thread keyboardThread;
 
-        CvSource networkDisplay;
+        CvSource networkDisplay = null;
         MjpegServer mjpegServer;
 
         OutputStream copySystemErr = System.err; // initialize System.err duplicated stream to just the err
@@ -287,6 +292,17 @@ public class Main {
             LOGGER.log(Level.SEVERE, "Failed to parse command-line options!", e);
         }
 
+        if (Cfg.isPV)
+        {
+            org.photonvision.common.util.TestUtils.loadLibraries();
+        }
+        else
+        {
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
+        }
+
+        progressInsert = new Mat();
+        
         // keyboard handler for PV using the web interface
         if (Cfg.isPV)
         {

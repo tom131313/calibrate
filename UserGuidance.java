@@ -157,13 +157,13 @@ public class UserGuidance {
             return;
         }
 
-        double[] pvar_prev = this.calib.varIntrinsics().clone(); // calib still has the previous intrinsics
+        double[] pvar_prev = this.calib.varIntrinsics().clone(); // calib still has the previous intrinsics to save here
         boolean first = this.calib.keyframes.size() == 2;
 
-        // compute the new intrinsics
+        // compute the new intrinsics in calibrate
         double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1)); // dummy arg to avoid overloaded method
 
-        double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics - just a shorter name to match original
+        double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics (shorter name to match original code) to compare with the previous
 
         double[] rel_pstd = new double[pvar.length];
 
@@ -182,7 +182,7 @@ public class UserGuidance {
                 rel_pstd[i] = 1 - Math.sqrt(pvar[i]) / Math.sqrt(pvar_prev[i]); //relative change to each std dev
             }
 
-            //Main.LOGGER.log(Level.WARNING, "relative stddev " + Arrays.toString(rel_pstd));
+            // Main.LOGGER.log(Level.WARNING, "relative stddev " + Arrays.toString(rel_pstd));
             
             if (rel_pstd[this.tgt_param] < 0)
             {
@@ -221,7 +221,7 @@ public class UserGuidance {
                           }
                     }
                 }
-                if (converged.length() <= 0)
+                if (converged.length() > 0)
                 {
                     //Main.LOGGER.log(Level.WARNING, "{" + converged + "} converged");
                 }
