@@ -393,9 +393,7 @@ public class ChArucoDetector {
         if (this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
 
         // compute mean flow of the image for the check for stillness elsewhere
-        computeMeanFlow(); // the rkt way - relaxed criteria from original
-
-        // abandoned the original algorithm in favor of more relaxed version
+        computeMeanFlow();
 
         this.ccorners.copyTo(this.last_ccorners);
         this.cids.copyTo(this.last_cids);
@@ -409,79 +407,61 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+    /**
+     * Compare current and previous corner detections to see how far they are displaced from each other - flow
+     * The lists of current and previous corners must be the same and then the displacement is computed
+     */
     public void computeMeanFlow()
     {
-        // cids: int 1 col, 1 channel; ccorners: float 1 col, 2 channels (x, y)
+        // cids: int 1 col, 1 channel (cid); ccorners: float 1 col, 2 channels (x, y)
 
-        this.mean_flow = Double.MAX_VALUE;
+        this.mean_flow = Double.MAX_VALUE; // first assume default flow is big
 
-        if (last_cids.rows() >= 1 && cids.rows() >= 1) // handles the first time and other cases
+        if (cids.rows() <= 0 || cids.rows() != last_cids.rows()) // handle first time or number of rows differ
         {
-            // get all the last cids and ccorners and all the current cids and ccorners in arrays.
-            // do all the computations in the arrays.
-            float[] last_ccornersArray = new float[last_ccorners.rows()*last_ccorners.channels()];
-            int[] last_cidsArray = new int[last_cids.rows()]; // assume 1 col 1 channel
-            float[] ccornersArray = new float[ccorners.rows()*ccorners.channels()];
-            int[] cidsArray = new int[cids.rows()];
-            
-            this.last_ccorners.get(0,0, last_ccornersArray);
-            this.last_cids.get(0, 0, last_cidsArray);
-            this.ccorners.get(0, 0, ccornersArray);
-            this.cids.get(0, 0,cidsArray );
-            
-            // assume the cids and last_cids are in order ascending
+            return; // cids lists lengths differ so can't compute flow so assume it's big
+        }
 
-            // mean flow of only the corners in common that are detected in consecutive frames
-            // relaxed criterion from original need of exactly the same corners in successive frames - rkt
-            if (this.last_cids.total() <= 0 || this.cids.total() <= 0)
+        // lists' lengths are the same so check the individual elements (cids) for equality
+
+        // get all the last cids and ccorners and all the current cids and ccorners in arrays.
+        // do all the computations in the arrays.
+
+        // check that the lists of current and previous cids match
+        // assume the cids and last_cids are in the same order (it's ascending but that doesn't matter)
+        
+        int[] last_cidsArray = new int[last_cids.rows()]; // assume 1 col 1 channel
+        int[]      cidsArray = new int[     cids.rows()];
+
+        this.last_cids.get(0, 0, last_cidsArray);
+        this.     cids.get(0, 0,      cidsArray );
+
+        for (int row = 0; row < cidsArray.length; row++)
+        {
+            if (cidsArray[row] != last_cidsArray[row])
             {
-                return; // one of them has no corners to compare to
-            }
-
-            this.mean_flow = 0.; // starting at 0 for a summation process but that will change to flow or max value
-            double countMatchingCids = 0;
-            int indexCurrent = 0;
-            int indexLast = 0;
-
-            // merge/match last_cids and cids; assume they are already sorted ascending
-            while(indexCurrent< this.cids.rows() && indexLast< this.last_cids.rows())
-            {
-                if (cidsArray[indexCurrent] == last_cidsArray[indexLast])
-                {// great we have matching cids to compare then bump both to stay in sync
-                    double diffX = ccornersArray[2*indexCurrent  ] - last_ccornersArray[2*indexLast  ]; // current - last
-                    double diffY = ccornersArray[2*indexCurrent+1] - last_ccornersArray[2*indexLast+1]; // current - last
-
-                    this.mean_flow += Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2)); // sum the L2 norm (Frobenious)
-                    countMatchingCids++;
-                    indexCurrent++;
-                    indexLast++;
-                    continue;
-                }
-                else
-                if (cidsArray[indexCurrent] < last_cidsArray[indexLast])
-                {// missing corresponding last so bump current to catch up to last
-                    indexCurrent++;
-                    continue;
-                }
-                else
-                if (cidsArray[indexCurrent] > last_cidsArray[indexLast])
-                {// missing corresponding current so bump last to catch up to current
-                    indexLast++;
-                    continue;
-                }
-                Main.LOGGER.log(Level.SEVERE, "Can't be here; 3-way 'if' failed");
-            }
-
-            if (countMatchingCids > 0           // allow some missing cids from either list by a Jaccard index similarity
-                && (countMatchingCids/(this.last_cids.rows() + this.cids.rows() - countMatchingCids)) > Cfg.matchStillCidsMin)
-            {
-                this.mean_flow /= countMatchingCids; // mean of the sum of the norms
-            }
-            else
-            {
-                this.mean_flow = Double.MAX_VALUE; // avoided the divide by zero and return flow is big (no need to be infinite)
+                return; // cids differ so can't compute flow so assume it's big
             }
         }
+
+        // previous and current cids lists match so compute flow of each corner
+  
+        float[] last_ccornersArray = new float[last_ccorners.rows() * last_ccorners.channels()]; // assume 1 col
+        float[]      ccornersArray = new float[     ccorners.rows() *      ccorners.channels()];
+
+        this.last_ccorners.get(0,0, last_ccornersArray);
+        this.     ccorners.get(0, 0,     ccornersArray);
+
+        this.mean_flow = 0.; // starting at 0 for a summation process but that will change to flow or max value
+        for (int rowChannel = 0; rowChannel < ccornersArray.length; rowChannel += 2) // step by 2 assumes 2 channels (x, y) per point
+        {
+            double diffX = ccornersArray[rowChannel    ] - last_ccornersArray[rowChannel    ]; // X channel (current - last)
+            double diffY = ccornersArray[rowChannel + 1] - last_ccornersArray[rowChannel + 1]; // Y channel (current - last)
+
+            this.mean_flow += Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2)); // sum the L2 norm (Frobenious)
+        }
+
+        this.mean_flow /= ccornersArray.length; // mean of the sum of the norms
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -564,16 +544,6 @@ public class ChArucoDetector {
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
         //Main.Kcsv(Id.__LINE__(), this.K);
-        // C++:  bool cv::solvePnPRansac(vector_Point3f objectPoints, vector_Point2f imagePoints, Mat cameraMatrix,
-        // vector_double distCoeffs, Mat& rvec, Mat& tvec, bool useExtrinsicGuess = false,
-        // int iterationsCount = 100, float reprojectionError = 8.0, double confidence = 0.99,
-        // Mat& inliers = Mat(), int flags = SOLVEPNP_ITERATIVE)
-
-        //private static native boolean solvePnPRansac_0(
-        //long objectPoints_mat_nativeObj, long imagePoints_mat_nativeObj,
-        //long cameraMatrix_nativeObj, long distCoeffs_mat_nativeObj, long rvec_nativeObj, long tvec_nativeObj,
-        //boolean useExtrinsicGuess, int iterationsCount, float reprojectionError, double confidence,
-        //long inliers_nativeObj, int flags);
 
         Mat inLiers = new Mat();
 
@@ -590,19 +560,6 @@ public class ChArucoDetector {
             //Main.LOGGER.log(Level.WARNING, "pose not valid");
             return;            
         }
-
-        // C++:  void cv::solvePnPRefineVVS(Mat objectPoints, Mat imagePoints,
-        //  Mat cameraMatrix, Mat distCoeffs, Mat& rvec, Mat& tvec,
-        // TermCriteria criteria = TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 20, FLT_EPSILON), double VVSlambda = 1)
-
-        //private static native void solvePnPRefineVVS_0(long objectPoints_nativeObj, long imagePoints_nativeObj,
-        // long cameraMatrix_nativeObj, long distCoeffs_nativeObj, long rvec_nativeObj, long tvec_nativeObj,
-        // int criteria_type, int criteria_maxCount, double criteria_epsilon, double VVSlambda);
-
-        // public static void solvePnPRefineVVS(Mat objectPoints, Mat imagePoints, Mat cameraMatrix, Mat distCoeffs, Mat rvec, Mat tvec,
-        //  TermCriteria criteria, double VVSlambda) {
-        //     solvePnPRefineVVS_0(objectPoints.nativeObj, imagePoints.nativeObj, cameraMatrix.nativeObj, distCoeffs.nativeObj, rvec.nativeObj, tvec.nativeObj, criteria.type, criteria.maxCount, criteria.epsilon, VVSlambda);
-        // }
 
         // compress the object and image mats with only the in liers
         // if the same use the original mats if inliers < all then Compression

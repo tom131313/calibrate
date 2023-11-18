@@ -578,12 +578,12 @@ public class PoseGeneratorDist {
  */
     List<Mat> get_pose(Mat bbox, int nk, int tgt_param, Mat K, Mat cdist) throws Exception
     {
-        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        //Main.LOGGER.log(Level.WARNING, "bbox " + bbox + "\n" + bbox.dump());
-        //Main.LOGGER.log(Level.WARNING, "nk " + nk);
-        //Main.LOGGER.log(Level.WARNING, "tgt_param " + tgt_param);
-        //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-        //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
+        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // Main.LOGGER.log(Level.WARNING, "bbox " + bbox + "\n" + bbox.dump());
+        // Main.LOGGER.log(Level.WARNING, "nk " + nk);
+        // Main.LOGGER.log(Level.WARNING, "tgt_param " + tgt_param);
+        // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
+        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
         //Main.Kcsv(Id.__LINE__(), K);
 
         // first frame will be orbital pose from fixed angles

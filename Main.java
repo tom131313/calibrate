@@ -40,6 +40,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -69,7 +70,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 9-4"; // change this
+    private static final String VERSION = "beta 10"; // change this
     
     static
     {
@@ -77,18 +78,6 @@ public class Main {
         System.err.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
     }
     
-    // static
-    // {
-    //     if (Cfg.isPV)
-    //     {
-    //         org.photonvision.common.util.TestUtils.loadLibraries();
-    //     }
-    //     else
-    //     {
-    //         System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
-    //     }
-    // }
-
     // private static PrintWriter pw; // K debugging
     // private static int counter = 0; // K debugging
     static Mat progressInsert;
@@ -313,8 +302,9 @@ public class Main {
             keyboardThread.start();
 
             networkDisplay = new CvSource("calibPV", /*VideoMode.*/PixelFormat.kMJPEG,
-                    Cfg.image_height, Cfg.image_width, 30);
-            mjpegServer = new MjpegServer("serve_DriverView", 1185);
+                    Cfg.image_height, Cfg.image_width, Cfg.fps);
+            mjpegServer = new MjpegServer("GuidanceView", Cfg.displayPort);
+            LOGGER.log(Level.SEVERE, "View Guidance Board On Port " + Cfg.displayPort);
             mjpegServer.setSource(networkDisplay);
             // MjpegServer openCVserver = CameraServer.getInstance().startAutomaticCapture(outputStream);
         }
@@ -332,14 +322,15 @@ public class Main {
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId);
+        LOGGER.log(Level.SEVERE, "camera parameters can be seen or changed on port 1181 or higher");
 
         camera.setPixelFormat(Cfg.pixelFormat);
 
         camera.setResolution(Cfg.image_width, Cfg.image_height);
         // camera.setExposureAuto();
-        camera.setExposureManual(70);
-        camera.setBrightness(70);
-        camera.setFPS(30);
+        camera.setExposureManual(Cfg.exposureManual);
+        camera.setBrightness(Cfg.brightness);
+        camera.setFPS(Cfg.fps);
         // Get a CvSink. This will capture Mats from the camera
         JavaCvSink cap = new JavaCvSink("sink1");
         cap.setSource(camera);
@@ -403,13 +394,13 @@ public class Main {
             int k;
             if (Cfg.isPV)
             {                    
-            networkDisplay.putFrame(out);
-            k = MainInstance.dokeystroke.getAndSet(timedOut);
+                networkDisplay.putFrame(out);
+                k = MainInstance.dokeystroke.getAndSet(timedOut);
             }
             else
             {
-            HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
-            k = HighGuiX.waitKey(Cfg.wait);
+                HighGuiX.imshow("PoseCalibPV", out); // added PV to name to distinguish Java images from Python
+                k = HighGuiX.waitKey(Cfg.wait);
             }
 
             if (ugui.converged()) // are we there yet?
@@ -448,10 +439,10 @@ public class Main {
         Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 2);
         if (Cfg.isPV)
         {
-            for (int runOut = 0; runOut < 100; runOut++) // last frame won't display so repeat it a bunch of times to see it
+            for (int runOut = 0; runOut < 10; runOut++) // last frame won't display so repeat it a bunch of times to see it; q lags these 2 seconds
             {
-            networkDisplay.putFrame(out);
-            Thread.sleep(50L);                
+                networkDisplay.putFrame(out);
+                Thread.sleep(200L);
             }
             networkDisplay.close();
         }
@@ -513,7 +504,8 @@ public class Main {
         // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
         
         if ( ! progressInsert.empty())
-        { // add to the display the board/camera overlap image
+        {
+            // add to the display the board/camera overlap image
             Imgproc.resize(progressInsert, progressInsert, new Size(Cfg.image_width*0.1, Cfg.image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
             List<Mat> temp1 = new ArrayList<>(3); // make the 1 b&w channel into 3 channels
             temp1.add(progressInsert);

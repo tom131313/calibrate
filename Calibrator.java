@@ -1,7 +1,6 @@
 package org.photonvision.calibrator;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -11,7 +10,6 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.photonvision.calibrator.PoseGeneratorDist.Pose;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -33,7 +31,7 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
     private Size img_size;
-    private int nintr = 9;
+    private int nintr = 9; // "fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"
     // unknowns not used
     private Mat Kin;
     private Mat K = new Mat();
@@ -92,8 +90,8 @@ class Calibrator {
         // initial K matrix
         // with aspect ratio of 1 and pp at center. Focal length is empirical.
         this.Kin = Mat.zeros(3, 3, CvType.CV_64FC1);
-        this.Kin.put(0, 0, 1000.);
-        this.Kin.put(1, 1, 1000.);
+        this.Kin.put(0, 0, Cfg.initialFocalLength);
+        this.Kin.put(1, 1, Cfg.initialFocalLength);
         this.Kin.put(2, 2, 1.);
         this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
         this.Kin.copyTo(this.K);
@@ -175,7 +173,6 @@ class Calibrator {
         {
             switch (PoseGeneratorDist.pose)
             {
-                // a first time switch through each of these might be appropriate but it works okay without it.
                 case ORBITAL:
                     // restrict early orbital calibrations to K matrix parameters and don't mess with distortion
                     flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
@@ -304,7 +301,7 @@ class Calibrator {
 
           for (int i = 0; i < 3; i++)
           {
-            tvec[i] /= 10.; // [mm]      // divide by 254 to get inches - rkt?
+            tvec[i] /= 10.; // [mm]  (not sure if this is the unity measure of arbitrary but consistent units or millimeters; why divide by 10?)
           }
           translations.add(tvec);
         }
@@ -469,3 +466,37 @@ class Calibrator {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+// Parking Lot
+/*
+calibrationMatrixValues()
+void cv::calibrationMatrixValues	(	InputArray 	cameraMatrix,
+Size 	imageSize,
+double 	apertureWidth,
+double 	apertureHeight,
+double & 	fovx,
+double & 	fovy,
+double & 	focalLength,
+Point2d & 	principalPoint,
+double & 	aspectRatio 
+)		
+Python:
+cv.calibrationMatrixValues(	cameraMatrix, imageSize, apertureWidth, apertureHeight	) ->	fovx, fovy, focalLength, principalPoint, aspectRatio
+#include <opencv2/calib3d.hpp>
+
+Computes useful camera characteristics from the camera intrinsic matrix.
+
+Parameters
+cameraMatrix	Input camera intrinsic matrix that can be estimated by calibrateCamera or stereoCalibrate .
+imageSize	Input image size in pixels.
+apertureWidth	Physical width in mm of the sensor.
+apertureHeight	Physical height in mm of the sensor.
+fovx	Output field of view in degrees along the horizontal sensor axis.
+fovy	Output field of view in degrees along the vertical sensor axis.
+focalLength	Focal length of the lens in mm.
+principalPoint	Principal point in mm.
+aspectRatio	fy/fx
+The function computes various useful camera characteristics from the previously estimated camera matrix.
+
+Note
+Do keep in mind that the unity measure 'mm' stands for whatever unit of measure one chooses for the chessboard pitch (it can thus be any value).
+*/

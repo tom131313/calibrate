@@ -77,7 +77,6 @@ public class UserGuidance {
     private boolean pose_reached = false;
     private boolean capture = false;
     private boolean still = false;
-    // private String user_info_text = "";
     private String user_info_text = "initialization";
 
     private PoseGeneratorDist posegen;
@@ -381,7 +380,7 @@ public class UserGuidance {
             // try to estimate intrinsic params from single frame
             this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()));
 
-            if ( /*! np.isnan(this.calib.K()).any() &&*/ this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be
+            if (this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be, original checked for nan but it never was
             {
                 //Main.LOGGER.log(Level.WARNING, "initial set_next_pose and intrinsics");
                 this.set_next_pose();  // update target pose
@@ -527,7 +526,7 @@ public class UserGuidance {
             byte[] imgBuff = new byte[img.rows()*img.cols()*img.channels()];
             byte[] board_warpedBuff = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
 
-            if (imgBuff.length != board_warpedBuff.length) throw new Exception("major trouble here"); // debug statement
+            if (imgBuff.length != board_warpedBuff.length) throw new Exception("major trouble here");
 
             img.get(0, 0, imgBuff); // get the Mat
             this.board_warped.get(0, 0,board_warpedBuff); // get the Mat

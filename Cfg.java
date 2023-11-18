@@ -34,11 +34,16 @@ public class Cfg
     // 1 is external if connected after boot-up
     static int camId = 0;
     static PixelFormat pixelFormat = PixelFormat.kYUYV; // kMJPEG
+    static final int displayPort = 1185;
+    static final int fps = 30;
+    static final int exposureManual = 70;
+    static final int brightness = 70;
     
     // a few icky int-float-double conversion scattered throughout the program.
     // camera image size and thus user display screen size
     static int image_width = 1280; // 640
     static int image_height = 720; // 480
+    static final double initialFocalLength = 1000.; // fx and fy, aspect ratio = 1 (fy/fx)
 
     // ChArUco Board pixels = (board_x*square_len, board_y*square_len)
     static final int board_x = 9;
@@ -66,12 +71,11 @@ public class Cfg
     static final float errorCorrectionRate = 3.0f;
     static final float minRepDistance = 10.0f;
 
-    static final double matchStillCidsMin = 0.85; // exclusive, Jaccard similarity of current and previous corner ids lists for mean flow calc 
     static final double mean_flow_max = 3.; // exclusive, larger is more movement allowed
-    static final double pose_close_to_tgt_min = 0.85; // exclusive.  - minimum Jaccard score between shadow and actual img for auto capture
+    static final double pose_close_to_tgt_min = 0.85; // exclusive, - minimum Jaccard score between shadow and actual img for auto capture; larger is less deviation allowed
     static final double MAX_OVERLAP = 0.9; // maximum fraction of distortion mask overlapping with this pose before pose considered not contributing enough to help fill distortion mask
     static final double minCorners = 6; // min for solvePnP (original needed 4 or 5 w/o solvePnP) but another place requires many more
-    static final double var_terminate = 0.1; // min variance to terminate an intrinsic's iterations [mm units maybe? hard to tell]
+    static final double var_terminate = 0.1; // min variance to terminate an intrinsic's iterations [mm is whatever unit of measure?]
 
     static final double DBL_EPSILON = Math.ulp(1.);
     static final TermCriteria calibrateCameraCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 30, DBL_EPSILON);
