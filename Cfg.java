@@ -74,16 +74,18 @@ public class Cfg
     static final double mean_flow_max = 3.; // exclusive, larger is more movement allowed
     static final double pose_close_to_tgt_min = 0.85; // exclusive, - minimum Jaccard score between shadow and actual img for auto capture; larger is less deviation allowed
     static final double MAX_OVERLAP = 0.9; // maximum fraction of distortion mask overlapping with this pose before pose considered not contributing enough to help fill distortion mask
-    static final double minCorners = 6; // min for solvePnP (original needed 4 or 5 w/o solvePnP) but another place requires many more
+    static final double minCorners = 6; // min for solvePnP (original needed 4 (or 5 w/o solvePnP)) but another place requires many more
     static final double var_terminate = 0.1; // min variance to terminate an intrinsic's iterations [mm is whatever unit of measure?]
 
     static final double DBL_EPSILON = Math.ulp(1.);
     static final TermCriteria calibrateCameraCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 30, DBL_EPSILON);
 
     static final float FLT_EPSILON = Math.ulp(1.f);
-    static final TermCriteria solvePnPRefineVVSCriteria = new TermCriteria(TermCriteria.EPS + TermCriteria.COUNT, 20, FLT_EPSILON);
+    static final TermCriteria solvePnPRefineVVSCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON);
     static final double solvePnPRefineVVSLambda = 1.;
 
+    static final TermCriteria undistortPointsIterCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON);
+    
     static final int wait = 1; // milliseconds to wait for user keyboard response to a new image
     static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released
     static final String logFile = "CalibrationLog.txt"; // user specified file name of the log

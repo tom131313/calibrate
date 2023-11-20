@@ -83,7 +83,7 @@ class Calibrator {
 
     Calibrator(Size img_size)
     {
-      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.img_size = img_size;
         // initial fake camera matrix to get things started
@@ -95,8 +95,7 @@ class Calibrator {
         this.Kin.put(2, 2, 1.);
         this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
         this.Kin.copyTo(this.K);
-        //Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
-        //Main.Kcsv(Id.__LINE__(), K);
+        // Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -109,7 +108,7 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     private double[] get_intrinsics()
     {
-      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
       double[] intrinsics = {
         this.K.get(0, 0)[0],
         this.K.get(1, 1)[0],
@@ -121,9 +120,8 @@ class Calibrator {
         this.cdist.get(0, 3)[0],
         this.cdist.get(0, 4)[0]
         };
-      //Main.Kcsv(Id.__LINE__(), this.K);
-      //Main.LOGGER.log(Level.WARNING, "K\n" + K.dump());
-      //Main.LOGGER.log(Level.WARNING, Arrays.toString(intrinsics));
+      // Main.LOGGER.log(Level.WARNING, "K\n" + K.dump());
+      // Main.LOGGER.log(Level.WARNING, java.util.Arrays.toString(intrinsics));
       return intrinsics;
     }
 /*-------------------------------------------------------------------------------------------------*/
@@ -137,11 +135,11 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     double[] calibrate(List<keyframe> keyframes) throws Exception // force use of keyframes instead of default None
     {
-      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int flags = this.flags;
 
-        if ( keyframes.isEmpty())
+        if ( keyframes.isEmpty()) // pose #1 hasn't been captured yet
         {
           keyframes.addAll(this.keyframes); // gives size 1 keyframe for the first 2 poses so hard to tell the 2nd pose is in action since it's still #1
         }
@@ -169,7 +167,11 @@ class Calibrator {
         // }
 
         // initialization process
-        if (nkeyframes <= 1) // all the early frames are #1
+        if (nkeyframes <= 1) // all the early frames from the first 2 poses are #1, I think (rkt)
+        // first pose hasn't been captured yet so it's 0 + the initial keyframe from above making 1
+        // second pose has the previous captured pose #1 and the second pose hasn't been captured yet making it #1, also.
+        // thus, I saved the pose that was last used.
+        // Probably could have determined what to do by saving the number of keyframes on entry to this method the first is 0 and the second is 1.
         {
             switch (PoseGeneratorDist.pose)
             {
@@ -218,7 +220,7 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     private static double[] index_of_dispersion(double[] mean, double[] variance)
     {
-      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // computes index of dispersion:
       // https://en.wikipedia.org/wiki/Index_of_dispersion
@@ -265,7 +267,7 @@ class Calibrator {
      */
     private static double[] compute_pose_var(List<Mat> rvecs, List<Mat> tvecs)
     {
-        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         double[] ret = new double[6]; // return 
 
@@ -280,7 +282,7 @@ class Calibrator {
         {
           Calib3d.Rodrigues(r, dst);
           double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
-          //Main.LOGGER.log(Level.WARNING, "\nreuler degrees " + Arrays.toString(reuler) + "\nr " + r.t().dump());
+          // Main.LOGGER.log(Level.WARNING, "\nreuler degrees " + java.util.Arrays.toString(reuler) + "\nr " + r.t().dump());
           // workaround for the given board so r_x does not oscilate between +-180°
           reuler[0] = reuler[0] % 360.;
           reulers.add(reuler);
@@ -335,7 +337,7 @@ class Calibrator {
      */
     private static double[] simpleVariance(List<double[]> data)
     {
-        //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // always 3 components x, y, z so do all 3 at once
         double[] sum = {0., 0., 0.};
@@ -382,7 +384,7 @@ class Calibrator {
      */
     calibrateCameraReturn calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K) throws Exception
     {
-      //Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // split keyframes into its two separate components, image points and object points, for OpenCV calibrateCamera
         // we put them together when detected then we take them apart for calibration.
@@ -405,9 +407,8 @@ class Calibrator {
         List<Mat> tvecs = new ArrayList<>();
         Mat stdDeviationsIntrinsics = new Mat();
         double reperr = Double.NaN;
-        //Main.Kcsv(Id.__LINE__(), K); // K input to calibration
-        //Main.LOGGER.log(Level.WARNING, "K input to calibration\n" + K.dump());
-        //Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
+        // Main.LOGGER.log(Level.WARNING, "K input to calibration\n" + K.dump());
+        // Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
         try
         {
            reperr = Calib3d.calibrateCameraExtended(
@@ -417,20 +418,19 @@ class Calibrator {
             stdDeviationsIntrinsics, new Mat(), new Mat(),
             flags, Cfg.calibrateCameraCriteria);
 
-          //Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-          //Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
-          //Main.LOGGER.log(Level.WARNING, "repError " + reperr);
+          // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
+          // Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
+          // Main.LOGGER.log(Level.WARNING, "repError " + reperr);
         }
         catch(CvException error)
         {
           Main.LOGGER.log(Level.SEVERE, Id.__LINE__() + " " + error.toString());
         }
-        //Main.Kcsv(Id.__LINE__(), K); // K output from calibrtation
-        //Main.LOGGER.log(Level.WARNING, "K output from calibration\n" + K.dump());
+        // Main.LOGGER.log(Level.WARNING, "K output from calibration\n" + K.dump());
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
 
-        //Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump() + ", N = " + N);
+        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump() + ", N = " + N);
 
         stdDeviationsIntrinsics.release();
 

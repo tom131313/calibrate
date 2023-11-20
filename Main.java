@@ -70,7 +70,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 10"; // change this
+    private static final String VERSION = "beta 11"; // change this
     
     static
     {
@@ -173,7 +173,6 @@ public class Main {
                 }
             } catch(Exception e) {Main.LOGGER.log(Level.SEVERE,
                 "Terminal keyboard closed (Ctrl-c) or doesn't exist (jar file not run from command line)", e);}
-            // keyboard.close();
         }
     }
 
@@ -270,8 +269,6 @@ public class Main {
 
         Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
         Main.LOGGER.log(Level.SEVERE, "logs accumulate in file " + Cfg.logFile);
-
-        // pw = new PrintWriter("K.csv");
 
         try {
             if ( ! handleArgs(args)) {
@@ -452,7 +449,6 @@ public class Main {
             HighGuiX.waitKey(5000);
         }
         // ugui.write(); // temp just to see what comes out even if we don't make it to the converged end
-        // pw.close(); // K debugging
 
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
@@ -475,7 +471,7 @@ public class Main {
         {
             // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
             // {
-            //Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
+            // Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
             // }
             String message1 = ugui.user_info_text();
             Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
@@ -537,43 +533,6 @@ public class Main {
             Imgproc.putText(out, ugui.INTRINSICS()[i], new Point((double)i*20, Cfg.image_height*0.4+15), Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
         }
     }
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     Kcsv                                                        */
-/*                                     Kcsv                                                        */
-/*                                     Kcsv                                                        */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/**
- * Print the K camera matrix Mat to a file defined in variable "pw" in CSV format.
- * [500, 0, 319.75;
- * 0, 666.6666666666666, 239.6666666666667;
- * 0, 0, 1]
- * 00000 , "BoardPreview.java@166", 500, 0, 319.75, 0, 666.6666666666666, 239.6666666666667, 0, 0, 1, 4
- * Used for debugging.
- * Requires class variables:
- *   private static PrintWriter pw;  // print writer file name
- *   private static int counter = 0; // sequence number
- * 
- *   pw = new PrintWriter("K.csv");  // define the file - statement may throw an exception to be handled somehow
- * 
- *   pw.close(); // forces last line to be completed, too
- * @param line Input "comment" line that could be used to identify the location in the program
- * @param K Input 3x3 camera matrix Mat. Doesn't have to be 3x3 but assumptions are made about changing the "[];\n"
- */
-    // public static void Kcsv(String line, Mat K)
-    // {
-    //     counter++;
-    //     if (counter == 1) // first time switch for columns' header
-    //     {
-    //         Main.pw.println("frame, line, fx, 0, cx, 0, fy, cy, row3_1is0, row3_2is0, row3_3is1, sequence"); // K's column names
-    //     }
-    //     String Kdump = K.dump();
-    //     Kdump = Kdump.replace("[", "").replace("]", "").replace(";", ",").replace("\n", "");
-    //     Main.pw.println(Main.frame + ", \"" + line + "\", " + Kdump + ", " + counter);
-    // }
 }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -593,7 +552,6 @@ public class Main {
 // System.loadLibrary("opencv_videoio_ffmpeg480_64");
 
 /*
-
 C:\Users\Public\wpilib\2023\jdk\bin\java.exe -jar C:\Users\RKT\frc\FRC2023\Code\Java\Java.jar
 
 cd C:\Users\RKT\frc\FRC2023\Code\Java
