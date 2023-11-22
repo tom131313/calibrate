@@ -334,8 +334,8 @@ public class UserGuidance {
         tmp.copyTo(Main.progressInsert); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
         this.overlap.copyTo(tempImg); // tempImg has the warped guidance board
 
-        Core.multiply(Main.progressInsert, new Scalar(220.), Main.progressInsert); // brighten (to near white) so it can be seen by humans
-        Core.multiply(tempImg, new Scalar(130.), tempImg); // brighten (to dark gray) so it can be seen by humans
+        Core.multiply(Main.progressInsert, new Scalar(170.), Main.progressInsert); // brighten (to near white) so it can be seen by humans
+        Core.multiply(tempImg, new Scalar(85.), tempImg); // brighten (to dark gray) so it can be seen by humans
         Core.add(Main.progressInsert, tempImg, Main.progressInsert); // where they overlap is bright white
 
         // Main.LOGGER.log(Level.WARNING, "shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);

@@ -70,7 +70,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 11"; // change this
+    private static final String VERSION = "beta 11.1"; // change this
     
     static
     {
@@ -344,6 +344,7 @@ public class Main {
         // runtime variables
         boolean mirror = false;
         boolean save = false; // indicator for user pressed the "c" key to capture (save) manually
+        String endMessage = "logic error"; // status of calibration at the end
 
         grabFrameLoop:
         while ( ! Thread.interrupted())
@@ -404,6 +405,8 @@ public class Main {
             {
                 ugui.write(); // write all the calibration data
 
+                endMessage = "CALIBRATED";
+
                 break grabFrameLoop; // the end - rkt addition; the original kept looping somehow
             }
 
@@ -416,6 +419,8 @@ public class Main {
             switch (k)
             {
                 case keyTerminate: // terminate key pressed to stop loop immediately
+                        endMessage = "CANCELLED";
+                        
                         break grabFrameLoop;
 
                 case keyMirrorToggle: // mirror/no mirror key pressed
@@ -431,9 +436,9 @@ public class Main {
             }
         } // end grabFrameLoop
 
-        Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
-        Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
-        Imgproc.putText(out, "CALIBRATED", new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 2);
+        Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
+        Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
+        Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 255, 0), 2);
         if (Cfg.isPV)
         {
             for (int runOut = 0; runOut < 10; runOut++) // last frame won't display so repeat it a bunch of times to see it; q lags these 2 seconds

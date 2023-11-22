@@ -329,7 +329,7 @@ public class ChArucoDetector {
         // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         Calib3d.drawFrameAxes(
-            img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len*4.f, 1);
+            img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len*2.5f, 2);
     }   
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
