@@ -15,8 +15,10 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.MatOfPoint3f;
+import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CharucoBoard;
 import org.opencv.objdetect.CharucoDetector;
 import org.opencv.objdetect.CharucoParameters;
@@ -275,7 +277,7 @@ public class ChArucoDetector {
             outputStreamPNG.close();
         }
         /// end create board
-
+        
         /// board detector
         final DetectorParameters detectParams = new DetectorParameters();
         final RefineParameters refineParams = new RefineParameters();
@@ -683,3 +685,49 @@ solvePnP
 // 		System.out.println("stringDecompressed'" + stringDecompressed + "'");
 // 	}
 // }
+
+/*
+
+void drawFrameAxes(InputOutputArray image, InputArray cameraMatrix, InputArray distCoeffs,
+                   InputArray rvec, InputArray tvec, float length, int thickness)
+{
+    CV_INSTRUMENT_REGION();
+
+    int type = image.type();
+    int cn = CV_MAT_CN(type);
+    CV_CheckType(type, cn == 1 || cn == 3 || cn == 4,
+                 "Number of channels must be 1, 3 or 4" );
+
+    CV_Assert(image.getMat().total() > 0);
+    CV_Assert(length > 0);
+
+    // project axes points
+    std::vector<Point3f> axesPoints;
+    axesPoints.push_back(Point3f(0, 0, 0));
+    axesPoints.push_back(Point3f(length, 0, 0));
+    axesPoints.push_back(Point3f(0, length, 0));
+    axesPoints.push_back(Point3f(0, 0, length));
+    std::vector<Point2f> imagePoints;
+    projectPoints(axesPoints, rvec, tvec, cameraMatrix, distCoeffs, imagePoints);
+
+    // draw axes lines
+    line(image, imagePoints[0], imagePoints[1], Scalar(0, 0, 255), thickness);
+    line(image, imagePoints[0], imagePoints[2], Scalar(0, 255, 0), thickness);
+    line(image, imagePoints[0], imagePoints[3], Scalar(255, 0, 0), thickness);
+}
+
+ */
+        
+        // MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
+        // MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
+        // MatOfDouble distOfDouble = new MatOfDouble(this.cdist); // convert as required for the projectPoints()
+
+        // Calib3d.projectPoints(centerLine, this.rvec, this.tvec, this.K, distOfDouble, centerLineProjected);
+        // var centerLinePoints = centerLineProjected.toList();
+
+        // // draw center line
+        // Imgproc.line(img, 
+        //         centerLinePoints.get(0),
+        //         centerLinePoints.get(1),
+        //         new Scalar(0., 255., 255.),
+        //         3);

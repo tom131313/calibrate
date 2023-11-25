@@ -55,7 +55,7 @@ public class UserGuidance {
     private final int PARAM_GROUPS[][] = {{0, 1, 2, 3}, {4, 5, 6, 7, 8}}; // grouping and numbering the INTRINSICS
 
     // get geometry from tracker
-    private ChArucoDetector tracker;
+    ChArucoDetector tracker;
     private int allpts;
     private int square_len;
     private int marker_len;
@@ -272,6 +272,20 @@ public class UserGuidance {
         this.board_warped.release(); // rkt
         // Main.LOGGER.log(Level.WARNING, "rt2 " + this.tgt_r.dump() + " " + this.tgt_t.dump());
 
+        // MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
+        // MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
+        // MatOfDouble distOfDouble = new MatOfDouble(this.cdist); // convert as required for the projectPoints()
+
+        // Calib3d.projectPoints(centerLine, this.rvec, this.tvec, this.K, distOfDouble, centerLineProjected);
+        // var centerLinePoints = centerLineProjected.toList();
+
+        // // draw center line
+        // Imgproc.line(img, 
+        //         centerLinePoints.get(0),
+        //         centerLinePoints.get(1),
+        //         new Scalar(0., 255., 255.),
+        //         3);
+        
         this.board_warped = this.board.project(this.tgt_r, this.tgt_t, false, Imgproc.INTER_NEAREST);
 
         // Main.LOGGER.log(Level.WARNING, "board_warped created r/t " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);

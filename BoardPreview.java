@@ -7,6 +7,10 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfDouble;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.MatOfPoint3f;
+import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -79,6 +83,20 @@ class BoardPreview {
         // these axes diagram cover the desired posed (warped) Guidance Board before it is processed. Maybe draw them later and they are in a different position
         Core.flip(imgProjected, imgProjected, 0); // flip to get axes origin in correct corner BUT the estimated origin is reversed from where it belongs
         Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); // may need rotation vector rvec instead of R
+// // this is not drawing a line that I want
+//         MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
+//         MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
+
+//         Calib3d.projectPoints(centerLine, R, t, K, new MatOfDouble(), centerLineProjected);
+//         var centerLinePoints = centerLineProjected.toList();
+
+//         // draw center line
+//         Imgproc.line(imgProjected, 
+//                 centerLinePoints.get(0),
+//                 centerLinePoints.get(1),
+//                 new Scalar(0., 255., 255.),
+//                 3);
+// //
         Core.flip(imgProjected, imgProjected, 0); // put the img back right
 
         transform.release();

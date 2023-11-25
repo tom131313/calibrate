@@ -84,7 +84,7 @@ public class Cfg
     static final TermCriteria solvePnPRefineVVSCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON);
     static final double solvePnPRefineVVSLambda = 1.;
 
-    static final TermCriteria undistortPointsIterCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON);
+    static final TermCriteria undistortPointsIterCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON); // default cv::TermCriteria(cv::TermCriteria::COUNT, 5, 0.01)
     
     static final int wait = 1; // milliseconds to wait for user keyboard response to a new image
     static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released
