@@ -1,5 +1,6 @@
 package org.photonvision.calibrator;
 
+import org.opencv.core.Scalar;
 import org.opencv.core.TermCriteria;
 import org.opencv.objdetect.Objdetect;
 
@@ -57,6 +58,8 @@ public class Cfg
     // suggest "black" [1]; (somewhat transparent) 1 to 64 (more obscuring)
     static final byte guidanceWhite = -50; // green actually; (black) 0 to 127 (medium), (medium) -128 to -1 (bright)
     static final byte guidanceBlack = 1; // ; (dark) 1 to 127, -128 to -1 (bright); must be much less than guidanceWhite and NOT 0
+    static final Scalar progressInsertCameraGrey = new Scalar(170.);
+    static final Scalar progressInsertGuidanceGrey = new Scalar(105.);
     // static final int guidanceTiffDPIx = 250;
     // static final int guidanceTiffDPIy = 250;
     static int resXDPM = 9843; // printing pixels per meter 9843 = 250 DPI

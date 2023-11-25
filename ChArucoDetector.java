@@ -15,10 +15,8 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.MatOfPoint3f;
-import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CharucoBoard;
 import org.opencv.objdetect.CharucoDetector;
 import org.opencv.objdetect.CharucoParameters;
@@ -126,31 +124,6 @@ public class ChArucoDetector {
             // write ChArUco Board to file for print to use for calibration
             final String boardFile = Cfg.boardFile;
             
-            // /* jpg */
-            // final MatOfInt writeBoardParamsJpg = new MatOfInt( // pair-wise; param1, value1, ...
-            //     Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // no compression
-
-            // Imgcodecs.imwrite(
-            // file + ".jpg",
-            // this.boardImage,
-            // writeBoardParamsJpg);
-            // Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".jpg");
-
-            // if ( ! Cfg.isPV) // no tiff writer in PV RPi OpenCV
-            // {
-            //     /* tiff */
-            //     final MatOfInt writeBoardParamsTiff = new MatOfInt( // pair-wise; param1, value1, ...
-            //     Imgcodecs.IMWRITE_TIFF_COMPRESSION, 1, // no compression
-            //     Imgcodecs.IMWRITE_TIFF_XDPI, Cfg.guidanceTiffDPIx,
-            //     Imgcodecs.IMWRITE_TIFF_YDPI, Cfg.guidanceTiffDPIy);
-
-            //     Imgcodecs.imwrite(
-            //     file + ".tiff",
-            //     this.boardImage,
-            //     writeBoardParamsTiff);
-            //     Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".tiff");
-            // }
-
             /* PNG */
             final String boardFilePNG = boardFile + ".png";
             FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
@@ -636,6 +609,34 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+// parking lot
+
+            // /* jpg */
+            // final MatOfInt writeBoardParamsJpg = new MatOfInt( // pair-wise; param1, value1, ...
+            //     Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // no compression
+
+            // Imgcodecs.imwrite(
+            // file + ".jpg",
+            // this.boardImage,
+            // writeBoardParamsJpg);
+            // Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".jpg");
+
+            // if ( ! Cfg.isPV) // no tiff writer in PV RPi OpenCV
+            // {
+            //     /* tiff */
+            //     final MatOfInt writeBoardParamsTiff = new MatOfInt( // pair-wise; param1, value1, ...
+            //     Imgcodecs.IMWRITE_TIFF_COMPRESSION, 1, // no compression
+            //     Imgcodecs.IMWRITE_TIFF_XDPI, Cfg.guidanceTiffDPIx,
+            //     Imgcodecs.IMWRITE_TIFF_YDPI, Cfg.guidanceTiffDPIy);
+
+            //     Imgcodecs.imwrite(
+            //     file + ".tiff",
+            //     this.boardImage,
+            //     writeBoardParamsTiff);
+            //     Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + file + ".tiff");
+            // }
+
+
 /*
 Python & Java
 pose gen orbital_pose

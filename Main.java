@@ -44,10 +44,7 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.MatOfPoint3f;
 import org.opencv.core.Point;
-import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -73,7 +70,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 11.2"; // change this
+    private static final String VERSION = "beta 11.3"; // change this
     
     static
     {
@@ -289,11 +286,6 @@ public class Main {
         {
             System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Load the native OpenCV library
         }
-
-
-// testit();
-
-
 
         progressInsert = new Mat();
         
@@ -521,7 +513,7 @@ public class Main {
                 new Point(250, 60), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
         }
 
-        // if user has a pose then display it (if camera not on target this pose is missing)
+        // if camera has a ChArUco Board pose then display it (if camera not on target this pose is missing)
         if ( ! ugui.tracker.rvec().empty() && ! ugui.tracker.tvec().empty())
         {
             Calib3d.Rodrigues(ugui.tracker.rvec(), rotationMatrix);
@@ -531,7 +523,9 @@ public class Main {
 
             ugui.tracker.tvec().get(0, 0, translation);
             translation[1] = -translation[1];
-
+            translation[0] = (double)(((int)(translation[0])+5)/10*10);
+            translation[1] = (double)(((int)(translation[1])+5)/10*10);
+            translation[2] = (double)(((int)(translation[2])+5)/10*10);
             Imgproc.putText(out, String.format("r{%4.0f %4.0f %4.0f} t{%4.0f %4.0f %4.0fCamera",
                 rotationDegrees[0], rotationDegrees[1], rotationDegrees[2], translation[0], translation[1], translation[2]),
                 new Point(250, 80), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
@@ -582,198 +576,196 @@ public class Main {
     }
 
 
-    static void testit()
-    {
-        Mat display = Mat.ones(600, 800, CvType.CV_8UC1);
-        Core.multiply(display, new Scalar(110.), display);
-        Mat object = display.submat(200, 400, 250, 550);
-        Mat.ones(200, 300, CvType.CV_8UC1).copyTo(object);
-        Core.multiply(object, new Scalar(170.), object);
+}
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     End Main class                                              */
+/*                                     End Main class                                              */
+/*                                     End Main class                                              */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
 
-        //! [find-corners]
-        MatOfPoint2f cornersObject = new MatOfPoint2f(
-            new Point(0, 0),
-            new Point(object.cols(), 0),
-            new Point(object.cols(), object.rows()),
-            new Point(0, object.rows()));
-        System.out.println(cornersObject.dump());
+// Parking lot
 
-        MatOfPoint2f cornersWarped = new MatOfPoint2f(
-            new Point(30, 20),
-            new Point(object.cols()-70, 40),
-            new Point(object.cols()-80, object.rows()-50),
-            new Point(10, object.rows()-40));
-        System.out.println(cornersWarped.dump());
+// testit();
 
-        MatOfPoint3f cube = new MatOfPoint3f(
-            new Point3(0, 0, 0),
-            new Point3(1, 0, 0),
-            new Point3(1, 1, 0),
-            new Point3(0, 1, 0),
-            new Point3(0, 0, 1),
-            new Point3(1, 0, 1),
-            new Point3(1, 1, 1),
-            new Point3(0, 1, 1));
+//     static void testit()
+//     {
+//         Mat display = Mat.ones(600, 800, CvType.CV_8UC1);
+//         Core.multiply(display, new Scalar(110.), display);
+//         Mat object = display.submat(200, 400, 250, 550);
+//         Mat.ones(200, 300, CvType.CV_8UC1).copyTo(object);
+//         Core.multiply(object, new Scalar(170.), object);
 
-        MatOfPoint3f  cubeWarped = new MatOfPoint3f();
+//         //! [find-corners]
+//         MatOfPoint2f cornersObject = new MatOfPoint2f(
+//             new Point(0, 0),
+//             new Point(object.cols(), 0),
+//             new Point(object.cols(), object.rows()),
+//             new Point(0, object.rows()));
+//         System.out.println(cornersObject.dump());
 
+//         MatOfPoint2f cornersWarped = new MatOfPoint2f(
+//             new Point(30, 20),
+//             new Point(object.cols()-70, 40),
+//             new Point(object.cols()-80, object.rows()-50),
+//             new Point(10, object.rows()-40));
+//         System.out.println(cornersWarped.dump());
 
-        //! [estimate-homography]
-        // actual  H = K*R*inv(K) or estimate frompoints
-        Mat H = Mat.eye(4, 4, CvType.CV_64FC1);
-        Mat Htemp = new Mat();
-        Htemp = Calib3d.findHomography(cornersObject, cornersWarped);
-        Htemp.copyTo(H.submat(0, 3, 0, 3));
-        System.out.println(H + " " + H.dump());
-        System.out.println(Htemp + " " + Htemp.dump());
+//         MatOfPoint3f cube = new MatOfPoint3f(
+//             new Point3(0, 0, 0),
+//             new Point3(1, 0, 0),
+//             new Point3(1, 1, 0),
+//             new Point3(0, 1, 0),
+//             new Point3(0, 0, 1),
+//             new Point3(1, 0, 1),
+//             new Point3(1, 1, 1),
+//             new Point3(0, 1, 1));
+
+//         MatOfPoint3f  cubeWarped = new MatOfPoint3f();
+
+//         Calib3d.projectPoints(cubeWarped, cornersObject, cube, cubeWarped, null, cornersWarped);
+
+//         //! [estimate-homography]
+//         // actual  H = K*R*inv(K) or estimate frompoints
+//         Mat H = Mat.eye(4, 4, CvType.CV_64FC1);
+//         Mat Htemp = new Mat();
+//         Htemp = Calib3d.findHomography(cornersObject, cornersWarped);
+//         Htemp.copyTo(H.submat(0, 3, 0, 3));
+//         System.out.println(H + " " + H.dump());
+//         System.out.println(Htemp + " " + Htemp.dump());
         
-//check for empty Htemp
-// Calib3d.decomposeHomographyMat();
-        // derive rotation angle from homography
-        double theta = - Math.atan2(H.get(0,1)[0], H.get(0,0)[0]) * 180. / Math.PI;
-        System.out.println("theta " + theta);
+// //check for empty Htemp
+// // Calib3d.decomposeHomographyMat();
+//         // derive rotation angle from homography
+//         double theta = - Math.atan2(H.get(0,1)[0], H.get(0,0)[0]) * 180. / Math.PI;
+//         System.out.println("theta " + theta);
 
-        // Calib3d.Rodrigues(r, dst);
-        // double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
+//         // Calib3d.Rodrigues(r, dst);
+//         // double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
 
-        //  getPerspectiveTransform the same answer as findHomography but getPerspectiveTransform doesn't have the extended options so use findHomography
-        // Mat T = new Mat();
-        // T = Imgproc.getPerspectiveTransform(cornersObject, cornersWarped);
-        // System.out.println(T.dump());
-        //! [estimate-homography]
+//         //  getPerspectiveTransform the same answer as findHomography but getPerspectiveTransform doesn't have the extended options so use findHomography
+//         // Mat T = new Mat();
+//         // T = Imgproc.getPerspectiveTransform(cornersObject, cornersWarped);
+//         // System.out.println(T.dump());
+//         //! [estimate-homography]
 
-        //! [warp-chessboard]
-        Mat objectWarped = new Mat();
-        Mat cornersWarpedAlt = new Mat();
-        Imgproc.warpPerspective(object, objectWarped, H.submat(0, 3, 0, 3), object.size()); // images
-        Core.perspectiveTransform(cube, cubeWarped, H); // points
-        System.out.println(cubeWarped.dump());
-        //! [warp-chessboard]
+//         //! [warp-chessboard]
+//         Mat objectWarped = new Mat();
+//         Mat cornersWarpedAlt = new Mat();
+//         Imgproc.warpPerspective(object, objectWarped, H.submat(0, 3, 0, 3), object.size()); // images
+//         Core.perspectiveTransform(cube, cubeWarped, H); // points
+//         System.out.println(cubeWarped.dump());
+//         //! [warp-chessboard]
 
-        // change 3x3 to to 4x4
-        Core.perspectiveTransform(cube, cubeWarped, H); // points
-        /*
-         * perspectiveTransform transforms points
-         *  If you want to transform an image using perspective transformation, use warpPerspective .
-         *  If you have an inverse problem, that is, you want to compute the most probable perspective transformation
-         *  out of several pairs of corresponding points, you can use getPerspectiveTransform or findHomography
-         */
+//         // change 3x3 to to 4x4
+//         Core.perspectiveTransform(cube, cubeWarped, H); // points
+//         /*
+//          * perspectiveTransform transforms points
+//          *  If you want to transform an image using perspective transformation, use warpPerspective .
+//          *  If you have an inverse problem, that is, you want to compute the most probable perspective transformation
+//          *  out of several pairs of corresponding points, you can use getPerspectiveTransform or findHomography
+//          */
 
-        MatOfPoint3f cornersWarped3d = new MatOfPoint3f(); // 3d points; Z = 0 added to the 2d to make 3d
+//         MatOfPoint3f cornersWarped3d = new MatOfPoint3f(); // 3d points; Z = 0 added to the 2d to make 3d
         
-        Calib3d.convertPointsToHomogeneous(cornersWarped, cornersWarped3d); // now convert 2d to 3d homogeneous
-        System.out.println(cornersWarped3d.dump());
+//         Calib3d.convertPointsToHomogeneous(cornersWarped, cornersWarped3d); // now convert 2d to 3d homogeneous
+//         System.out.println(cornersWarped3d.dump());
 
 
-        Mat img_draw_matches = new Mat();
-        List<Mat> list1 = new ArrayList<>(), list2 = new ArrayList<>() ;
-        list1.add(object);
-        list1.add(objectWarped);
-        Core.hconcat(list1, img_draw_matches); // side-by-side display
-        // HighGuiX.imshow("Desired view / Warped view", img_draw_warp);
+//         Mat img_draw_matches = new Mat();
+//         List<Mat> list1 = new ArrayList<>(), list2 = new ArrayList<>() ;
+//         list1.add(object);
+//         list1.add(objectWarped);
+//         Core.hconcat(list1, img_draw_matches); // side-by-side display
+//         // HighGuiX.imshow("Desired view / Warped view", img_draw_warp);
 
 
-        // //FIXME these guidance pose angles aren't right; bad conversion from tgt_r for some reason
-        // // maybe save the original angles from pose gen so they are butchered before getting here.
-        // Mat dst = new Mat();
-        // Calib3d.Rodrigues(ugui.tgt_r(), dst);
-        // double[] euler = Calib3d.RQDecomp3x3(dst, new Mat(), new Mat()); // always returns euler.length = 3
+//         // //FIXME these guidance pose angles aren't right; bad conversion from tgt_r for some reason
+//         // // maybe save the original angles from pose gen so they are butchered before getting here.
+//         // Mat dst = new Mat();
+//         // Calib3d.Rodrigues(ugui.tgt_r(), dst);
+//         // double[] euler = Calib3d.RQDecomp3x3(dst, new Mat(), new Mat()); // always returns euler.length = 3
 
-        // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
-        // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
-
-
-        Point []corners1Arr = cornersObject.toArray();
-
-        for (int i = 0 ; i < corners1Arr.length; i++) {
-            Mat pt1 = new Mat(3, 1, CvType.CV_64FC1);
-            Mat pt2 = new Mat();
-            pt1.put(0, 0, corners1Arr[i].x, corners1Arr[i].y, 1 );
-
-            Core.gemm(H.submat(0, 3, 0, 3), pt1, 1, new Mat(), 0, pt2);
-            double[] data = pt2.get(2, 0);
-            Core.divide(pt2, new Scalar(data[0]), pt2);
-
-            double[] data1 =pt2.get(0, 0);
-            double[] data2 = pt2.get(1, 0);
-            Point end = new Point((int)(object.cols()+ data1[0]), (int)data2[0]);
-            Imgproc.line(img_draw_matches, corners1Arr[i], end,  new Scalar(255, 255, 255), 2);
-        }
+//         // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
+//         // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
 
 
-        // compute rotation matrix from rotation vector
-        double[] angleZ = {0., 0., Math.PI/4.};
-        double[] angleX = {Math.PI/4., 0., 0.};
-        double[] angleY = {0., Math.PI/4., 0.};
-        Mat angleZVector = new Mat(3, 1, CvType.CV_64FC1);
-        Mat angleXVector = new Mat(3, 1, CvType.CV_64FC1);
-        Mat angleYVector = new Mat(3, 1, CvType.CV_64FC1);
-        angleZVector.put(0, 0, angleZ);       
-        angleXVector.put(0, 0, angleX);
-        angleYVector.put(0, 0, angleY);
-        Mat Rz = new Mat();
-        Mat Rx = new Mat();
-        Mat Ry = new Mat();
+//         Point []corners1Arr = cornersObject.toArray();
 
-        /**************************************************************************************** */
-        Calib3d.Rodrigues(angleZVector, Rz);
-        Calib3d.Rodrigues(angleXVector, Rx);
-        Calib3d.Rodrigues(angleYVector, Ry);
-        /**************************************************************************************** */
+//         for (int i = 0 ; i < corners1Arr.length; i++) {
+//             Mat pt1 = new Mat(3, 1, CvType.CV_64FC1);
+//             Mat pt2 = new Mat();
+//             pt1.put(0, 0, corners1Arr[i].x, corners1Arr[i].y, 1 );
 
-        Main.LOGGER.log(Level.WARNING, "Rz\n" + Rz.dump());
-        Main.LOGGER.log(Level.WARNING, "Rx\n" + Rx.dump());
-        Main.LOGGER.log(Level.WARNING, "Ry\n" + Ry.dump());
+//             Core.gemm(H.submat(0, 3, 0, 3), pt1, 1, new Mat(), 0, pt2);
+//             double[] data = pt2.get(2, 0);
+//             Core.divide(pt2, new Scalar(data[0]), pt2);
 
-        // in Python (Ry).dot(Rx).dot(Rz) messed up nomenclature - it's often really matrix multiply Ry times Rx times Rz
-        Mat R = Mat.eye(4, 4, CvType.CV_64FC1);
-        Mat R3x3 = R.submat(0, 3, 0, 3);
+//             double[] data1 =pt2.get(0, 0);
+//             double[] data2 = pt2.get(1, 0);
+//             Point end = new Point((int)(object.cols()+ data1[0]), (int)data2[0]);
+//             Imgproc.line(img_draw_matches, corners1Arr[i], end,  new Scalar(255, 255, 255), 2);
+//         }
 
-        /**************************************************************************************** */
-        Core.gemm(Ry, Rx, 1., new Mat(), 0, R3x3);
-        Core.gemm(R3x3, Rz, 1., new Mat(), 0., R3x3); // rotation matrix of the input Euler Angles [radians]
-        double[] euler = Calib3d.RQDecomp3x3(R3x3, new Mat(), new Mat());
-        System.out.println(Arrays.toString(euler));
-        /**************************************************************************************** */
+
+//         // compute rotation matrix from rotation vector
+//         double[] angleZ = {0., 0., Math.PI/4.};
+//         double[] angleX = {Math.PI/4., 0., 0.};
+//         double[] angleY = {0., Math.PI/4., 0.};
+//         Mat angleZVector = new Mat(3, 1, CvType.CV_64FC1);
+//         Mat angleXVector = new Mat(3, 1, CvType.CV_64FC1);
+//         Mat angleYVector = new Mat(3, 1, CvType.CV_64FC1);
+//         angleZVector.put(0, 0, angleZ);       
+//         angleXVector.put(0, 0, angleX);
+//         angleYVector.put(0, 0, angleY);
+//         Mat Rz = new Mat();
+//         Mat Rx = new Mat();
+//         Mat Ry = new Mat();
+
+//         /**************************************************************************************** */
+//         Calib3d.Rodrigues(angleZVector, Rz);
+//         Calib3d.Rodrigues(angleXVector, Rx);
+//         Calib3d.Rodrigues(angleYVector, Ry);
+//         /**************************************************************************************** */
+
+//         Main.LOGGER.log(Level.WARNING, "Rz\n" + Rz.dump());
+//         Main.LOGGER.log(Level.WARNING, "Rx\n" + Rx.dump());
+//         Main.LOGGER.log(Level.WARNING, "Ry\n" + Ry.dump());
+
+//         // in Python (Ry).dot(Rx).dot(Rz) messed up nomenclature - it's often really matrix multiply Ry times Rx times Rz
+//         Mat R = Mat.eye(4, 4, CvType.CV_64FC1);
+//         Mat R3x3 = R.submat(0, 3, 0, 3);
+
+//         /**************************************************************************************** */
+//         Core.gemm(Ry, Rx, 1., new Mat(), 0, R3x3);
+//         Core.gemm(R3x3, Rz, 1., new Mat(), 0., R3x3); // rotation matrix of the input Euler Angles [radians]
+//         double[] euler = Calib3d.RQDecomp3x3(R3x3, new Mat(), new Mat());
+//         System.out.println(Arrays.toString(euler));
+//         /**************************************************************************************** */
         
-        Main.LOGGER.log(Level.SEVERE, "R\n" + R.dump());
-        Main.LOGGER.log(Level.SEVERE, "R3x3\n" + R3x3.dump());
-
-/*
-percent%nno new line
-
-a line
-newline
-
-a line
-newline
-a line
-newline
-*/        
-        
-        angleZVector.release();
-        angleXVector.release();
-        angleYVector.release();
-        Rz.release();
-        Rx.release();
-        Ry.release();
+//         Main.LOGGER.log(Level.SEVERE, "R\n" + R.dump());
+//         Main.LOGGER.log(Level.SEVERE, "R3x3\n" + R3x3.dump());
+      
+//         // Calib3d.undistortPoints(p, p, K, cdist, new Mat(), new Mat(), Cfg.undistortPointsIterCriteria);
 
 
+//         angleZVector.release();
+//         angleXVector.release();
+//         angleYVector.release();
+//         Rz.release();
+//         Rx.release();
+//         Ry.release();
 
+//         HighGuiX.imshow("Draw matches", img_draw_matches);
 
-
-
-
-
-
-
-        HighGuiX.imshow("Draw matches", img_draw_matches);
-
-        // HighGuiX.imshow("testit", objectWarped);
-        HighGuiX.waitKey(000);
-        System.exit(0);
-        // https://www.euclideanspace.com/maths/geometry/affine/matrix4x4/index.htm
-    }
+//         // HighGuiX.imshow("testit", objectWarped);
+//         HighGuiX.waitKey(000);
+//         System.exit(0);
+//         // https://www.euclideanspace.com/maths/geometry/affine/matrix4x4/index.htm
+//     }
 /*
 [0, 0;    
  300, 0;  
@@ -860,20 +852,6 @@ Mat [ 3*3*CV_64FC1, isCont=true, isSubmat=false, nativeObj=0x22044a6ca10, dataAd
     //     // HighGuiX.waitKey(0);
     //     //! [compute-transformed-corners]
     // }
-
-}
-
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     End Main class                                              */
-/*                                     End Main class                                              */
-/*                                     End Main class                                              */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-
-// Parking lot
 
 // Logger.getLogger("").setLevel(Level.OFF); // turn off everything - especially java.awt fine, finer, finest spam
 // Logger.getLogger("calibrator").setLevel(Level.ALL); // turn on for my package

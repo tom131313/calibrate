@@ -20,7 +20,6 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
@@ -269,22 +268,8 @@ public class UserGuidance {
         this.board.create_maps(this.calib.K(), this.calib.cdist(), this.img_size);
         // make the guidance board warped and right size
         //board_warped_shape =  # Height Width Channels (720, 1280, 3)
-        this.board_warped.release(); // rkt
+        this.board_warped.release();
         // Main.LOGGER.log(Level.WARNING, "rt2 " + this.tgt_r.dump() + " " + this.tgt_t.dump());
-
-        // MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
-        // MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
-        // MatOfDouble distOfDouble = new MatOfDouble(this.cdist); // convert as required for the projectPoints()
-
-        // Calib3d.projectPoints(centerLine, this.rvec, this.tvec, this.K, distOfDouble, centerLineProjected);
-        // var centerLinePoints = centerLineProjected.toList();
-
-        // // draw center line
-        // Imgproc.line(img, 
-        //         centerLinePoints.get(0),
-        //         centerLinePoints.get(1),
-        //         new Scalar(0., 255., 255.),
-        //         3);
         
         this.board_warped = this.board.project(this.tgt_r, this.tgt_t, false, Imgproc.INTER_NEAREST);
 
@@ -348,8 +333,8 @@ public class UserGuidance {
         tmp.copyTo(Main.progressInsert); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
         this.overlap.copyTo(tempImg); // tempImg has the warped guidance board
 
-        Core.multiply(Main.progressInsert, new Scalar(170.), Main.progressInsert); // brighten (to near white) so it can be seen by humans
-        Core.multiply(tempImg, new Scalar(85.), tempImg); // brighten (to dark gray) so it can be seen by humans
+        Core.multiply(Main.progressInsert, Cfg.progressInsertCameraGrey, Main.progressInsert); // brighten (to near white) so it can be seen by humans
+        Core.multiply(tempImg, Cfg.progressInsertGuidanceGrey, tempImg); // brighten (to dark gray) so it can be seen by humans
         Core.add(Main.progressInsert, tempImg, Main.progressInsert); // where they overlap is bright white
 
         // Main.LOGGER.log(Level.WARNING, "shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
@@ -664,3 +649,18 @@ public class UserGuidance {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+// parking lot
+
+        // MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
+        // MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
+        // MatOfDouble distOfDouble = new MatOfDouble(this.cdist); // convert as required for the projectPoints()
+
+        // Calib3d.projectPoints(centerLine, this.rvec, this.tvec, this.K, distOfDouble, centerLineProjected);
+        // var centerLinePoints = centerLineProjected.toList();
+
+        // // draw center line
+        // Imgproc.line(img, 
+        //         centerLinePoints.get(0),
+        //         centerLinePoints.get(1),
+        //         new Scalar(0., 255., 255.),
+        //         3);

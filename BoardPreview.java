@@ -7,10 +7,6 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfDouble;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.MatOfPoint3f;
-import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -83,20 +79,6 @@ class BoardPreview {
         // these axes diagram cover the desired posed (warped) Guidance Board before it is processed. Maybe draw them later and they are in a different position
         Core.flip(imgProjected, imgProjected, 0); // flip to get axes origin in correct corner BUT the estimated origin is reversed from where it belongs
         Calib3d.drawFrameAxes(imgProjected, K, new Mat(), R, t, 300.f); // may need rotation vector rvec instead of R
-// // this is not drawing a line that I want
-//         MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
-//         MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
-
-//         Calib3d.projectPoints(centerLine, R, t, K, new MatOfDouble(), centerLineProjected);
-//         var centerLinePoints = centerLineProjected.toList();
-
-//         // draw center line
-//         Imgproc.line(imgProjected, 
-//                 centerLinePoints.get(0),
-//                 centerLinePoints.get(1),
-//                 new Scalar(0., 255., 255.),
-//                 3);
-// //
         Core.flip(imgProjected, imgProjected, 0); // put the img back right
 
         transform.release();
@@ -197,7 +179,7 @@ class BoardPreview {
         scale.put(1, 1, this.SIZE.height/sz.height);
         scale.put(2, 2, 1.);
         // Core.gemm(scale, K, 1., new Mat(), 0.,K);
-        //FIXME Knew and K are suspect. What's the right answer to making Knew without trashing K????
+        //FIXME Knew and K are suspect. What's the right answer to making Knew without trashing K? Guessing here but seems okay.
         Core.gemm(scale, K, 1., new Mat(), 0.,this.Knew);
         sz = this.SIZE;
         this.Knew = Calib3d.getOptimalNewCameraMatrix(Knew, cdist, sz, 1.); // .2% higher than Python for same input
@@ -252,3 +234,44 @@ class BoardPreview {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+// parking lot
+// // this is not drawing a line that I want
+//         MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
+//         MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
+
+//         Calib3d.projectPoints(centerLine, R, t, K, new MatOfDouble(), centerLineProjected);
+//         var centerLinePoints = centerLineProjected.toList();
+
+//         // draw center line
+//         Imgproc.line(imgProjected, 
+//                 centerLinePoints.get(0),
+//                 centerLinePoints.get(1),
+//                 new Scalar(0., 255., 255.),
+//                 3);
+// //
+        // MatOfPoint3f cube = new MatOfPoint3f(
+        //     new Point3(0, 0, 0),
+        //     new Point3(1, 0, 0),
+        //     new Point3(1, 1, 0),
+        //     new Point3(0, 1, 0),
+        //     new Point3(0, 0, 1),
+        //     new Point3(1, 0, 1),
+        //     new Point3(1, 1, 1),
+        //     new Point3(0, 1, 1));
+
+        // Core.multiply(cube,new Scalar(500., 500., -4000.), cube);
+
+        // MatOfPoint2f cubeProjected = new MatOfPoint2f();
+        // Calib3d.projectPoints(cube, rvec, t, K, new MatOfDouble(), cubeProjected);
+        // // Main.LOGGER.log(Level.SEVERE, "cube\n" + cubeProjected.dump());
+
+        // var cubeProjectedPoints = cubeProjected.toList();
+        
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(0),cubeProjectedPoints.get(1),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(1),cubeProjectedPoints.get(2),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(2),cubeProjectedPoints.get(3),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(3),cubeProjectedPoints.get(0),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(4),cubeProjectedPoints.get(5),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(5),cubeProjectedPoints.get(6),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(6),cubeProjectedPoints.get(7),new Scalar(0., 255., 255.),3);
+        // Imgproc.line(imgProjected,cubeProjectedPoints.get(7),cubeProjectedPoints.get(4),new Scalar(0., 255., 255.),3);
