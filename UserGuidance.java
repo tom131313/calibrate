@@ -73,6 +73,7 @@ public class UserGuidance {
     private int tgt_param = -999_999_999; // None in Python which throws error if accessed; this may throw an error if used as a subscript
 
     // actual user guidance
+    private double pose_close_to_tgt = 0.;
     private boolean pose_reached = false;
     private boolean capture = false;
     private boolean still = false;
@@ -106,6 +107,10 @@ public class UserGuidance {
     String[] INTRINSICS()
     {
         return INTRINSICS;
+    }
+    double pose_close_to_tgt_get()
+    {
+        return pose_close_to_tgt;
     }
 
     UserGuidance(ChArucoDetector tracker, double var_terminate) throws Exception // force use of var_terminate=0.1 instead of defaulting
@@ -390,9 +395,9 @@ public class UserGuidance {
 
         this.pose_reached = force && this.tracker.N_pts() >= Cfg.minCorners; // original had > 4
 
-        double pose_close_to_tgt = this.pose_close_to_tgt();
+        this.pose_close_to_tgt = this.pose_close_to_tgt();
 
-        if (pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
+        if (this.pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
         {
             this.pose_reached = true;
         }
@@ -567,35 +572,99 @@ public class UserGuidance {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    void write()
+void write()
+{
+    // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+
+    String pattern = "yyyy-MM-dd-HH-mm-ss";
+    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+    
+    
+    //????????????????????????????????????????????
+    //FIXME use the PV way to format JSON from MAT
+    //????????????????????????????????????????????
+
+
+    String calibrationDataFile = "CameraCalibrationData_" + simpleDateFormat.format(new Date()) + ".json";
+    double[] cameraMatrix = new double[9];
+    this.calib.K().get(0, 0, cameraMatrix);
+    double[] distortionCoefficients = new double[5];
+    this.calib.cdist().get(0, 0, distortionCoefficients);
+
+    Main.LOGGER.log(Level.SEVERE, "calibration data file " + calibrationDataFile);
+
+    try (PrintWriter pw = new PrintWriter(calibrationDataFile))
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        pw.println("{");
+        pw.println(" \"camera\": \"unknown\",");
+        pw.println(" \"platform\":  \"unknown\",");
+        pw.println(" \"avg_reprojection_error\": " + this.calib.reperr() + ",");
+        pw.format (" \"camera_matrix\": [%n" +
+                   "  [%f, %f, %f],%n  [%f, %f, %f],%n  [%f, %f, %f]%n" +
+                   "],%n",
+                   cameraMatrix[0],cameraMatrix[1],cameraMatrix[2],
+                   cameraMatrix[3],cameraMatrix[4],cameraMatrix[5],
+                   cameraMatrix[6],cameraMatrix[7],cameraMatrix[8]);
+        pw.format(" \"distortion_coefficients\":%n  [%f, %f, %f, %f, %f ],%n",
+                   distortionCoefficients[0], distortionCoefficients[1], distortionCoefficients[2], distortionCoefficients[3], distortionCoefficients[4]);
+        pw.println(" \"distortion_model\": \"rectilinear\",");
+        pw.format(" \"img_size\": [%.0f, %.0f],%n", this.calib.img_size().width, this.calib.img_size().height);
+        pw.format(" \"calibration_time\": \"%s\"%n", LocalDateTime.now());
+        pw.print("}");
 
-        String pattern = "yyyy-MM-dd-HH-mm-ss";
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-        String calibrationDataFile = "CameraCalibrationData_" + simpleDateFormat.format(new Date()) + ".txt";
+        Main.LOGGER.log(Level.SEVERE, "calibration_time: " + LocalDateTime.now());
+        Main.LOGGER.log(Level.SEVERE, "nr_of_frames: " + this.calib.keyframes.size());
+        Main.LOGGER.log(Level.SEVERE, "image_width: " + this.calib.img_size().width);
+        Main.LOGGER.log(Level.SEVERE, "image_height: " + this.calib.img_size().height);
+        Main.LOGGER.log(Level.SEVERE, "board_width: " + this.tracker.board_sz().width);
+        Main.LOGGER.log(Level.SEVERE, "board_height: " + this.tracker.board_sz().height);
+        Main.LOGGER.log(Level.SEVERE, "square_size: " + this.square_len);
+        Main.LOGGER.log(Level.SEVERE, "marker_size: " + this.marker_len);
+        Main.LOGGER.log(Level.SEVERE, formatFlags(calib.flags()));
+        Main.LOGGER.log(Level.SEVERE, "fisheye_model: " + 0);
+        Main.LOGGER.log(Level.SEVERE, "camera_matrix:\n" + this.calib.K().dump());
+        Main.LOGGER.log(Level.SEVERE, "distortion_coefficients:\n" + this.calib.cdist().dump());
+        Main.LOGGER.log(Level.SEVERE, "avg_reprojection_error: " + this.calib.reperr());
 
-        Main.LOGGER.log(Level.SEVERE, "calibration data file " + calibrationDataFile);
-
-        try (PrintWriter pw = new PrintWriter(calibrationDataFile))
-        {
-            pw.println("calibration_time: " + LocalDateTime.now());
-            pw.println("nr_of_frames: " + this.calib.keyframes.size());
-            pw.println("image_width: " + this.calib.img_size().width);
-            pw.println("image_height: " + this.calib.img_size().height);
-            pw.println("board_width: " + this.tracker.board_sz().width);
-            pw.println("board_height: " + this.tracker.board_sz().height);
-            pw.println("square_size: " + this.square_len);
-            pw.println("marker_size: " + this.marker_len);
-            pw.println(formatFlags(calib.flags()));
-            pw.println("fisheye_model: " + 0);
-            pw.println("camera_matrix:\n" + this.calib.K().dump());
-            pw.println("distortion_coefficients:\n" + this.calib.cdist().dump());
-            pw.println("avg_reprojection_error: " + this.calib.reperr());
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+    } catch (FileNotFoundException e) {
+        e.printStackTrace();
     }
+}
+// {
+//     "camera": "Microsoft® LifeCam HD-3000 (045e:0779)",
+//     "platform": "Windows NT 10.0; Win64; x64",
+//     "avg_reprojection_error": 1.1724702717926616,
+//     "camera_matrix": [
+//         [
+//             1044.825321498012,
+//             0,
+//             633.7313077534989
+//         ],
+//         [
+//             0,
+//             1044.6104225946867,
+//             329.2186566305057
+//         ],
+//         [
+//             0,
+//             0,
+//             1
+//         ]
+//     ],
+//     "distortion_coefficients": [
+//         0.1294205528671509,
+//         -0.9220091436719668,
+//         -0.002846279266059757,
+//         -0.00741008154324037,
+//         1.6379093755482885
+//     ],
+//     "distortion_model": "rectilinear",
+//     "img_size": [
+//         1280,
+//         720
+//     ],
+//     "calibration_time": "Sun, 04 Jun 2023 20:05:32 GMT"
+// }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */

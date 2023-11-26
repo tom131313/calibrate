@@ -70,7 +70,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 11.3"; // change this
+    private static final String VERSION = "beta 11.4"; // change this
     
     static
     {
@@ -321,13 +321,20 @@ public class Main {
         final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId);
         LOGGER.log(Level.SEVERE, "camera parameters can be seen or changed on port 1181 or higher");
 
-        camera.setPixelFormat(Cfg.pixelFormat);
+        try
+        {
+            camera.setPixelFormat(Cfg.pixelFormat);
+            camera.setResolution(Cfg.image_width, Cfg.image_height);
+            // camera.setExposureAuto();
+            camera.setExposureManual(Cfg.exposureManual);
+            camera.setBrightness(Cfg.brightness);
+            camera.setFPS(Cfg.fps);
+        }
+        catch(Exception e)
+        {
+            Main.LOGGER.log(Level.SEVERE, "camera setup error", e);
+        }
 
-        camera.setResolution(Cfg.image_width, Cfg.image_height);
-        // camera.setExposureAuto();
-        camera.setExposureManual(Cfg.exposureManual);
-        camera.setBrightness(Cfg.brightness);
-        camera.setFPS(Cfg.fps);
         // Get a CvSink. This will capture Mats from the camera
         JavaCvSink cap = new JavaCvSink("sink1");
         cap.setSource(camera);
@@ -554,7 +561,11 @@ public class Main {
                 new Scalar(255., 255., 0.), 1);
             temp2.copyTo(out.submat((int)(Cfg.image_height*0.45), (int)(Cfg.image_height*0.45)+progressInsert.rows(), 0,progressInsert.cols()));
             temp2.release();
-        }
+
+            Imgproc.putText(out,
+                String.format("similar%5.2f/%4.2f", ugui.pose_close_to_tgt_get(), Cfg.pose_close_to_tgt_min),
+                new Point(0,(int)(Cfg.image_height*0.45)+progressInsert.rows()+20) , Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, new Scalar(255, 255, 255), 1);
+        }  
 
         // display intrinsics convergence
         for (int i = 0; i < 9; i++)
