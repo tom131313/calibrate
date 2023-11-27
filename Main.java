@@ -70,7 +70,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 11.4"; // change this
+    private static final String VERSION = "beta 11.5"; // change this
     
     static
     {
@@ -195,7 +195,8 @@ public class Main {
         options.addOption("dpmX", true, "print width pixels per meter (9843=250 DPI)");
         options.addOption("dpmY", true, "print height pixels per meter (9843=250 DPI");
         options.addOption("pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
-        options.addOption("cameraID", true, "camera id (0)");
+        options.addOption("cameraId", true, "camera id (0)");
+        options.addOption("fps", true, "frames per second (10)");
         options.addOption("isPV", true, "using PV environment (true)");
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -205,31 +206,35 @@ public class Main {
             formatter.printHelp("java -jar <your jar file>.jar [options]", options);
             return false; // exit program
         }
-        else
+        
         if ( cmd.hasOption("width")) {
             Cfg.image_width = Integer.parseInt(cmd.getOptionValue("width"));
         }
-        else
+        
         if (cmd.hasOption("height")) {
             Cfg.image_height = Integer.parseInt(cmd.getOptionValue("height"));
         }
-        else
+        
         if (cmd.hasOption("dpmX")) {
             Cfg.resXDPM = Integer.parseInt(cmd.getOptionValue("dpmX"));
         }
-        else
+        
         if (cmd.hasOption("dpmY")) {
             Cfg.resYDPM = Integer.parseInt(cmd.getOptionValue("dpmY"));
         }
-        else
+        
         if (cmd.hasOption("pxFmt")) {
             Cfg.pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt"));
         }
-        else
+        
         if (cmd.hasOption("cameraId")) {
             Cfg.camId = Integer.parseInt(cmd.getOptionValue("cameraId"));
         }
-        else
+        
+        if (cmd.hasOption("fps")) {
+            Cfg.fps = Integer.parseInt(cmd.getOptionValue("fps"));
+        }
+        
         if( cmd.hasOption("isPV")) {
             Cfg.isPV = Boolean.parseBoolean(cmd.getOptionValue("isPV"));
         }
@@ -319,7 +324,7 @@ public class Main {
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
         final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId);
-        LOGGER.log(Level.SEVERE, "camera parameters can be seen or changed on port 1181 or higher");
+        LOGGER.log(Level.SEVERE, "camera " + Cfg.camId + " parameters can be seen or changed on port 1181 or higher");
 
         try
         {
@@ -365,10 +370,11 @@ public class Main {
             long status = cap.grabFrame(_img, 0.5);
             if (status != 0)
             {
-                if (_img.height() != Cfg.image_height || img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
+                if (_img.height() != Cfg.image_height || _img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
                     // Imgproc.resize(_img, _img, new Size(Cfg.image_width, Cfg.image_height), 0, 0, Imgproc.INTER_CUBIC);
-                    Main.LOGGER.log(Level.SEVERE, "image grabbed not correct size - ignoring it");
+                    Main.LOGGER.log(Level.SEVERE, "image incorrect " + _img.width() + "x" + _img.height()
+                                                    + " should be " + Cfg.image_width + "x" + Cfg.image_height + " - ignoring it");
                     continue;
                 }
                 _img.copyTo(img);
@@ -937,7 +943,7 @@ https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
 //  and then 
 // java -jar photonvision-dev-v2024.1.1-beta-3.1-5-ga99e85a8-linuxarm64.jar
 //  is all you should need 
-
+// Append “-x spotlessapply” to the commands you run to disable it
 
 // def order_points(pts):
 // 	# initialzie a list of coordinates that will be ordered

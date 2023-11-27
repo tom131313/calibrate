@@ -36,7 +36,7 @@ public class Cfg
     static int camId = 0;
     static PixelFormat pixelFormat = PixelFormat.kYUYV; // kMJPEG
     static final int displayPort = 1185;
-    static final int fps = 30;
+    static int fps = 10;
     static final int exposureManual = 70;
     static final int brightness = 70;
     
