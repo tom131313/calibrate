@@ -1,15 +1,19 @@
 # Java Camera Calibrator
 Program guides user to pose the camera to the ChArUcoBoard for most efficient and accurate calibration.
 
-run from a terminal window either the Windows jar or Linux arm64 jar (RPi, etc.)
+**Run from a terminal window either the Windows jar or Linux arm64 jar (RPi, etc.)**
 
-java -jar the_right_jar_file [options]
+**don't double click the jar file name**
+
+`java -jar the_right_jar_file [options]`
 
 Logs accumulate in the directory with the jar file.
 
 Options are listed with -help, for example, on a Windows PC:
-java -jar calib-photonvision-dev-beta-X-winx64.jar -help
---------------------------
+
+`java -jar calib-photonvision-dev-beta-X-winx64.jar -help`
+
+```
 C:\Users\RKT\frc\FRC2023\Code\photonvision-2023-10-30_pose_calib_integration>java -jar calib-photonvision-dev-beta-11-4-winx64.jar -help
 Starting class: org.photonvision.calibrator.Main version beta 11.4
 Starting class: org.photonvision.calibrator.Main version beta 11.4
@@ -31,7 +35,7 @@ usage: java -jar <your jar file>.jar [options]
                    kBGR, kGray, kY16, kUYVY]
  -width <arg>      camera image width (1280)
 THE END OF THE LOG
---------------------------
+```
 
 On a computer with an internal camera the camera ids on Windows typically are:
 internal and external cameras connected at boot up: external=0, internal=1
@@ -45,6 +49,8 @@ Run the program and aim the camera at the printed board in the pose that matches
 The first two guidance poses are always the same.
 
 The first pose at a fairly steep angle to the board's left (camera's right) sets the initial camera matrix. I advise getting the angles correct but not at precisely the correct distance so the images do not align yet. Then carefully move closer or further to get the precise size alignment. The capture should be automatic. “Well begun is half done.” - Aristotle. [Rotated poses are good to calibrate the camera matrix.]
+
+Occaisionally the rotated first pose "jumps" to a different size. That is NOT a capture and is the program trying to use the latest estimate of the camera matrix for that first pose. That pose is captured when the second pose - the head-on pose - appears.
 
 The second pose is straight head-on and sets the initial distortion. Similarly, get the straight-on correct, move to align the images but not yet the matching sizes then move closer or further to match. The capture should be automatic.[Straight-on poses are good to calibrate the distortion coefficients.]
 
