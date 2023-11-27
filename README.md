@@ -28,6 +28,7 @@ usage: java -jar <your jar file>.jar [options]
  -cameraId <arg>   camera id (0)
  -dpmX <arg>       print width pixels per meter (9843=250 DPI)
  -dpmY <arg>       print height pixels per meter (9843=250 DPI
+ -fps <arg>        frames per second (10)
  -h,--help         Show this help text and exit
  -height <arg>     camera image height (720)
  -isPV <arg>       using PV environment (true)
