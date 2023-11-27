@@ -25,7 +25,7 @@ Starting Log for Camera Calibration Program Version beta 11.4, current time 2023
 00000 CONFIG  [ Loggers setupLoggers] Logger configuration done.
 00000 SEVERE  [ Main main] logs accumulate in file CalibrationLog.txt
 usage: java -jar <your jar file>.jar [options]
- -cameraID <arg>   camera id (0)
+ -cameraId <arg>   camera id (0)
  -dpmX <arg>       print width pixels per meter (9843=250 DPI)
  -dpmY <arg>       print height pixels per meter (9843=250 DPI
  -h,--help         Show this help text and exit
