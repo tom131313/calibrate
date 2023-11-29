@@ -51,9 +51,12 @@ import org.opencv.imgproc.Imgproc;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.CameraServerJNI;
+import edu.wpi.first.cscore.CvSink;
 import edu.wpi.first.cscore.CvSource;
 import edu.wpi.first.cscore.MjpegServer;
 import edu.wpi.first.cscore.UsbCamera;
+import edu.wpi.first.cscore.VideoMode;
+import edu.wpi.first.cscore.VideoProperty;
 import edu.wpi.first.cscore.VideoMode.PixelFormat;
 import edu.wpi.first.math.WPIMathJNI;
 import edu.wpi.first.networktables.NetworkTablesJNI;
@@ -70,7 +73,7 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 11.5"; // change this
+    private static final String VERSION = "beta 12"; // change this
     
     static
     {
@@ -92,7 +95,6 @@ public class Main {
     // normally don't change header but it's here (or below) to use version
     private static final String header = "\n\nStarting Log for Camera Calibration Program Version " + VERSION
                                             + ", current time " + java.time.LocalDateTime.now() + "\n\n";
-    //    + "  current time ms " + System.currentTimeMillis() + "\n\n";   
     private static final String errHeader = header;
     private static final String outHeader = header;
 
@@ -172,7 +174,7 @@ public class Main {
                     }
                 }
             } catch(Exception e) {Main.LOGGER.log(Level.SEVERE,
-                "Terminal keyboard closed (Ctrl-c) or doesn't exist (jar file not run from command line)", e);}
+                "Terminal keyboard closed prematurely (Ctrl-c) or doesn't exist (jar file not run from command line; don't double click the jar to start it)", e);}
         }
     }
 
@@ -294,7 +296,7 @@ public class Main {
 
         progressInsert = new Mat();
         
-        // keyboard handler for PV using the web interface
+        // keyboard handler for PV environment using the web interface
         if (Cfg.isPV)
         {
             MainInstance = new Main();
@@ -308,10 +310,9 @@ public class Main {
             mjpegServer = new MjpegServer("GuidanceView", Cfg.displayPort);
             LOGGER.log(Level.SEVERE, "View Guidance Board On Port " + Cfg.displayPort);
             mjpegServer.setSource(networkDisplay);
-            // MjpegServer openCVserver = CameraServer.getInstance().startAutomaticCapture(outputStream);
         }
 
-        if ( ! Cfg.isPV) // PV has its own way to get these libraries */
+        if ( ! Cfg.isPV) // PV is similar but loads more libraries */
         {
         NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
         WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
@@ -319,30 +320,44 @@ public class Main {
         CameraServerJNI.Helper.setExtractOnStaticLoad(false);
         CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
         }
-        // var inst = NetworkTableInstance.getDefault(); // not using NT in this program
 
         /** video image capture setup **/
         // Get the UsbCamera from CameraServer
-        final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId);
-        LOGGER.log(Level.SEVERE, "camera " + Cfg.camId + " parameters can be seen or changed on port 1181 or higher");
+        final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId); // gives access to camera parameters on port 181 or above
 
-        try
+        // final UsbCamera camera = new UsbCamera("mycamera", Cfg.camId); // same camera as above but no interaction on port 181 or above
+
+        for ( VideoMode vm : camera.enumerateVideoModes())
         {
-            camera.setPixelFormat(Cfg.pixelFormat);
-            camera.setResolution(Cfg.image_width, Cfg.image_height);
-            // camera.setExposureAuto();
-            camera.setExposureManual(Cfg.exposureManual);
-            camera.setBrightness(Cfg.brightness);
-            camera.setFPS(Cfg.fps);
-        }
-        catch(Exception e)
-        {
-            Main.LOGGER.log(Level.SEVERE, "camera setup error", e);
+                 Main.LOGGER.log(Level.CONFIG, "Camera mode choices " + vm.getPixelFormatFromInt(vm.pixelFormat.getValue()) + " " +
+                + vm.width + "x" + vm.height + " " + vm.fps + " fps");
         }
 
+        for ( VideoProperty vp : camera.enumerateProperties())
+        {
+            Main.LOGGER.log(Level.CONFIG, "camera property choices " + vp.get() + " " + vp.getName() + " " + VideoProperty.getKindFromInt(vp.get()));
+        }
+
+        VideoMode videoMode = new VideoMode(Cfg.pixelFormat, Cfg.image_width, Cfg.image_height, Cfg.fps);
+        
+        Main.LOGGER.log(Level.CONFIG, "Setting camera mode " + VideoMode.getPixelFormatFromInt(Cfg.pixelFormat.getValue()) + " " + Cfg.image_width + "x" + Cfg.image_height + " " + Cfg.fps + "fps");
+            try {
+                if ( ! camera.setVideoMode(videoMode)) throw new IllegalArgumentException("set video mode returned false");
+            } catch (Exception e) {
+                Main.LOGGER.log(Level.SEVERE, "camera set video mode error; mode is unchanged", e);
+            }
+
+        // camera.setExposureAuto();
+        // camera.setExposureManual(Cfg.exposureManual);
+        // camera.setBrightness(Cfg.brightness);
+        // int cameraHandle = camera.getHandle();
+        // CameraServerJNI.setProperty(CameraServerJNI.getSourceProperty(cameraHandle, "contrast"), 74);
+
+        LOGGER.log(Level.SEVERE, "camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
         // Get a CvSink. This will capture Mats from the camera
-        JavaCvSink cap = new JavaCvSink("sink1");
-        cap.setSource(camera);
+        // JavaCvSink cap = new JavaCvSink("sink1"); // 2023 standalone WPILib way since there was no CvSink in that distribution
+        // cap.setSource(camera);
+        CvSink cap = CameraServer.getVideo(camera);
 
         Mat _img = new Mat(); // this follows the camera input but ...
         Mat  img = new Mat(Cfg.image_height, Cfg.image_width, CvType.CV_8UC3); // set by user config - need camera to return this size, too
@@ -433,7 +448,6 @@ public class Main {
             {
                 case keyTerminate: // terminate key pressed to stop loop immediately
                         endMessage = "CANCELLED";
-                        
                         break grabFrameLoop;
 
                 case keyMirrorToggle: // mirror/no mirror key pressed
@@ -591,8 +605,6 @@ public class Main {
                 Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
         }
     }
-
-
 }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -943,7 +955,7 @@ https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
 //  and then 
 // java -jar photonvision-dev-v2024.1.1-beta-3.1-5-ga99e85a8-linuxarm64.jar
 //  is all you should need 
-// Append “-x spotlessapply” to the commands you run to disable it
+// Append "-x spotlessapply" to the commands you run to disable it
 
 // def order_points(pts):
 // 	# initialzie a list of coordinates that will be ordered
