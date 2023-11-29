@@ -276,7 +276,7 @@ public class Main {
 
         Loggers.setupLoggers(copySystemErr, outFormat, outHeader, outTail, outLevel, errFormat, errHeader, errTail, errLevel);
         Main.LOGGER.log(Level.SEVERE, "logs accumulate in file " + Cfg.logFile);
-
+        Main.LOGGER.log(Level.CONFIG, "Command Line Args " + Arrays.toString(args));
         try {
             if ( ! handleArgs(args)) {
                 System.exit(0);
@@ -355,9 +355,10 @@ public class Main {
 
         LOGGER.log(Level.SEVERE, "camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
         // Get a CvSink. This will capture Mats from the camera
-        // JavaCvSink cap = new JavaCvSink("sink1"); // 2023 standalone WPILib way since there was no CvSink in that distribution
-        // cap.setSource(camera);
-        CvSink cap = CameraServer.getVideo(camera);
+        // CvSink cap = CameraServer.getVideo(camera); // typical CvSink
+
+        JavaCvSink cap = new JavaCvSink("sink1"); // 2023 standalone WPILib way since there was no CvSink in that distribution
+        cap.setSource(camera);
 
         Mat _img = new Mat(); // this follows the camera input but ...
         Mat  img = new Mat(Cfg.image_height, Cfg.image_width, CvType.CV_8UC3); // set by user config - need camera to return this size, too
