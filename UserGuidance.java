@@ -44,7 +44,7 @@ public class UserGuidance {
 /*-------------------------------------------------------------------------------------------------*/
     static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
 
-    private Calibrator calib;
+    Calibrator calib;
 
     private final String[] AX_NAMES = {"red", "green", "blue"};
     private final String[] INTRINSICS = {"fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"};
@@ -428,6 +428,10 @@ public class UserGuidance {
         {
             return false;            
         }
+
+        // image captured (saved) to use for calibration
+        // check for all parameters converged
+        // set the next guidance board pose if not all converged
 
         this.calib.keyframes.add(this.tracker.get_calib_pts());
         // Main.LOGGER.log(Level.WARNING, "keyframe captured " + this.calib.keyframes.size());

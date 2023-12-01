@@ -20,9 +20,11 @@ package org.photonvision.calibrator;
 // changed (corrected?, I am hopeful) pose_from_bounds scaling of rotated
 
 import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,9 +46,16 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfDouble;
+import org.opencv.core.MatOfInt;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.MatOfPoint3f;
 import org.opencv.core.Point;
+import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -73,13 +82,15 @@ import edu.wpi.first.util.WPIUtilJNI;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12"; // change this
+    private static final String VERSION = "beta 12.1"; // change this
     
     static
     {
         System.out.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
         System.err.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
     }
+    
+    private static PrintWriter vnlog = null;
     
     // private static PrintWriter pw; // K debugging
     // private static int counter = 0; // K debugging
@@ -369,6 +380,8 @@ public class Main {
         ChArucoDetector tracker = new ChArucoDetector();
         UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate);
 
+        // testit(tracker);
+
         // runtime variables
         boolean mirror = false;
         boolean save = false; // indicator for user pressed the "c" key to capture (save) manually
@@ -414,8 +427,13 @@ public class Main {
 
             ugui.draw(out, mirror); // this adds the guidance board to the camera image (out) to make the new out
 
-            ugui.update(force); // calibrate
+            boolean capturedPose = ugui.update(force); // calibrate
             
+            if (capturedPose)
+            {
+                logDetected(img, ugui);
+            }
+
             displayOverlay(out, ugui);
 
             int k;
@@ -482,7 +500,7 @@ public class Main {
             HighGuiX.waitKey(5000);
         }
         // ugui.write(); // temp just to see what comes out even if we don't make it to the converged end
-
+        vnlog.close();
         Main.LOGGER.log(Level.CONFIG,"End of running main");
         System.exit(0);
     }   
@@ -564,7 +582,7 @@ public class Main {
 
         // write a frame to a file name java<frame nbr>.jpg
         // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
-        // Imgcodecs.imwrite("java" + frame + ".jpg", out); // debugging - save image in jpg file
+        // Imgcodecs.imwrite("java" + frame + ".jpg", out, writeBoardParams); // debugging - save image in jpg file
         
         if ( ! progressInsert.empty())
         {
@@ -606,6 +624,343 @@ public class Main {
                 Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
         }
     }
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     logDetected                                                 */
+/*                                     logDetected                                                 */
+/*                                     logDetected                                                 */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+    /**
+     * Detected Board data in mrgingham format plus the board info
+     * @param img Camera image
+     * @param ugui User Guidance Class
+     * @throws FileNotFoundException
+     */
+    public static void logDetected(Mat img, UserGuidance ugui) throws FileNotFoundException
+    {
+        if (vnlog == null) // first time switch
+        {
+            vnlog = new PrintWriter("corners.vnl");
+            vnlog.println("## produced by pose guidance calibration program");
+            vnlog.println("# filename x y level cid boardX boardY");
+        }
+
+        int captureCount = ugui.calib.keyframes.size();
+        // write the frame to a file name
+        String filename = String.format("img%02d.jpg", captureCount);
+        final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
+        Imgcodecs.imwrite(filename, img, writeBoardParams); // save camera image
+
+        // for efficiency put data in arrays
+        Point3[] ChessboardCorners = ugui.tracker.board().getChessboardCorners().toArray(); // 1 col 3 channels x, y, z in a Point3 (float)
+
+        int[] DetectedCIDs = new int[ugui.tracker.cids().rows()]; // get detected corners - assume captured image does have corners
+        ugui.tracker.cids().get(0, 0, DetectedCIDs);
+        float[] DetectedCorners = new float[ugui.tracker.ccorners().rows()*ugui.tracker.ccorners().cols()*ugui.tracker.ccorners().channels()]; // below assumes x and y in a row
+        ugui.tracker.ccorners().get(0, 0, DetectedCorners);
+
+        // save vnlog     
+        for (int boardCornerIndex = 0; boardCornerIndex < ChessboardCorners.length; boardCornerIndex++) // board cids are 0 to board number of corners (39)
+        {
+            StringBuilder logLine = new StringBuilder();
+            logLine.append(filename);
+            logLine.append(" ");
+            // find detected corner that matches by ID the board corner
+            for (int detectedIndex = 0; detectedIndex < DetectedCIDs.length; detectedIndex++)
+            {
+                if (detectedIndex == boardCornerIndex)
+                {
+                    logLine.append(DetectedCorners[detectedIndex*2]); // x
+                    logLine.append(" ");
+                    logLine.append(DetectedCorners[detectedIndex*2+1]); // y
+                    logLine.append(" 0 "); // intended to be decimations always 0
+                    logLine.append(boardCornerIndex);
+                    logLine.append(" ");
+                    logLine.append(ChessboardCorners[boardCornerIndex].x); // x
+                    logLine.append(" ");
+                    logLine.append(ChessboardCorners[boardCornerIndex].y); // y
+                    vnlog.println(logLine.toString());                    
+                    break; // no need to search more since we found the one we want
+                }
+            }
+        }
+    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void testit(ChArucoDetector tracker)
+    {
+//////////////// cube
+        MatOfPoint3f cube = new MatOfPoint3f(
+            new Point3(0, 0, 0),
+            new Point3(1, 0, 0),
+            new Point3(1, 1, 0),
+            new Point3(0, 1, 0),
+            new Point3(0, 0, 1),
+            new Point3(1, 0, 1),
+            new Point3(1, 1, 1),
+            new Point3(0, 1, 1));
+        Core.multiply(cube, new Scalar(10, 10, 10), cube);
+        System.out.println("cube\n" + cube.dump());
+//////////////// ! cube
+
+
+//////////////// board
+        Mat tinyBoard = new Mat();
+        Imgproc.resize(tracker.boardImage, tinyBoard, new Size(150, 100), Imgproc.INTER_AREA);
+        Point3[] boardMeshGrid = new Point3[tinyBoard.rows()*tinyBoard.cols()];
+        int boardMeshGridIndex = 0;
+        for (int row = 0; row < tinyBoard.rows(); row++)
+        for (int col = 0; col < tinyBoard.cols(); col++)
+        {
+            boardMeshGrid[boardMeshGridIndex++] = new Point3(col, 0, row);
+        }
+        MatOfPoint3f tinyBoardMeshGridLinear = new MatOfPoint3f(boardMeshGrid);
+        System.out.println("tinyBoardMeshGridLinear " + tinyBoardMeshGridLinear); // 15000x1 3 channels
+//////////////// ! board
+
+        MatOfPoint3f  cubeWarped = new MatOfPoint3f();
+
+        Mat rvecBoard = new Mat(3, 1, CvType.CV_32FC1);
+        rvecBoard.put(0, 0, 0.1, 9.6601257, 0.30000001);
+        Mat tvecBoard = new Mat(3, 1, CvType.CV_32FC1);
+        tvecBoard.put(0, 0, 300, 100, 500);
+        
+        Mat rvec = Mat.zeros(3, 1, CvType.CV_32FC1); // rx ry rx
+
+        for (float rotationAngleRads = 0.f; rotationAngleRads < 4.f*Math.PI; rotationAngleRads += 0.01f)
+        {
+            Mat imageRot = Mat.zeros(800, 1200, CvType.CV_8UC1);
+            rvec.put(0, 0, .1, /*.2*/ rotationAngleRads, .3);
+            System.out.println("rvec " + rvec.t().dump());
+
+            Mat tvec = Mat.zeros(3, 1, CvType.CV_32FC1); // tx ty tz
+            tvec.put(0, 0, 400., 50., 500.);
+            System.out.println("tvec " +tvec.t().dump());
+
+            // with aspect ratio of 1 and pp at center. Focal length is empirical.
+            Mat Kin = Mat.zeros(3, 3, CvType.CV_64FC1);
+            Kin.put(0, 0, 800.); // fx
+            Kin.put(1, 1, 800.); // fy
+            Kin.put(2, 2, 1.);
+
+            Mat K = Calib3d.getDefaultNewCameraMatrix(Kin, new Size(640, 480), true);
+            // System.out.println("K\n" + K.dump());
+
+            MatOfDouble cdist = new MatOfDouble(0.1, -0.05, 0, 0, 0);
+            // System.out.println("cdist\n" +cdist.dump());
+
+            MatOfPoint2f cubeProjected = new MatOfPoint2f();
+            MatOfPoint2f tinyBoardProjected = new MatOfPoint2f();
+            Calib3d.projectPoints(cube, rvec, tvec, K, cdist, cubeProjected);
+
+            Calib3d.projectPoints(tinyBoardMeshGridLinear, rvecBoard, tvecBoard, K, cdist, tinyBoardProjected);
+            // System.out.println("cube projected\n" + cubeProjected.dump());
+            // System.out.println(ArrayUtils.brief(tinyBoardProjected));
+            // put the projected board on the image.  warpPrespective might be better than this warped mesh grid
+            int tinyBoardProjectedRowsIndex = 0;
+            for (int row = 0; row < tinyBoard.rows(); row++)
+            for (int col = 0; col < tinyBoard.cols(); col++)
+            {
+                // get the value of tinyBoard at the unwarped location x, y and put it in the warped location x',y'
+                float[] warpedCoord = new float[2]; // 2 channels x and y
+                tinyBoardProjected.get(tinyBoardProjectedRowsIndex++, 0, warpedCoord);
+                byte[] data = new byte[1];
+                tinyBoard.get(row, col, data);
+                imageRot.put((int)warpedCoord[1], (int)warpedCoord[0], data);
+              }
+    
+            Point[] cubeProjectedArray = cubeProjected.toArray();
+
+            Imgproc.line(imageRot, cubeProjectedArray[0], cubeProjectedArray[1], new Scalar(255, 255, 255), 1); // back
+            Imgproc.line(imageRot, cubeProjectedArray[1], cubeProjectedArray[2], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[2], cubeProjectedArray[3], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[3], cubeProjectedArray[0], new Scalar(255, 255, 255), 1);
+
+            Imgproc.line(imageRot, cubeProjectedArray[4], cubeProjectedArray[5], new Scalar(255, 255, 255), 3); // front
+            Imgproc.line(imageRot, cubeProjectedArray[5], cubeProjectedArray[6], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[6], cubeProjectedArray[7], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[7], cubeProjectedArray[4], new Scalar(255, 255, 255), 1);
+
+            Imgproc.line(imageRot, cubeProjectedArray[0], cubeProjectedArray[4], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[1], cubeProjectedArray[5], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[2], cubeProjectedArray[6], new Scalar(255, 255, 255), 1);
+            Imgproc.line(imageRot, cubeProjectedArray[3], cubeProjectedArray[7], new Scalar(255, 255, 255), 1);
+
+            HighGuiX.imshow("CubeRot", imageRot);
+            HighGuiX.waitKey(20);
+        }
+
+        System.exit(0);
+
+
+        //! [find-corners]
+        
+        Mat display = Mat.ones(600, 800, CvType.CV_8UC1);
+        Core.multiply(display, new Scalar(110.), display);
+        Mat object = display.submat(200, 400, 250, 550);
+        Mat.ones(200, 300, CvType.CV_8UC1).copyTo(object);
+        Core.multiply(object, new Scalar(170.), object);
+
+        MatOfPoint2f cornersObject = new MatOfPoint2f(
+            new Point(0, 0),
+            new Point(object.cols(), 0),
+            new Point(object.cols(), object.rows()),
+            new Point(0, object.rows()));
+        System.out.println(cornersObject.dump());
+
+        MatOfPoint2f cornersWarped = new MatOfPoint2f(
+            new Point(30, 20),
+            new Point(object.cols()-70, 40),
+            new Point(object.cols()-80, object.rows()-50),
+            new Point(10, object.rows()-40));
+        System.out.println(cornersWarped.dump());
+
+
+        //! [estimate-homography]
+        // actual  H = K*R*inv(K) or estimate frompoints
+        Mat H = Mat.eye(4, 4, CvType.CV_64FC1);
+        Mat Htemp = new Mat();
+        Htemp = Calib3d.findHomography(cornersObject, cornersWarped);
+        Htemp.copyTo(H.submat(0, 3, 0, 3));
+        System.out.println(H + " " + H.dump());
+        System.out.println(Htemp + " " + Htemp.dump());
+        
+//check for empty Htemp
+// Calib3d.decomposeHomographyMat();
+        // derive rotation angle from homography
+        double theta = - Math.atan2(H.get(0,1)[0], H.get(0,0)[0]) * 180. / Math.PI;
+        System.out.println("theta " + theta);
+
+        // Calib3d.Rodrigues(r, dst);
+        // double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
+
+        //  getPerspectiveTransform the same answer as findHomography but getPerspectiveTransform doesn't have the extended options so use findHomography
+        // Mat T = new Mat();
+        // T = Imgproc.getPerspectiveTransform(cornersObject, cornersWarped);
+        // System.out.println(T.dump());
+        //! [estimate-homography]
+
+        //! [warp-chessboard]
+        Mat objectWarped = new Mat();
+        Mat cornersWarpedAlt = new Mat();
+        Imgproc.warpPerspective(object, objectWarped, H.submat(0, 3, 0, 3), object.size()); // images
+        Core.perspectiveTransform(cube, cubeWarped, H); // points
+        System.out.println(cubeWarped.dump());
+        //! [warp-chessboard]
+
+        // change 3x3 to to 4x4
+        Core.perspectiveTransform(cube, cubeWarped, H); // points
+        /*
+         * perspectiveTransform transforms points
+         *  If you want to transform an image using perspective transformation, use warpPerspective .
+         *  If you have an inverse problem, that is, you want to compute the most probable perspective transformation
+         *  out of several pairs of corresponding points, you can use getPerspectiveTransform or findHomography
+         */
+
+        MatOfPoint3f cornersWarped3d = new MatOfPoint3f(); // 3d points; Z = 0 added to the 2d to make 3d
+        
+        Calib3d.convertPointsToHomogeneous(cornersWarped, cornersWarped3d); // now convert 2d to 3d homogeneous
+        System.out.println(cornersWarped3d.dump());
+
+
+        Mat img_draw_matches = new Mat();
+        List<Mat> list1 = new ArrayList<>(), list2 = new ArrayList<>() ;
+        list1.add(object);
+        list1.add(objectWarped);
+        Core.hconcat(list1, img_draw_matches); // side-by-side display
+        // HighGuiX.imshow("Desired view / Warped view", img_draw_warp);
+
+
+        // //FIXME these guidance pose angles aren't right; bad conversion from tgt_r for some reason
+        // // maybe save the original angles from pose gen so they are butchered before getting here.
+        // Mat dst = new Mat();
+        // Calib3d.Rodrigues(ugui.tgt_r(), dst);
+        // double[] euler = Calib3d.RQDecomp3x3(dst, new Mat(), new Mat()); // always returns euler.length = 3
+
+        // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
+        // Imgproc.putText(out, String.format("%4.0f %4.0f %4.0f ", euler[0], euler[1], euler[2]) + ugui.tgt_t().dump(), new Point(0, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+
+
+        Point []corners1Arr = cornersObject.toArray();
+
+        for (int i = 0 ; i < corners1Arr.length; i++) {
+            Mat pt1 = new Mat(3, 1, CvType.CV_64FC1);
+            Mat pt2 = new Mat();
+            pt1.put(0, 0, corners1Arr[i].x, corners1Arr[i].y, 1 );
+
+            Core.gemm(H.submat(0, 3, 0, 3), pt1, 1, new Mat(), 0, pt2);
+            double[] data = pt2.get(2, 0);
+            Core.divide(pt2, new Scalar(data[0]), pt2);
+
+            double[] data1 =pt2.get(0, 0);
+            double[] data2 = pt2.get(1, 0);
+            Point end = new Point((int)(object.cols()+ data1[0]), (int)data2[0]);
+            Imgproc.line(img_draw_matches, corners1Arr[i], end,  new Scalar(255, 255, 255), 2);
+        }
+
+
+        // compute rotation matrix from rotation vector
+        double[] angleZ = {0., 0., Math.PI/4.};
+        double[] angleX = {Math.PI/4., 0., 0.};
+        double[] angleY = {0., Math.PI/4., 0.};
+        Mat angleZVector = new Mat(3, 1, CvType.CV_64FC1);
+        Mat angleXVector = new Mat(3, 1, CvType.CV_64FC1);
+        Mat angleYVector = new Mat(3, 1, CvType.CV_64FC1);
+        angleZVector.put(0, 0, angleZ);       
+        angleXVector.put(0, 0, angleX);
+        angleYVector.put(0, 0, angleY);
+        Mat Rz = new Mat();
+        Mat Rx = new Mat();
+        Mat Ry = new Mat();
+
+        /**************************************************************************************** */
+        Calib3d.Rodrigues(angleZVector, Rz);
+        Calib3d.Rodrigues(angleXVector, Rx);
+        Calib3d.Rodrigues(angleYVector, Ry);
+        /**************************************************************************************** */
+
+        Main.LOGGER.log(Level.WARNING, "Rz\n" + Rz.dump());
+        Main.LOGGER.log(Level.WARNING, "Rx\n" + Rx.dump());
+        Main.LOGGER.log(Level.WARNING, "Ry\n" + Ry.dump());
+
+        // in Python (Ry).dot(Rx).dot(Rz) messed up nomenclature - it's often really matrix multiply Ry times Rx times Rz
+        Mat R = Mat.eye(4, 4, CvType.CV_64FC1);
+        Mat R3x3 = R.submat(0, 3, 0, 3);
+
+        /**************************************************************************************** */
+        Core.gemm(Ry, Rx, 1., new Mat(), 0, R3x3);
+        Core.gemm(R3x3, Rz, 1., new Mat(), 0., R3x3); // rotation matrix of the input Euler Angles [radians]
+        double[] euler = Calib3d.RQDecomp3x3(R3x3, new Mat(), new Mat());
+        System.out.println(Arrays.toString(euler));
+        /**************************************************************************************** */
+        
+        Main.LOGGER.log(Level.SEVERE, "R\n" + R.dump());
+        Main.LOGGER.log(Level.SEVERE, "R3x3\n" + R3x3.dump());
+      
+        // Calib3d.undistortPoints(p, p, K, cdist, new Mat(), new Mat(), Cfg.undistortPointsIterCriteria);
+
+
+        angleZVector.release();
+        angleXVector.release();
+        angleYVector.release();
+        Rz.release();
+        Rx.release();
+        Ry.release();
+
+        HighGuiX.imshow("Draw matches", img_draw_matches);
+
+        // HighGuiX.imshow("testit", objectWarped);
+        HighGuiX.waitKey(000);
+        System.exit(0);
+        // https://www.euclideanspace.com/maths/geometry/affine/matrix4x4/index.htm
+    }
+
+
+
+
 }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -977,3 +1332,177 @@ https://www.mathworks.com/help/nav/ref/quaternion.rotvecd.html
 // 	rect[3] = pts[np.argmax(diff)]
 // 	# return the ordered coordinates
 // 	return rect
+/*
+file: corners.vnl
+## generated with mrgingham --jobs 4 --gridn 7 img10.jpg img11.jpg img12.jpg img13.jpg img14.jpg img15.jpg img16.jpg img17.jpg img18.jpg img19.jpg img1.jpg img20.jpg img21.jpg img22.jpg img23.jpg img24.jpg img25.jpg img2.jpg img3.jpg img4.jpg img5.jpg img6.jpg img7.jpg img8.jpg img9.jpg
+# filename x y level
+img10.jpg - - -
+img12.jpg - - -
+img13.jpg - - -
+img11.jpg - - -
+img14.jpg - - -
+img16.jpg 230.852688 45.677636 0
+img16.jpg 290.588419 43.637631 0
+img16.jpg 353.551532 40.791532 0
+img16.jpg 416.562335 37.824245 0
+img16.jpg 482.521266 35.024665 0
+img16.jpg 550.680595 31.314791 0
+img16.jpg 620.486435 27.662542 0
+img16.jpg 228.101210 107.169967 0
+img16.jpg 287.668764 105.636131 0
+img16.jpg 350.608677 104.196417 0
+img16.jpg 413.726046 102.876996 0
+img16.jpg 479.587961 100.961492 0
+img16.jpg 548.288420 98.337218 0
+img16.jpg 617.491433 96.202379 0
+img16.jpg 227.317580 170.380526 0
+img16.jpg 286.573678 169.723367 0
+img16.jpg 348.871750 169.077797 0
+img16.jpg 412.298791 168.400691 0
+img16.jpg 476.736521 167.424006 0
+img16.jpg 545.646695 166.382103 0
+img16.jpg 615.060574 164.978558 0
+img16.jpg 224.988291 232.652880 0
+img16.jpg 284.444268 233.052725 0
+img16.jpg 347.369088 233.269971 0
+img16.jpg 410.603748 233.382944 0
+img16.jpg 474.877702 233.449657 0
+img16.jpg 542.719183 233.403859 0
+img16.jpg 612.559443 233.450298 0
+img16.jpg 224.176494 293.917407 0
+img16.jpg 283.560852 295.883657 0
+img16.jpg 344.909937 296.351158 0
+img16.jpg 407.748291 297.773360 0
+img16.jpg 473.420095 299.484169 0
+img16.jpg 540.155696 299.594645 0
+img16.jpg 610.001831 302.013660 0
+img16.jpg 222.765937 356.286965 0
+img16.jpg 281.624273 358.045270 0
+img16.jpg 344.401747 359.708573 0
+img16.jpg 407.178146 362.510875 0
+img16.jpg 470.802112 364.398990 0
+img16.jpg 538.976097 366.428889 0
+img16.jpg 608.179152 368.768331 0
+img16.jpg 221.298532 417.483438 0
+img16.jpg 280.640228 420.040118 0
+img16.jpg 341.602139 422.765487 0
+img16.jpg 404.672431 425.770751 0
+img16.jpg 470.190240 428.866733 0
+img16.jpg 536.654210 431.757569 0
+img16.jpg 605.530880 434.718486 0
+img17.jpg - - -
+img15.jpg - - -
+img18.jpg - - -
+img1.jpg - - -
+img20.jpg - - -
+img19.jpg - - -
+img21.jpg - - -
+img23.jpg - - -
+img22.jpg 94.983538 191.554631 0
+img22.jpg 153.614577 190.963557 0
+img22.jpg 214.504831 189.801771 0
+img22.jpg 275.163494 188.729227 0
+img22.jpg 335.692361 188.261850 0
+img22.jpg 398.653076 187.468366 0
+img22.jpg 461.538759 185.425839 0
+img22.jpg 90.898174 249.378532 0
+img22.jpg 149.890629 248.474019 0
+img22.jpg 212.238288 248.464675 0
+img22.jpg 272.692903 248.378072 0
+img22.jpg 335.315339 248.340460 0
+img22.jpg 397.425010 247.241587 0
+img22.jpg 460.113872 246.273172 0
+img22.jpg 88.271128 308.883542 0
+img22.jpg 148.111111 308.903030 0
+img22.jpg 209.528269 308.368223 0
+img22.jpg 272.122948 308.566463 0
+img22.jpg 333.255342 308.516094 0
+img22.jpg 396.217537 308.400373 0
+img22.jpg 458.998879 308.298711 0
+img22.jpg 85.549180 369.109836 0
+img22.jpg 145.604505 368.636110 0
+img22.jpg 207.843879 368.708637 0
+img22.jpg 269.426938 368.718688 0
+img22.jpg 332.511083 368.696887 0
+img22.jpg 395.694279 368.662189 0
+img22.jpg 458.724238 368.692204 0
+img22.jpg 83.324617 430.237009 0
+img22.jpg 143.464362 430.395213 0
+img22.jpg 205.934830 430.915077 0
+img22.jpg 268.120193 431.258451 0
+img22.jpg 331.145142 431.202329 0
+img22.jpg 395.505179 431.334136 0
+img22.jpg 458.594962 431.563843 0
+img22.jpg 80.427088 491.525255 0
+img22.jpg 140.407319 491.866495 0
+img22.jpg 203.493586 492.298204 0
+img22.jpg 266.502687 493.153395 0
+img22.jpg 329.540655 493.438226 0
+img22.jpg 394.060910 493.977069 0
+img22.jpg 458.576923 494.657254 0
+img22.jpg 78.230002 554.336896 0
+img22.jpg 138.799033 555.027797 0
+img22.jpg 201.690901 555.788772 0
+img22.jpg 265.045455 556.634769 0
+img22.jpg 329.438927 557.467018 0
+img22.jpg 392.902428 557.683931 0
+img22.jpg 458.234614 557.851508 0
+img24.jpg - - -
+img3.jpg 375.342835 136.998277 0
+img3.jpg 434.057516 131.808345 0
+img3.jpg 495.305888 126.738275 0
+img3.jpg 560.364821 120.983028 0
+img3.jpg 626.983524 114.899674 0
+img3.jpg 698.646341 108.293485 0
+img3.jpg 773.638004 101.614613 0
+img3.jpg 373.353018 197.423392 0
+img3.jpg 431.352319 193.725590 0
+img3.jpg 493.723975 189.762005 0
+img3.jpg 557.749077 185.410162 0
+img3.jpg 626.204480 181.344086 0
+img3.jpg 698.555333 176.339163 0
+img3.jpg 773.225717 171.736577 0
+img3.jpg 371.364100 257.700753 0
+img3.jpg 428.934194 255.808344 0
+img3.jpg 491.401929 254.033762 0
+img3.jpg 556.084802 251.522082 0
+img3.jpg 623.939787 248.292497 0
+img3.jpg 697.030951 245.615081 0
+img3.jpg 773.206566 242.407319 0
+img3.jpg 369.222475 319.052254 0
+img3.jpg 428.045774 317.745414 0
+img3.jpg 489.579236 317.512243 0
+img3.jpg 554.593832 317.152788 0
+img3.jpg 623.120840 315.677892 0
+img3.jpg 695.965810 314.573428 0
+img3.jpg 772.324664 314.552466 0
+img3.jpg 368.363534 380.504822 0
+img3.jpg 425.651057 380.679758 0
+img3.jpg 488.723907 381.062698 0
+img3.jpg 552.911222 382.782819 0
+img3.jpg 621.428571 383.677943 0
+img3.jpg 695.473001 383.910764 0
+img3.jpg 771.833725 385.933615 0
+img3.jpg 365.431290 441.297896 0
+img3.jpg 424.516816 443.794381 0
+img3.jpg 486.589463 446.591610 0
+img3.jpg 551.710297 449.411885 0
+img3.jpg 620.795019 452.041878 0
+img3.jpg 695.052279 455.202786 0
+img3.jpg 770.902807 457.918805 0
+img3.jpg 364.619850 504.218022 0
+img3.jpg 422.691676 508.208675 0
+img3.jpg 485.547412 512.388199 0
+img3.jpg 551.785073 516.002626 0
+img3.jpg 620.657118 521.103367 0
+img3.jpg 694.273407 525.069776 0
+img3.jpg 770.430863 529.703696 0
+img25.jpg - - -
+img2.jpg - - -
+img4.jpg - - -
+img7.jpg - - -
+img5.jpg - - -
+img6.jpg - - -
+img8.jpg - - -
+img9.jpg - - -
+ */

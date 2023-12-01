@@ -87,6 +87,10 @@ public class ChArucoDetector {
     private double mean_flow = Double.MAX_VALUE; // mean flow of the same corners that are detected in consecutive frames (relaxed from original)
 
     // getters
+    CharucoBoard board()
+    {
+        return board;
+    }
     int N_pts()
     {
         return N_pts;
@@ -110,6 +114,14 @@ public class ChArucoDetector {
     double mean_flow()
     {
         return this.mean_flow;
+    }
+    Mat ccorners()
+    {
+        return ccorners;
+    }
+    Mat cids()
+    {
+        return cids;
     }
 
     public ChArucoDetector() throws FileNotFoundException, IOException
