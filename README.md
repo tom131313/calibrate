@@ -9,34 +9,13 @@ Program guides user to pose the camera to the ChArUcoBoard for most efficient an
 
 Logs accumulate in the directory with the jar file.
 
-Options are listed with -help, for example, on a Windows PC:
+Captured images are saved in files `img<capture number>.jpg`
 
-`java -jar calib-photonvision-dev-beta-X-winx64.jar -help`
+Captured detected board corner coordinates are saved in file `corners.vnl`
 
-```
-C:\Users\RKT\frc\FRC2023\Code\photonvision-2023-10-30_pose_calib_integration>java -jar calib-photonvision-dev-beta-11-4-winx64.jar -help
-Starting class: org.photonvision.calibrator.Main version beta 11.4
-Starting class: org.photonvision.calibrator.Main version beta 11.4
-Starting class: org.photonvision.calibrator.Loggers
-Starting class: org.photonvision.calibrator.Loggers
+User specified Runtime Options are listed with `-help`, for example, on a Windows PC:
 
-Starting Log for Camera Calibration Program Version beta 11.4, current time 2023-11-26T12:28:10.954667300
-
-00000 CONFIG  [ Loggers setupLoggers] Logger configuration done.
-00000 SEVERE  [ Main main] logs accumulate in file CalibrationLog.txt
-usage: java -jar <your jar file>.jar [options]
- -cameraId <arg>   camera id (0)
- -dpmX <arg>       print width pixels per meter (9843=250 DPI)
- -dpmY <arg>       print height pixels per meter (9843=250 DPI
- -fps <arg>        frames per second (10)
- -h,--help         Show this help text and exit
- -height <arg>     camera image height (720)
- -isPV <arg>       using PV environment (true)
- -pxFmt <arg>      pixel format (kYUYV) [kUnknown, kMJPEG, kYUYV, kRGB565,
-                   kBGR, kGray, kY16, kUYVY]
- -width <arg>      camera image width (1280)
-THE END OF THE LOG
-```
+`java -jar calib-photonvision-dev-<version number>-winx64.jar -help`
 
 On a computer with an internal camera the camera ids on Windows typically are:
 internal and external cameras connected at boot up: external=0, internal=1
