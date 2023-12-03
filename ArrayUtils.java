@@ -107,12 +107,32 @@ public class ArrayUtils
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 	/**
-	 * 
+	 * Partially print an OpenCV Mat<p>
+	 * Convenience method of brief(Mat, int, int, int, int) with defaults
+	 * of first 4 rows, last 4 rows, first 12 values in a row, last 12 values in a row.<p>
+	 * Each ".r." or ".c." represents 2000 items or the remainder.
 	 * @param mat OpenCV Mat to be partially printed
 	 * @return String of the values in the corners of the Mat if large or entire Mat if small
 	 */
 	static String brief(Mat mat)
 	{
+		return brief(mat, 4, 4, 12, 12);
+	}
+	/**
+	 * Partially print an OpenCV Mat<p>
+	 * Each ".r." or ".c." represents 2000 items or the remainder.
+	 * @param mat OpenCV Mat to be partially printed<p>
+	 * @param firstRows - count first few rows
+	 * @param lastRows - count last few rows
+	 * @param firstRowData - count first few column/channel values
+	 * @param lastRowData - count last few column/channel values
+	 * @return String of the values in the corners of the Mat if large or entire Mat if small
+	 */
+	static String brief(Mat mat, int firstRows, int lastRows, int firstRowData, int lastRowData)
+	{
+		final int acknowledgeRowsSkipped = 2000; // skip count to print an icon
+		final int acknowledgeRowDataSkipped = 2000; // skip count to print an icon
+
 		StringBuilder sb = new StringBuilder();
 		sb.append(mat);
 		sb.append("\n");
@@ -153,15 +173,15 @@ public class ArrayUtils
 		}
 
 		int printCountRow = 0;
-		int printCountCol = 0;
+		int printCountColChan = 0;
 		boolean skippedRow = false;
 
 		for (int row = 0; row < mat.rows(); row++)
 		{
-			if (row > 3 && row < Math.max(row, mat.rows()-4))
+			if (row >= firstRows && row < mat.rows() - lastRows)
 			{
 				skippedRow = true;
-				if (printCountRow % 2000 == 0)
+				if (printCountRow % acknowledgeRowsSkipped == 0)
 				{
 					printCountRow = 0;
 					sb.append(".r.");
@@ -202,41 +222,41 @@ public class ArrayUtils
 				default:
 					return "ArrayUtils.brief(Mat) should not be here.";
 			}
-			printCountCol = 0;
-			for (int colC = 0; colC < mat.cols()*mat.channels(); colC++)
+			printCountColChan = 0;
+			for (int colChan = 0; colChan < mat.cols()*mat.channels(); colChan++)
 			{
-				if (colC > 10 && colC < Math.max(colC, mat.cols()*mat.channels()-10))
+				if (colChan >= firstRowData && colChan < mat.cols()*mat.channels() - lastRowData)
 				{
-					if (printCountCol % 2000 == 0)
+					if (printCountColChan % acknowledgeRowDataSkipped == 0)
 					{
-						printCountCol = 0;
+						printCountColChan = 0;
 						sb.append(".c. ");
 					}
-					printCountCol++;
+					printCountColChan++;
 					continue;
 				}
 				switch (CvType.depth(mat.type()))
 				{
 					case CvType.CV_64F: // double
-						sb.append(matRowD[colC]);
+						sb.append(matRowD[colChan]);
 						break;
 
 					case CvType.CV_32F: // float
-						sb.append(matRowF[colC]);
+						sb.append(matRowF[colChan]);
 						break;
 		
 					case CvType.CV_8U: // byte
 					case CvType.CV_8S:
-						sb.append(matRowB[colC]);
+						sb.append(matRowB[colChan]);
 						break;
 		
 					case CvType.CV_32S: // int
-						sb.append(matRowI[colC]);
+						sb.append(matRowI[colChan]);
 						break;
 
 						case CvType.CV_16U: // short
 					case CvType.CV_16S:
-						sb.append(matRowS[colC]);
+						sb.append(matRowS[colChan]);
 						break;
 
 					default:

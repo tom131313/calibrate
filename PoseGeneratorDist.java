@@ -686,6 +686,11 @@ public class PoseGeneratorDist {
         Mat.ones(nbounds.height, nbounds.width, this.mask.type())
             .copyTo(this.mask.submat(nbounds.y, nbounds.y+nbounds.height, nbounds.x, nbounds.x+nbounds.width));
 
+        // Mat temp = new Mat();
+        // Core.multiply(mask, new Scalar(255), temp);
+        // HighGuiX.imshow("mask", temp);
+        // HighGuiX.waitKey(5000);
+
         // Main.LOGGER.log(Level.WARNING, "mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + ArrayUtils.brief(this.mask));
 
         List<Mat> rt = new ArrayList<>(2);

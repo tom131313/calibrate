@@ -27,6 +27,7 @@ public class Cfg
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
     static boolean isPV = true; // true assumes the PhotonVision environment available
+    static boolean isLogDetectedCorners = true; // save to files captured images and detected corners
 
     // Checks for the specified camera - laptop internal or USB external and uses it if present.
     // 0 internal if no external or if external connected after boot-up
