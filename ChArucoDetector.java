@@ -331,7 +331,7 @@ public class ChArucoDetector {
     {
         // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        final List<Mat> markerCorners = new ArrayList();
+        final List<Mat> markerCorners = new ArrayList<>();
         final Mat markerIds = new Mat();
 
         try
