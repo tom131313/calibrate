@@ -1,3 +1,7 @@
+// This project and file are derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the PoseCalibLICENSE file.
+
 package org.photonvision.calibrator;
 
 import org.opencv.core.Scalar;
@@ -26,8 +30,7 @@ public class Cfg
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    static boolean isPV = true; // true assumes the PhotonVision environment available
-    static boolean isLogDetectedCorners = true; // save to files captured images and detected corners
+    static boolean logDetectedCorners = false; // save to files captured images and detected corners
 
     // Checks for the specified camera - laptop internal or USB external and uses it if present.
     // 0 internal if no external or if external connected after boot-up
@@ -43,8 +46,8 @@ public class Cfg
     
     // a few icky int-float-double conversion scattered throughout the program.
     // camera image size and thus user display screen size
-    static int image_width = 1280; // 640
-    static int image_height = 720; // 480
+    static int image_width = 1280;
+    static int image_height = 720;
     static final double initialFocalLength = 1000.; // fx and fy, aspect ratio = 1 (fy/fx)
 
     // ChArUco Board pixels = (board_x*square_len, board_y*square_len)
@@ -61,8 +64,7 @@ public class Cfg
     static final byte guidanceBlack = 1; // ; (dark) 1 to 127, -128 to -1 (bright); must be much less than guidanceWhite and NOT 0
     static final Scalar progressInsertCameraGrey = new Scalar(170.);
     static final Scalar progressInsertGuidanceGrey = new Scalar(105.);
-    // static final int guidanceTiffDPIx = 250;
-    // static final int guidanceTiffDPIy = 250;
+
     static int resXDPM = 9843; // printing pixels per meter 9843 = 250 DPI
     static int resYDPM = 9843; // printing pixels per meter 9843 = 250 DPI
 

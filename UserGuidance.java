@@ -1,3 +1,7 @@
+// This project and file are derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the PoseCalibLICENSE file.
+
 package org.photonvision.calibrator;
 
 import static org.photonvision.calibrator.ArrayUtils.argmax;
@@ -264,7 +268,6 @@ public class UserGuidance {
         rt.get(0).copyTo(this.tgt_r);
         rt.get(1).copyTo(this.tgt_t);
 
-        // Main.LOGGER.log(Level.WARNING, "rt1 " + tgt_r.dump() + " " + tgt_t.dump());
         rt.get(1).release();
         rt.remove(1);
         rt.get(0).release();
@@ -274,11 +277,10 @@ public class UserGuidance {
         // make the guidance board warped and right size
         //board_warped_shape =  # Height Width Channels (720, 1280, 3)
         this.board_warped.release();
-        // Main.LOGGER.log(Level.WARNING, "rt2 " + this.tgt_r.dump() + " " + this.tgt_t.dump());
-        
+         
         this.board_warped = this.board.project(this.tgt_r, this.tgt_t, false, Imgproc.INTER_NEAREST);
 
-        // Main.LOGGER.log(Level.WARNING, "board_warped created r/t " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
+        // Main.LOGGER.log(Level.WARNING, "r/t and board_warped " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -634,41 +636,6 @@ void write()
         e.printStackTrace();
     }
 }
-// {
-//     "camera": "Microsoft® LifeCam HD-3000 (045e:0779)",
-//     "platform": "Windows NT 10.0; Win64; x64",
-//     "avg_reprojection_error": 1.1724702717926616,
-//     "camera_matrix": [
-//         [
-//             1044.825321498012,
-//             0,
-//             633.7313077534989
-//         ],
-//         [
-//             0,
-//             1044.6104225946867,
-//             329.2186566305057
-//         ],
-//         [
-//             0,
-//             0,
-//             1
-//         ]
-//     ],
-//     "distortion_coefficients": [
-//         0.1294205528671509,
-//         -0.9220091436719668,
-//         -0.002846279266059757,
-//         -0.00741008154324037,
-//         1.6379093755482885
-//     ],
-//     "distortion_model": "rectilinear",
-//     "img_size": [
-//         1280,
-//         720
-//     ],
-//     "calibration_time": "Sun, 04 Jun 2023 20:05:32 GMT"
-// }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -722,18 +689,3 @@ void write()
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-// parking lot
-
-        // MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
-        // MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
-        // MatOfDouble distOfDouble = new MatOfDouble(this.cdist); // convert as required for the projectPoints()
-
-        // Calib3d.projectPoints(centerLine, this.rvec, this.tvec, this.K, distOfDouble, centerLineProjected);
-        // var centerLinePoints = centerLineProjected.toList();
-
-        // // draw center line
-        // Imgproc.line(img, 
-        //         centerLinePoints.get(0),
-        //         centerLinePoints.get(1),
-        //         new Scalar(0., 255., 255.),
-        //         3);

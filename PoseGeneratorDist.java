@@ -1,3 +1,7 @@
+// This project and file are derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the PoseCalibLICENSE file.
+
 package org.photonvision.calibrator;
 
 import java.util.ArrayList;
@@ -686,11 +690,6 @@ public class PoseGeneratorDist {
         Mat.ones(nbounds.height, nbounds.width, this.mask.type())
             .copyTo(this.mask.submat(nbounds.y, nbounds.y+nbounds.height, nbounds.x, nbounds.x+nbounds.width));
 
-        // Mat temp = new Mat();
-        // Core.multiply(mask, new Scalar(255), temp);
-        // HighGuiX.imshow("mask", temp);
-        // HighGuiX.waitKey(5000);
-
         // Main.LOGGER.log(Level.WARNING, "mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + ArrayUtils.brief(this.mask));
 
         List<Mat> rt = new ArrayList<>(2);
@@ -734,70 +733,7 @@ public class PoseGeneratorDist {
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 
-// Parking lot
-      
-    // http://euclideanspace.com/maths/geometry/rotations/axisAngle/index.htm
-
-    /* https://stackoverflow.com/questions/12933284/rodrigues-into-eulerangles-and-vice-versa
-Rodrigues parameters are also called axis-angle rotation. They are formed by 4 numbers
- [theta, x, y, z], which means that you have to rotate an angle "theta" around the axis described
-  by unit vector v=[x, y, z]. Looking at cv::Rodrigues function reference, it seems that OpenCV
-   uses a "compact" representation of Rodrigues notation as vector with 3 elements rod2=[a, b, c],
-    where:
-Angle to rotate theta is the module of input vector theta = sqrt(a^2 + b^2 + c^2)
-Rotation axis v is the normalized input vector: v = rod2/theta = [a/theta, b/theta, c/theta]
-     */
-    // public static void tester()
-    // {
-    //     Mat angleVector = new Mat(3, 1, CvType.CV_64FC1);
-    //     double[] EulerAnglesInput = {Math.PI + 0., 0.7853981633974483, 0.39269908169872414};
-
-    //     {// WPILib rotation vector + OpenCV Rodrigues has same numbers but some different signs than the Python program
-    //     // WPILib appears to be YZX order and the Python program is XYZ order
-    //     Transform3d TR = new Transform3d(
-    //         new Translation3d(),
-    //         new Rotation3d(EulerAnglesInput[0], EulerAnglesInput[1], EulerAnglesInput[2]));
-    //     System.out.println("WPILib rotation vector\n" + TR.getRotation().getQuaternion().toRotationVector());
-
-    //     // this rotation matrix matches the Python program except some negative signs
-    //     double[] angle = TR.getRotation().getQuaternion().toRotationVector().getData();
-    //     angleVector.put(0, 0, angle);
-    //     Mat R = new Mat();
-    //     Calib3d.Rodrigues(angleVector, R);
-    //     System.out.println("Rodrigues transpose\n" + R.t().dump()); // same output as the one in orbital_pose below except some negative signs!
-    //     }
-
-    //     { // matches the results of Python program and below orbital_pose method
-    //     double[][] M = new double[3][3];
-    //     EulerAnglesToRotationMatrix.calculate(
-    //         EulerAnglesInput[0], EulerAnglesInput[1], EulerAnglesInput[2],
-    //         EulerAnglesToRotationMatrix.EulerOrder.ORDER_XYZ,
-    //         M );
-    //     System.out.println("no Rodrigues XYZ\n");     
-    //     for (int i = 0; i < M[0].length; i++)
-    //     {
-    //         System.out.print(i + "| ");
-    //         for (int j = 0; j < M[1].length; j++)
-    //             System.out.print(M[i][j] + " "); // if XYZ order, same output exactly as Java orbital_pose below
-
-    //         System.out.println("|");
-    //     }
-    //     }
-    // }
-
-/*
-Defining the principal point:
-The principal point is the point on the image plane onto which the perspective center is projected. It is also the point from which the focal length of the lens is measured.
-
-Near the principal point is the principal point of autocollimation (PPA). This is defined as the image position where the optical axis intersects the image plane.
-
-The principal point of symmetry (POS), also known as the calibrated principal point, is the point on the image where a ray of light travelling perpendicular to the image
-plane passes through the focal point of the lens and intersects the film. In a perfectly assembled camera, the principal point of symmetry would be where the lines of
-opposing fiducial marks on an image intersect, also known as the indicated principal point (IPP). However, in most cameras a slight offset occurs. The perspective effects
-in the image are radial about this point.
-*/
-
-// Gen_Bin tester
+// Gen_Bin unit test
 // PoseGeneratorDist pgd = new PoseGeneratorDist(new Size(1280., 720.));
 // // Gen_Bin gb = pgd.new Gen_Bin(Math.toRadians(-70.), Math.toRadians(70.));
 // Gen_Bin gb = pgd.new Gen_Bin(0., 1.);

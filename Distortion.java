@@ -1,3 +1,7 @@
+// This project and file are derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the PoseCalibLICENSE file.
+
 package org.photonvision.calibrator;
 
 import java.util.ArrayList;

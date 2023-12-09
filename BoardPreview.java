@@ -1,3 +1,7 @@
+// This project and file are derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the PoseCalibLICENSE file.
+
 // projects a 2D object (image) according to parameters - generate styled board image
 package org.photonvision.calibrator;
 
@@ -234,44 +238,3 @@ class BoardPreview {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-// parking lot
-// // this is not drawing a line that I want
-//         MatOfPoint3f centerLine = new MatOfPoint3f(new Point3(800., 800., 0.), new Point3(800., 800., 1000.));
-//         MatOfPoint2f centerLineProjected = new MatOfPoint2f(); 
-
-//         Calib3d.projectPoints(centerLine, R, t, K, new MatOfDouble(), centerLineProjected);
-//         var centerLinePoints = centerLineProjected.toList();
-
-//         // draw center line
-//         Imgproc.line(imgProjected, 
-//                 centerLinePoints.get(0),
-//                 centerLinePoints.get(1),
-//                 new Scalar(0., 255., 255.),
-//                 3);
-// //
-        // MatOfPoint3f cube = new MatOfPoint3f(
-        //     new Point3(0, 0, 0),
-        //     new Point3(1, 0, 0),
-        //     new Point3(1, 1, 0),
-        //     new Point3(0, 1, 0),
-        //     new Point3(0, 0, 1),
-        //     new Point3(1, 0, 1),
-        //     new Point3(1, 1, 1),
-        //     new Point3(0, 1, 1));
-
-        // Core.multiply(cube,new Scalar(500., 500., -4000.), cube);
-
-        // MatOfPoint2f cubeProjected = new MatOfPoint2f();
-        // Calib3d.projectPoints(cube, rvec, t, K, new MatOfDouble(), cubeProjected);
-        // // Main.LOGGER.log(Level.SEVERE, "cube\n" + cubeProjected.dump());
-
-        // var cubeProjectedPoints = cubeProjected.toList();
-        
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(0),cubeProjectedPoints.get(1),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(1),cubeProjectedPoints.get(2),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(2),cubeProjectedPoints.get(3),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(3),cubeProjectedPoints.get(0),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(4),cubeProjectedPoints.get(5),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(5),cubeProjectedPoints.get(6),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(6),cubeProjectedPoints.get(7),new Scalar(0., 255., 255.),3);
-        // Imgproc.line(imgProjected,cubeProjectedPoints.get(7),cubeProjectedPoints.get(4),new Scalar(0., 255., 255.),3);

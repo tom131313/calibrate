@@ -1,3 +1,7 @@
+// This project and file are derived in part from the "Pose Calib" project by
+// @author Pavel Rojtberg
+// It is subject to his license terms in the PoseCalibLICENSE file.
+
 package org.photonvision.calibrator;
 
 import java.util.ArrayList;
@@ -151,27 +155,15 @@ class Calibrator {
 
         int nkeyframes = keyframes.size();
 
-        // if (nkeyframes <= 1)
-        // {
-        //     // restrict first calibration to K matrix parameters
-        //     flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
-        // }
-
-        // if (nkeyframes <= 1)
-        // {
-        //     // with only one frame we just estimate the focal length
-        //     flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT;
-
-        //     flags |= Calib3d.CALIB_ZERO_TANGENT_DIST;
-        //     flags |= Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
-        // }
-
         // initialization process
-        if (nkeyframes <= 1) // all the early frames from the first 2 poses are #1, I think (rkt)
+        if (nkeyframes <= 1)
         // first pose hasn't been captured yet so it's 0 + the initial keyframe from above making 1
         // second pose has the previous captured pose #1 and the second pose hasn't been captured yet making it #1, also.
-        // thus, I saved the pose that was last used.
+        // thus, RKT saved the pose that was last used.
         // Probably could have determined what to do by saving the number of keyframes on entry to this method the first is 0 and the second is 1.
+
+        // The flags were modified from the original under the assumption that this is what the author meant to do but could not get it to
+        // work right because of a (likely) bug that trashed the initial K values. Hope the two fixes are right - seems to work better this way.
         {
             switch (PoseGeneratorDist.pose)
             {
@@ -424,7 +416,7 @@ class Calibrator {
         }
         catch(CvException error)
         {
-          Main.LOGGER.log(Level.SEVERE, Id.__LINE__() + " " + error.toString());
+          Main.LOGGER.log(Level.SEVERE, "Calib3d.calibrateCameraExtended error", error);
         }
         // Main.LOGGER.log(Level.WARNING, "K output from calibration\n" + K.dump());
         Mat varianceIntrinsics = new Mat();
@@ -466,37 +458,3 @@ class Calibrator {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-// Parking Lot
-/*
-calibrationMatrixValues()
-void cv::calibrationMatrixValues	(	InputArray 	cameraMatrix,
-Size 	imageSize,
-double 	apertureWidth,
-double 	apertureHeight,
-double & 	fovx,
-double & 	fovy,
-double & 	focalLength,
-Point2d & 	principalPoint,
-double & 	aspectRatio 
-)		
-Python:
-cv.calibrationMatrixValues(	cameraMatrix, imageSize, apertureWidth, apertureHeight	) ->	fovx, fovy, focalLength, principalPoint, aspectRatio
-#include <opencv2/calib3d.hpp>
-
-Computes useful camera characteristics from the camera intrinsic matrix.
-
-Parameters
-cameraMatrix	Input camera intrinsic matrix that can be estimated by calibrateCamera or stereoCalibrate .
-imageSize	Input image size in pixels.
-apertureWidth	Physical width in mm of the sensor.
-apertureHeight	Physical height in mm of the sensor.
-fovx	Output field of view in degrees along the horizontal sensor axis.
-fovy	Output field of view in degrees along the vertical sensor axis.
-focalLength	Focal length of the lens in mm.
-principalPoint	Principal point in mm.
-aspectRatio	fy/fx
-The function computes various useful camera characteristics from the previously estimated camera matrix.
-
-Note
-Do keep in mind that the unity measure 'mm' stands for whatever unit of measure one chooses for the chessboard pitch (it can thus be any value).
-*/
