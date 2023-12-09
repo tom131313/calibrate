@@ -36,7 +36,7 @@ The second pose is straight head-on and sets the initial distortion. Similarly, 
 
 If the guidance board and the camera image match, the program should auto-capture that information. Rarely, but if the auto capture is not happening, the user can force capture by pressing "c" and Enter on the computer terminal window that was used to start the program. The black and white insert shows what the poses are of the exact guidance board and the estimated camera view. The similar numbers are the Jaccard index between the poses and the minimum acceptable value for auto capture.
 
-The nine red camera intrinsic parameters turn green when the poses provide enough information. Usually after about 10 poses. That information migth not be good unless you have carefully aligned to the guidance and especially autocapture yields good information. (You can point incorrectly at the target and randomly hit the "c" and "enter" several times to complete a bad calibration; it doesn't care.)
+The nine red camera intrinsic parameters turn green when the poses provide enough information. Usually after about 10 poses. That information might not be good unless you have carefully aligned to the guidance and especially autocapture yields good information. (You can point incorrectly at the target and randomly hit the "c" and "enter" several times to complete a bad calibration; it doesn't care, although it has been known to throw an "unknown exception" and keep going as if nothing bad happened.)
 
 The terminal (keyboard) inputs are 'c' for force capture, 'm' for mirror view if that helps you align the camera to the guidance, and 'q' to quit. Rarely if ever are those needed.
 
