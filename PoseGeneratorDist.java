@@ -7,7 +7,6 @@ package org.photonvision.calibrator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import java.util.logging.Level;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -19,6 +18,9 @@ import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -29,6 +31,8 @@ import org.opencv.core.Size;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class PoseGeneratorDist {
+    private static final Logger logger = new Logger(PoseGeneratorDist.class, LogGroup.General);
+    static {logger.debug("Starting ----------------------------------------");}
 
     enum Pose {NONE, ORBITAL, PLANAR_FULL_SCREEN, FROM_BOUNDS};
     static Pose pose = Pose.NONE; // probably shouldn't be static but they are mostly used in a static method and there is only one instantiation
@@ -109,17 +113,17 @@ public class PoseGeneratorDist {
  */
     private static Mat unproject(MatOfPoint2f p, Mat K, Mat cdist, double Z)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // returns a translation (t) Mat
-        // Main.LOGGER.log(Level.WARNING, "p in " + p.dump());
-        // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
-        // Main.LOGGER.log(Level.WARNING, "Z " + Z);
+        // logger.debug("p in " + p.dump());
+        // logger.debug("camera matrix K " + K + "\n" + K.dump());
+        // logger.debug("cdist " + cdist.dump());
+        // logger.debug("Z " + Z);
 
         Calib3d.undistortPointsIter(p, p, K, cdist, new Mat(), new Mat(), Cfg.undistortPointsIterCriteria);
 
-        // Main.LOGGER.log(Level.WARNING, "p out " + p.dump());
+        // logger.debug("p out " + p.dump());
 
         double[] pXY = p.get(0, 0); // get X and Y channels for the point (ravel)
  
@@ -128,7 +132,7 @@ public class PoseGeneratorDist {
 
         Core.multiply(p3D, new Scalar(Z, Z, Z), p3D);
 
-        // Main.LOGGER.log(Level.WARNING, "return p3D Z scaled " + p3D.dump());
+        // logger.debug("return p3D Z scaled " + p3D.dump());
 
         return p3D;
     }
@@ -152,14 +156,14 @@ public class PoseGeneratorDist {
  */
     private static List<Mat> orbital_pose(Mat bbox, double rx, double ry, double Z, double rz) // force caller to use rz=0 if defaulting
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         pose = Pose.ORBITAL;
-        // Main.LOGGER.log(Level.WARNING, "bbox " + bbox + "\n" + bbox.dump());
-        // Main.LOGGER.log(Level.WARNING, "rx " + rx);
-        // Main.LOGGER.log(Level.WARNING, "ry " + ry);
-        // Main.LOGGER.log(Level.WARNING, "Z " + Z);
-        // Main.LOGGER.log(Level.WARNING, "rz " + rz);
+        // logger.debug("bbox " + bbox + "\n" + bbox.dump());
+        // logger.debug("rx " + rx);
+        // logger.debug("ry " + ry);
+        // logger.debug("Z " + Z);
+        // logger.debug("rz " + rz);
         
         // compute rotation matrix from rotation vector
         double[] angleZ = {0., 0., rz};
@@ -181,9 +185,9 @@ public class PoseGeneratorDist {
         Calib3d.Rodrigues(angleYVector, Ry);
         /**************************************************************************************** */
 
-        // Main.LOGGER.log(Level.WARNING, "Rz\n" + Rz.dump());
-        // Main.LOGGER.log(Level.WARNING, "Rx\n" + Rx.dump());
-        // Main.LOGGER.log(Level.WARNING, "Ry\n" + Ry.dump());
+        // logger.debug("Rz\n" + Rz.dump());
+        // logger.debug("Rx\n" + Rx.dump());
+        // logger.debug("Ry\n" + Ry.dump());
 
         // in Python (Ry).dot(Rx).dot(Rz) messed up nomenclature - it's often really matrix multiply Ry times Rx times Rz
         Mat R = Mat.eye(4, 4, CvType.CV_64FC1);
@@ -208,19 +212,19 @@ public class PoseGeneratorDist {
         Mat translateToBoardCenter = new Mat(bbox.rows(), bbox.cols(), bbox.type()); // matching bbox for element by element multiply
         translateToBoardCenter.put(0, 0, -0.5, -0.5, 0.);
         translateToBoardCenter = bbox.mul(translateToBoardCenter);
-        // Main.LOGGER.log(Level.WARNING, "translateToBoardCenter\n" + translateToBoardCenter.dump());
+        // logger.debug("translateToBoardCenter\n" + translateToBoardCenter.dump());
 
-        // Main.LOGGER.log(Level.WARNING, "R " + R.dump());
-        // Main.LOGGER.log(Level.WARNING, "R3x3 " + R3x3.dump());
-        // Main.LOGGER.log(Level.WARNING, "Tc " + Tc.dump());
-        // Main.LOGGER.log(Level.WARNING, "Tc1x3 " + Tc1x3.dump());
+        // logger.debug("R " + R.dump());
+        // logger.debug("R3x3 " + R3x3.dump());
+        // logger.debug("Tc " + Tc.dump());
+        // logger.debug("Tc1x3 " + Tc1x3.dump());
 
         /*************************************************************************************** */
         Core.gemm(R3x3, translateToBoardCenter, 1., new Mat(), 0.,Tc3x1);
         Tc3x1.t().copyTo(Tc1x3); // update Tc
         /*************************************************************************************** */
-        // Main.LOGGER.log(Level.WARNING, "Tc " + Tc.dump());
-        // Main.LOGGER.log(Level.WARNING, "Tc1x3 " + Tc1x3.dump());
+        // logger.debug("Tc " + Tc.dump());
+        // logger.debug("Tc1x3 " + Tc1x3.dump());
 
         // translate board to center of image
 
@@ -231,9 +235,9 @@ public class PoseGeneratorDist {
         translateToImageCenter.put(0, 0, -0.5, -0.5, Z);
         bbox.mul(translateToImageCenter).t().copyTo(T1x3);   
         /*************************************************************************************** */
-        // Main.LOGGER.log(Level.WARNING, "translateToImageCenter " + translateToImageCenter.dump());
-        // Main.LOGGER.log(Level.WARNING, "T1x3 " + T1x3.dump());
-        // Main.LOGGER.log(Level.WARNING, "T " + T.dump());
+        // logger.debug("translateToImageCenter " + translateToImageCenter.dump());
+        // logger.debug("T1x3 " + T1x3.dump());
+        // logger.debug("T " + T.dump());
 
         // rotate center of board
         Mat Rf = new Mat();
@@ -243,7 +247,7 @@ public class PoseGeneratorDist {
         Core.gemm(Rf, Tc, 1., new Mat(), 0.,Rf);
         Core.gemm(Rf, T, 1., new Mat(), 0.,Rf);
         /*************************************************************************************** */
-        // Main.LOGGER.log(Level.WARNING, "Rf " + Rf.dump());
+        // logger.debug("Rf " + Rf.dump());
 
         // return cv2.Rodrigues(Rf[:3, :3])[0].ravel(), Rf[3, :3]
         Mat Rf3x3 = Rf.submat(0, 3, 0, 3);
@@ -253,12 +257,12 @@ public class PoseGeneratorDist {
         Calib3d.Rodrigues(Rf3x3,RfVector);
         Core.transpose(RfVector, RfVector);
         /*************************************************************************************** */
-        // Main.LOGGER.log(Level.WARNING, "RfVector returned " + RfVector.dump());
+        // logger.debug("RfVector returned " + RfVector.dump());
 
         Mat t = Rf.submat(3, 4, 0, 3);
         Mat tVector = new Mat();
         t.copyTo(tVector);
-        // Main.LOGGER.log(Level.WARNING, "tVector returned " + tVector.dump());
+        // logger.debug("tVector returned " + tVector.dump());
 
         Tc.release();
         Tc1x3.release();
@@ -287,14 +291,14 @@ public class PoseGeneratorDist {
 /*-------------------------------------------------------------------------------------------------*/
     private static List<Mat> pose_planar_fullscreen(Mat K, Mat cdist, Size img_size, Mat bbox)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         pose = Pose.PLANAR_FULL_SCREEN;
         // don't use the principal point throughout just have X and Y no Z until it's calculated in the middle
         // compute a new Z
-        // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
-        // Main.LOGGER.log(Level.WARNING, "img_size " + img_size.toString());
-        // Main.LOGGER.log(Level.WARNING, "bbox " + bbox + "\n" + bbox.dump());
+        // logger.debug("camera matrix K " + K + "\n" + K.dump());
+        // logger.debug("cdist " + cdist.dump());
+        // logger.debug("img_size " + img_size.toString());
+        // logger.debug("bbox " + bbox + "\n" + bbox.dump());
 
         Mat KB = new Mat(); // ignore principal point
         Mat bboxZeroZ = new Mat(3, 1, CvType.CV_64FC1);
@@ -315,11 +319,11 @@ public class PoseGeneratorDist {
         
         Mat t = unproject(p, K, cdist, Z);
 
-        // Main.LOGGER.log(Level.WARNING, "KBnoPrinciplePoint " + KB + KB.dump());
-        // Main.LOGGER.log(Level.WARNING, "Z, pB(x, y) " + Z + ", " + java.util.Arrays.toString(pB));
-        // Main.LOGGER.log(Level.WARNING, "p " + p + p.dump());
-        // Main.LOGGER.log(Level.WARNING, "returning r " + r + r.dump());
-        // Main.LOGGER.log(Level.WARNING, "returning t " + t + t.dump());
+        // logger.debug("KBnoPrinciplePoint " + KB + KB.dump());
+        // logger.debug("Z, pB(x, y) " + Z + ", " + java.util.Arrays.toString(pB));
+        // logger.debug("p " + p + p.dump());
+        // logger.debug("returning r " + r + r.dump());
+        // logger.debug("returning t " + t + t.dump());
 
         bboxZeroZ.release();
         KB.release();
@@ -350,13 +354,13 @@ public class PoseGeneratorDist {
     */
     private pose_from_boundsReturn pose_from_bounds(Mat src_extParm, Rect tgt_rect, Mat K, Mat cdist, Size img_sz)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         pose = Pose.FROM_BOUNDS;
-        // Main.LOGGER.log(Level.WARNING, "src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
-        // Main.LOGGER.log(Level.WARNING, "tgt_rect " + tgt_rect); // guidance board posed
-        // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
-        // Main.LOGGER.log(Level.WARNING, "img_sz " + img_sz.toString()); // camera screen image size
+        // logger.debug("src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
+        // logger.debug("tgt_rect " + tgt_rect); // guidance board posed
+        // logger.debug("camera matrix K " + K + "\n" + K.dump());
+        // logger.debug("cdist " + cdist.dump());
+        // logger.debug("img_sz " + img_sz.toString()); // camera screen image size
 
         double[] src_ext = new double[(int)src_extParm.total()];
         src_extParm.get(0, 0, src_ext);
@@ -365,7 +369,7 @@ public class PoseGeneratorDist {
 
         int MIN_WIDTH = (int)Math.floor(img_sz.width/3.333); // posed guidance board must be about a third or more of the camera, screen size
 
-        // Main.LOGGER.log(Level.WARNING, "rot90 " + rot90);
+        // logger.debug("rot90 " + rot90);
 
         if (rot90)
         {
@@ -428,14 +432,14 @@ public class PoseGeneratorDist {
 
             Calib3d.Rodrigues(r, R);
 
-            // Main.LOGGER.log(Level.WARNING, "R " + R.dump());
+            // logger.debug("R " + R.dump());
             Mat rz = new Mat(1, 3, CvType.CV_64FC1);
             rz.put(0, 0, 0., 0., -Math.PI/2.);
             Mat Rz = new Mat();
 
             Calib3d.Rodrigues(rz, Rz);
 
-            // Main.LOGGER.log(Level.WARNING, "Rz " + Rz.dump());
+            // logger.debug("Rz " + Rz.dump());
 
             Core.gemm(R, Rz, 1., new Mat(), 0., R); // rotation matrix of the input Euler Angles
 
@@ -450,14 +454,14 @@ public class PoseGeneratorDist {
         }
 
         double Z = (K.get(0, 0)[0] * src_ext[0]) / tgt_rect.width;
-        // Main.LOGGER.log(Level.WARNING, "before clip tgt_rect " + tgt_rect);
+        // logger.debug("before clip tgt_rect " + tgt_rect);
 
         //  clip to image region
         int[] min_off = {0, 0};
         int[] max_off = {(int)(img_sz.width - tgt_rect.width), (int)(img_sz.height - tgt_rect.height)};
         tgt_rect.x = Math.min(max_off[0], Math.max(tgt_rect.x, min_off[0]));
         tgt_rect.y = Math.min(max_off[1], Math.max(tgt_rect.y, min_off[1]));
-        // Main.LOGGER.log(Level.WARNING, "after clip tgt_rect " + tgt_rect);
+        // logger.debug("after clip tgt_rect " + tgt_rect);
 
         if ( ! rot90)
         {
@@ -473,9 +477,9 @@ public class PoseGeneratorDist {
             tgt_rect.y -= tgt_rect.height;
         }
 
-        // Main.LOGGER.log(Level.WARNING, "returning r " + r.dump());
-        // Main.LOGGER.log(Level.WARNING, "returning t " + t.dump());
-        // Main.LOGGER.log(Level.WARNING, "returning tgt_rect " + tgt_rect);
+        // logger.debug("returning r " + r.dump());
+        // logger.debug("returning t " + t.dump());
+        // logger.debug("returning tgt_rect " + tgt_rect);
 
         return new pose_from_boundsReturn(r, t, tgt_rect);
     }
@@ -521,15 +525,13 @@ public class PoseGeneratorDist {
     private Mat mask;
     private double sgn = 1.;
 
-    static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
-
-/**
+ /**
  *     generate poses based on min/ max distortion
  * @param img_size
  */
     PoseGeneratorDist(Size img_size)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.img_size = img_size;
         mask = Mat.zeros(
@@ -547,7 +549,7 @@ public class PoseGeneratorDist {
 /*-------------------------------------------------------------------------------------------------*/
     private List<Mat> compute_distortion(Mat K, Mat cdist, int subsample)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return Distortion.sparse_undistort_map(K, img_size, cdist, K, subsample);
     }
@@ -574,12 +576,12 @@ public class PoseGeneratorDist {
  */
     List<Mat> get_pose(Mat bbox, int nk, int tgt_param, Mat K, Mat cdist) throws Exception
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // Main.LOGGER.log(Level.WARNING, "bbox " + bbox + "\n" + bbox.dump());
-        // Main.LOGGER.log(Level.WARNING, "nk " + nk);
-        // Main.LOGGER.log(Level.WARNING, "tgt_param " + tgt_param);
-        // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("bbox " + bbox + "\n" + bbox.dump());
+        // logger.debug("nk " + nk);
+        // logger.debug("tgt_param " + tgt_param);
+        // logger.debug("camera matrix K " + K + "\n" + K.dump());
+        // logger.debug("cdist " + cdist.dump());
 
         // first frame will be orbital pose from fixed angles
         if (nk == 0)
@@ -612,13 +614,13 @@ public class PoseGeneratorDist {
             // r, t = orbital_pose(bbox, *next(self.orbital[axis]));
 
             double[] angleIteration = this.orbital.apply(axis); // get the next iteration for x & y pair of angles for the given axis
-            // Main.LOGGER.log(Level.WARNING, "angleIteration " + java.util.Arrays.toString(angleIteration));
+            // logger.debug("angleIteration " + java.util.Arrays.toString(angleIteration));
 
             /********************************************************************************************************* */
             List<Mat> rt = orbital_pose(bbox, angleIteration[0], angleIteration[1], this.orbitalZ, this.rz);
             /********************************************************************************************************* */
             
-            // Main.LOGGER.log(Level.WARNING, "rt " + rt.get(0).dump() + rt.get(1).dump());
+            // logger.debug("rt " + rt.get(0).dump() + rt.get(1).dump());
             
             Mat t = rt.get(1);
 
@@ -643,7 +645,7 @@ public class PoseGeneratorDist {
 
             rt.set(1, t); // update the nudged t and return r and t
 
-            // Main.LOGGER.log(Level.WARNING, "returning rt " + rt.get(0).dump() + rt.get(1).dump());
+            // logger.debug("returning rt " + rt.get(0).dump() + rt.get(1).dump());
 
             return rt;
         }
@@ -661,7 +663,7 @@ public class PoseGeneratorDist {
 
         if (bounds == null)
         {
-            Main.LOGGER.log(Level.SEVERE, "bounds is null, pose not contributing; guessing what to do");
+            logger.error("bounds is null, pose not contributing; guessing what to do");
             return get_pose(bbox, nk, 3, K, cdist); // best guess of what the author meant to do (drop the axis)
         }
 
@@ -676,9 +678,9 @@ public class PoseGeneratorDist {
         Mat t = res2.t;
         Rect nbounds = res2.tgt_rect;
 
-        // Main.LOGGER.log(Level.WARNING, "returning r " + r.dump());
-        // Main.LOGGER.log(Level.WARNING, "returning t " + t.dump());
-        // Main.LOGGER.log(Level.WARNING, "nbounds " + nbounds);
+        // logger.debug("returning r " + r.dump());
+        // logger.debug("returning t " + t.dump());
+        // logger.debug("nbounds " + nbounds);
    
         nbounds.x = (int)Math.ceil((double)nbounds.x / this.SUBSAMPLE);
         nbounds.y = (int)Math.ceil((double)nbounds.y / this.SUBSAMPLE);
@@ -690,7 +692,7 @@ public class PoseGeneratorDist {
         Mat.ones(nbounds.height, nbounds.width, this.mask.type())
             .copyTo(this.mask.submat(nbounds.y, nbounds.y+nbounds.height, nbounds.x, nbounds.x+nbounds.width));
 
-        // Main.LOGGER.log(Level.WARNING, "mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + ArrayUtils.brief(this.mask));
+        // logger.debug("mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + ArrayUtils.brief(this.mask));
 
         List<Mat> rt = new ArrayList<>(2);
         rt.add(r);

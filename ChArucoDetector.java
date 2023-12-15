@@ -10,7 +10,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.zip.CRC32;
 
 import org.opencv.calib3d.Calib3d;
@@ -29,6 +28,9 @@ import org.opencv.objdetect.Dictionary;
 import org.opencv.objdetect.Objdetect;
 import org.opencv.objdetect.RefineParameters;
 
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -39,6 +41,8 @@ import org.opencv.objdetect.RefineParameters;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class ChArucoDetector {
+    private static final Logger logger = new Logger(ChArucoDetector.class, LogGroup.General);
+    static {logger.debug("Starting ----------------------------------------");}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -48,8 +52,6 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
- 
     // configuration
     private Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
     private double square_len = Cfg.square_len;
@@ -130,7 +132,7 @@ public class ChArucoDetector {
 
     public ChArucoDetector() throws FileNotFoundException, IOException
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         /// create board
         this.board.generateImage(this.boardImageSize, this.boardImage);
@@ -143,7 +145,7 @@ public class ChArucoDetector {
             /* PNG */
             final String boardFilePNG = boardFile + ".png";
             FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
-            Main.LOGGER.log(Level.SEVERE, "ChArUcoBoard to be printed is in file " + boardFilePNG);
+            logger.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
 
             byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
 
@@ -295,12 +297,12 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void set_intrinsics(Calibrator calib)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
         this.cdist = calib.cdist();
-        // Main.LOGGER.log(Level.WARNING, "K\n" + this.K.dump() + "\n" + calib.K().dump());
+        // logger.debug("K\n" + this.K.dump() + "\n" + calib.K().dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -317,7 +319,7 @@ public class ChArucoDetector {
      */
     public void draw_axis(Mat img)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         Calib3d.drawFrameAxes(
             img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len*2.5f, 2);
@@ -333,35 +335,44 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void detect_pts(Mat img) throws Exception
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         final List<Mat> markerCorners = new ArrayList<>();
         final Mat markerIds = new Mat();
-
-        try
-        {
-            detector.detectBoard
-                ( img, this.ccorners, this.cids, markerCorners, markerIds );
-        }
-        catch(Exception e) {Main.LOGGER.log(Level.SEVERE, img + " " + this.ccorners + " " + this.cids + "\n" + e);}
-
         this.N_pts = 0;
         this.mean_flow = Double.MAX_VALUE;
+ 
+        try
+        {
+            detector.detectBoard( img, this.ccorners, this.cids, markerCorners, markerIds );
+        }
+        catch(Exception e) // shouldn't happen
+        {
+            logger.error("detectBoard error\n" + img + "\n" + this.ccorners.dump() + "\n" + this.cids.dump(), e);
+            return; // skipping this image frame
+        }
 
-        if ( ! this.cids.empty() && this.cids.rows() > 0) // double check since there was some unknown failure to get the N_pts set right
+        // double check detect results since there was some unknown rare failure to get the N_pts set right
+        if ( this.cids.rows() != this.ccorners.rows() ) // shouldn't happen
+        {
+            logger.error("detectBoard has inconsistent number of outputs\n" + this.ccorners.dump() + "\n" + this.cids.dump());
+            return; // skipping this image frame
+        }
+
+        if ( ! this.cids.empty() ) // normal that points might not be detected (not aiming at board) so check before using them
         {
             this.N_pts = this.cids.rows();
         }
 
-        // Main.LOGGER.log(Level.WARNING, "N_pts " + this.N_pts);
+        // logger.debug("N_pts " + this.N_pts);
     
-        if (this.N_pts == 0) // maybe use the min N_pts from Cfg
+        if (this.N_pts <= 0) // the less than shouldn't happen (maybe use the min N_pts from Cfg?)
         {
-            return;
+            return; // skipping this image frame
         }
 
-        // Main.LOGGER.log(Level.WARNING, "detected ccorners\n" + this.ccorners.dump());
-        // Main.LOGGER.log(Level.WARNING, "detected cids\n" + this.cids.dump());
+        // logger.debug("detected ccorners\n" + this.ccorners.dump());
+        // logger.debug("detected cids\n" + this.cids.dump());
         
         // reformat the Mat to a List<Mat> for matchImagePoints
         final List<Mat> ccornersList = new ArrayList<>();
@@ -376,10 +387,16 @@ public class ChArucoDetector {
         // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
         // after copying to MatOfPoint2f. A waste of cpu and memory.
 
-        // Main.LOGGER.log(Level.WARNING, "p3d\n" + this.p3d.dump()); // data okay here
-        // Main.LOGGER.log(Level.WARNING, "p2d\n" + this.p2d.dump()); // data okay here
+        // logger.debug("p3d\n" + this.p3d.dump()); // data okay here
+        // logger.debug("p2d\n" + this.p2d.dump()); // data okay here
 
-        if (this.p3d.empty() || this.p2d.empty()) throw new Exception("p3d or p2d empty"); // shouldn't happen
+        if (this.p3d.empty() || this.p2d.empty()) // shouldn't happen
+        {
+            this.N_pts = 0;
+            this.mean_flow = Double.MAX_VALUE;   
+            logger.error("p3d or p2d empty from matchImagePoints");
+            return; // skipping this image frame
+        }
 
         // compute mean flow of the image for the check for stillness elsewhere
         computeMeanFlow();
@@ -463,7 +480,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void detect(Mat img) throws Exception
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         // raw_img never used - not converted
         this.detect_pts(img);
 
@@ -483,7 +500,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public Mat get_pts3d()
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return this.p3d;
     }
@@ -498,7 +515,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public keyframe get_calib_pts()
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return new keyframe(this.ccorners.clone(), this.get_pts3d().clone());
     }
@@ -513,11 +530,11 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void update_pose() throws Exception
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
-            // Main.LOGGER.log(Level.WARNING, "too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
+            // logger.debug("too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
             Main.fewCorners = true;
             this.pose_valid = false;
             return;
@@ -527,8 +544,8 @@ public class ChArucoDetector {
         MatOfPoint2f p2dReTyped = new MatOfPoint2f(this.p2d);
         MatOfDouble distReTyped = new MatOfDouble(this.cdist);
 
-        // Main.LOGGER.log(Level.WARNING, "p3d\n" + p3dReTyped.dump());
-        // Main.LOGGER.log(Level.WARNING, "p2d\n" + p2dReTyped.dump());
+        // logger.debug("p3d\n" + p3dReTyped.dump());
+        // logger.debug("p2d\n" + p2dReTyped.dump());
         
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
@@ -541,11 +558,11 @@ public class ChArucoDetector {
             rvec, tvec,
             false, 100, 8.0f, 0.99, inLiers, Calib3d.SOLVEPNP_ITERATIVE);
 
-        // Main.LOGGER.log(Level.WARNING, "inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
+        // logger.debug("inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
         
         if ( ! this.pose_valid)
         {
-            // Main.LOGGER.log(Level.WARNING, "pose not valid");
+            // logger.debug("pose not valid");
             return;            
         }
 
@@ -612,8 +629,8 @@ public class ChArucoDetector {
         this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
         this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
 
-        // Main.LOGGER.log(Level.WARNING, "out rvec\n" + this.rvec.dump());
-        // Main.LOGGER.log(Level.WARNING, "out tvec\n" + this.tvec.dump());
+        // logger.debug("out rvec\n" + this.rvec.dump());
+        // logger.debug("out tvec\n" + this.tvec.dump());
     }
 }
 /*-------------------------------------------------------------------------------------------------*/

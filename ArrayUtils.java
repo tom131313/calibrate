@@ -1,10 +1,12 @@
 package org.photonvision.calibrator;
 
-import java.util.logging.Level;
 import java.util.zip.Deflater;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -17,6 +19,8 @@ import org.opencv.core.Mat;
 /*-------------------------------------------------------------------------------------------------*/
 public class ArrayUtils
 {
+	private static final Logger logger = new Logger(ArrayUtils.class, LogGroup.General);
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -168,7 +172,7 @@ public class ArrayUtils
 				break;
 
 			default:
-				Main.LOGGER.log(Level.SEVERE, "Print Mat Error - Unknown OpenCV Mat depth. Not printing requested data. " + CvType.depth(mat.type()));
+				logger.error("Print Mat Error - Unknown OpenCV Mat depth. Not printing requested data. " + CvType.depth(mat.type()));
 				return "Print Mat Error";
 		}
 

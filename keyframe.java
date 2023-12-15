@@ -4,9 +4,10 @@
 
 package org.photonvision.calibrator;
 
-import java.util.logging.Level;
-
 import org.opencv.core.Mat;
+
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -19,6 +20,8 @@ import org.opencv.core.Mat;
 /*-------------------------------------------------------------------------------------------------*/
 class keyframe
 {
+  private static final Logger logger = new Logger(keyframe.class, LogGroup.General);
+
   private Mat p2d; // detected ccorners in camera image
   private Mat p3d; // target ChArUcoBoard object - perfect without distortion in 3d space but ours is always flat on a wall so Z = 0
 
@@ -47,8 +50,9 @@ keyframe(Mat p2d, Mat p3d)
     this.p3d = p3d;
     if (this.p2d.rows() != this.p3d.rows() || this.p2d.cols() != p3d.cols())
     {
-        Main.LOGGER.log(Level.SEVERE, "size of p2d != p3d");
+        logger.error("size of p2d != p3d\n" + this.p2d.dump() + "\n" + this.p3d.dump());
     }
+    logger.debug("calibration image captured");
   }
 }
 /*-------------------------------------------------------------------------------------------------*/

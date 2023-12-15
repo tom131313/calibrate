@@ -5,8 +5,6 @@
 // projects a 2D object (image) according to parameters - generate styled board image
 package org.photonvision.calibrator;
 
-import java.util.logging.Level;
-
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -14,6 +12,9 @@ import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -25,6 +26,9 @@ import org.opencv.imgproc.Imgproc;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 class BoardPreview {
+    private static final Logger logger = new Logger(BoardPreview.class, LogGroup.General);
+    static {logger.debug("Starting ----------------------------------------");}
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -47,19 +51,19 @@ class BoardPreview {
     private static Mat project_img(Mat img, Size sz, Mat K, Mat rvec, Mat t, int flags)
     // force user to specify flags=cv2.INTER_LINEAR to use default
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // Main.LOGGER.log(Level.WARNING, "img " + img);
-        // Main.LOGGER.log(Level.WARNING, "sz " + sz);
-        // Main.LOGGER.log(Level.WARNING, "K " + K + "\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, "rvec " + rvec + rvec.dump());
-        // Main.LOGGER.log(Level.WARNING, "t " + t + t.dump());
-        // Main.LOGGER.log(Level.WARNING, "flags " + flags);
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("img " + img);
+        // logger.debug("sz " + sz);
+        // logger.debug("K " + K + "\n" + K.dump());
+        // logger.debug("rvec " + rvec + rvec.dump());
+        // logger.debug("t " + t + t.dump());
+        // logger.debug("flags " + flags);
 
         // construct homography
         Mat R = new Mat();
         Calib3d.Rodrigues(rvec, R);
 
-        // Main.LOGGER.log(Level.WARNING, "R " + R + "\n" + R.dump());
+        // logger.debug("R " + R + "\n" + R.dump());
         Mat transform = new Mat(3, 3, CvType.CV_64FC1); // rotation matrix R and a translation matrix T (t)
         transform.put(0, 0,
             R.get(0, 0)[0], R.get(0, 1)[0], R.get(0, 2)[0], // 1st row r,second row r, third row t
@@ -70,9 +74,9 @@ class BoardPreview {
         Core.gemm(K, transform, 1., new Mat(), 0., H);
         Core.divide(H, new Scalar(H.get(2, 2)[0]), H);
    
-        // Main.LOGGER.log(Level.WARNING, "transform " + transform + "\n" + transform.dump());
-        // Main.LOGGER.log(Level.WARNING, "R " + R + "\n" + R.dump());
-        // Main.LOGGER.log(Level.WARNING, "H " + H + "\n" + H.dump());
+        // logger.debug("transform " + transform + "\n" + transform.dump());
+        // logger.debug("R " + R + "\n" + R.dump());
+        // logger.debug("H " + H + "\n" + H.dump());
 
         Mat imgProjected = new Mat();
 
@@ -89,7 +93,7 @@ class BoardPreview {
         R.release();
         H.release();
 
-        // Main.LOGGER.log(Level.WARNING, "returning imgProjected\n" + ArrayUtils.brief(imgProjected));
+        // logger.debug("returning imgProjected\n" + ArrayUtils.brief(imgProjected));
 
         return imgProjected;
     }
@@ -102,8 +106,6 @@ class BoardPreview {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
-
     private Size SIZE = new Size(640., 480.); // different than camera res okay and it runs a little faster if smaller. Resize at end makes images match
     private Size sz;
     private Mat img = new Mat();
@@ -112,7 +114,7 @@ class BoardPreview {
     private Mat Knew = new Mat();
     BoardPreview(Mat img)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         img.copyTo(this.img);
 
@@ -171,10 +173,10 @@ class BoardPreview {
 /*-------------------------------------------------------------------------------------------------*/
     void create_maps(Mat K, Mat cdist, Size sz)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump());
-        // Main.LOGGER.log(Level.WARNING, "sz " + sz);
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("camera matrix K " + K + "\n" + K.dump());
+        // logger.debug("cdist " + cdist.dump());
+        // logger.debug("sz " + sz);
 
         // cdist initialized in its constructor instead of setting to 0 here if null; did 5 not 4 for consistency with rest of code
         this.sz = sz;
@@ -186,7 +188,7 @@ class BoardPreview {
         //FIXME Knew and K are suspect. What's the right answer to making Knew without trashing K? Guessing here but seems okay.
         Core.gemm(scale, K, 1., new Mat(), 0.,this.Knew);
         sz = this.SIZE;
-        this.Knew = Calib3d.getOptimalNewCameraMatrix(Knew, cdist, sz, 1.); // .2% higher than Python for same input
+        this.Knew = Calib3d.getOptimalNewCameraMatrix(Knew, cdist, sz, 1.); // .2% higher than older Python OpenCV for same input
 
         this.maps = Distortion.make_distort_map(Knew, sz, cdist, this.Knew);
     }
@@ -203,28 +205,28 @@ class BoardPreview {
     // force users to specify useShadow=false and inter=Imgproc.INTER_NEAREST instead of defaulting
     // no default allowed in Java and I don't feel like making a bunch of overloaded methods for this conversion
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // Main.LOGGER.log(Level.WARNING, "r " + r.dump());
-        // Main.LOGGER.log(Level.WARNING, "t " + t.dump());
-        // Main.LOGGER.log(Level.WARNING, "useShadow " + useShadow);
-        // Main.LOGGER.log(Level.WARNING, "inter " + inter);
-        // Main.LOGGER.log(Level.WARNING, "sz " + this.sz);
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("r " + r.dump());
+        // logger.debug("t " + t.dump());
+        // logger.debug("useShadow " + useShadow);
+        // logger.debug("inter " + inter);
+        // logger.debug("sz " + this.sz);
 
         Mat img = new Mat();
 
         img = project_img(useShadow ? this.shadow : this.img, this.SIZE, this.Knew, r, t, Imgproc.INTER_LINEAR);
 
-        // Main.LOGGER.log(Level.WARNING, "maps " + this.maps + "\n" + ArrayUtils.brief(maps));
+        // logger.debug("maps " + this.maps + "\n" + ArrayUtils.brief(maps));
         // Can be one map for XY or two maps X and Y. python had 2 and this has 1
         // Imgproc.remap(img, img, maps[0]/*X*/, maps[1]/*Y*/, inter);// maybe X Mat and Y Mat somehow; separate channels?
 
         Imgproc.remap(img, img, this.maps, new Mat(), inter);// 1st arg can be XY with no 2nd arg (original has separate X and Y arguments)
-        // Main.LOGGER.log(Level.WARNING, "img after remap " + img + "\n" + ArrayUtils.brief(img));
+        // logger.debug("img after remap " + img + "\n" + ArrayUtils.brief(img));
 
         // maps (2, 480, 640)
         Imgproc.resize(img, img, this.sz, 0, 0, inter);
 
-        // Main.LOGGER.log(Level.WARNING, "returning img after resize " + img + "\n" + ArrayUtils.brief(img));
+        // logger.debug("returning img after resize " + img + "\n" + ArrayUtils.brief(img));
 
         return img;
     }

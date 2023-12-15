@@ -14,10 +14,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -46,6 +42,10 @@ import edu.wpi.first.cscore.VideoMode;
 import edu.wpi.first.cscore.VideoMode.PixelFormat;
 import edu.wpi.first.cscore.VideoProperty;
 
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
+
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -56,13 +56,18 @@ import edu.wpi.first.cscore.VideoProperty;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.4"; // change this
+    private static final String VERSION = "beta 12.5"; // change this
+
+    static final Logger logger = new Logger(MethodHandles.lookup().lookupClass(), LogGroup.General);
+    // static final Logger logger = new Logger(Main.class), LogGroup.General);
+
     static
     {
         System.out.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
         System.err.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
+        logger.info("Pose Guidance Camera Calibration version " + VERSION);
     }
-    static final Logger LOGGER = Logger.getLogger("");
+
     private static int frameNumber = 0;
     static String frame = "00000 ";
     private static PrintWriter vnlog = null;
@@ -113,7 +118,7 @@ public class Main {
                         dokeystroke.set(keyTerminate);
                     }
                 }
-            } catch(Exception e) {Main.LOGGER.log(Level.SEVERE,
+            } catch(Exception e) {logger.error(
                 "Terminal keyboard closed prematurely (Ctrl-c) or doesn't exist (jar file not run from command line; don't double click the jar to start it)", e);}
         }
     }
@@ -188,24 +193,15 @@ public class Main {
 /*-------------------------------------------------------------------------------------------------*/
     public static void main(String[] args) throws Exception
     {
-        // This block configures the logger with handler and formatter  
-        FileHandler fh = new FileHandler(Cfg.logFile);
-        Main.LOGGER.addHandler(fh);
-        SimpleFormatter formatter = new SimpleFormatter();  
-        fh.setFormatter(formatter);
-        Main.LOGGER.setLevel(Level.ALL);
-
-        Main.LOGGER.log(Level.SEVERE, "Pose Guidance Camera Calibration version " + VERSION);
-        Main.LOGGER.log(Level.SEVERE, "Log file " + Cfg.logFile);
-        Main.LOGGER.log(Level.CONFIG, "Command Line Args " + Arrays.toString(args));
-
         // get the parameters for the user provided options
+        logger.debug("Command Line Args " + Arrays.toString(args));
+
         try {
             if ( ! handleArgs(args)) {
                 System.exit(0);
             }
         } catch (ParseException e) {
-            LOGGER.log(Level.SEVERE, "Failed to parse command-line options!", e);
+            logger.error("Failed to parse command-line options!", e);
         }
 
         org.photonvision.common.util.TestUtils.loadLibraries();
@@ -228,7 +224,7 @@ public class Main {
         networkDisplay = new CvSource("calibPV", /*VideoMode.*/PixelFormat.kMJPEG,
                 Cfg.image_height, Cfg.image_width, Cfg.fps);
         mjpegServer = new MjpegServer("GuidanceView", Cfg.displayPort);
-        LOGGER.log(Level.SEVERE, "View Guidance Board On Port " + Cfg.displayPort);
+        logger.info("View Guidance Board On Port " + Cfg.displayPort);
         mjpegServer.setSource(networkDisplay);      
         Mat out = new Mat(); // user display Mat
 
@@ -237,21 +233,21 @@ public class Main {
         // final UsbCamera camera = new UsbCamera("mycamera", Cfg.camId); // same camera as above but no interaction on port 181 or above
         for ( VideoMode vm : camera.enumerateVideoModes())
         {
-                 Main.LOGGER.log(Level.CONFIG, "Camera mode choices " + vm.getPixelFormatFromInt(vm.pixelFormat.getValue()) + " " +
+                 logger.debug("Camera mode choices " + vm.getPixelFormatFromInt(vm.pixelFormat.getValue()) + " " +
                 + vm.width + "x" + vm.height + " " + vm.fps + " fps");
         }
         for ( VideoProperty vp : camera.enumerateProperties())
         {
-            Main.LOGGER.log(Level.CONFIG, "camera property choices " + vp.get() + " " + vp.getName() + " " + VideoProperty.getKindFromInt(vp.get()));
+            logger.debug("camera property choices " + vp.get() + " " + vp.getName() + " " + VideoProperty.getKindFromInt(vp.get()));
         }
         VideoMode videoMode = new VideoMode(Cfg.pixelFormat, Cfg.image_width, Cfg.image_height, Cfg.fps);
-        Main.LOGGER.log(Level.CONFIG, "Setting camera mode " + VideoMode.getPixelFormatFromInt(Cfg.pixelFormat.getValue()) + " " + Cfg.image_width + "x" + Cfg.image_height + " " + Cfg.fps + "fps");
+        logger.debug("Setting camera mode " + VideoMode.getPixelFormatFromInt(Cfg.pixelFormat.getValue()) + " " + Cfg.image_width + "x" + Cfg.image_height + " " + Cfg.fps + "fps");
             try {
                 if ( ! camera.setVideoMode(videoMode)) throw new IllegalArgumentException("set video mode returned false");
             } catch (Exception e) {
-                Main.LOGGER.log(Level.SEVERE, "camera set video mode error; mode is unchanged", e);
+                logger.error("camera set video mode error; mode is unchanged", e);
             }
-        LOGGER.log(Level.SEVERE, "camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
+        logger.debug("camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
         CvSink cap = CameraServer.getVideo(camera); // Get a CvSink. This will capture Mats from the camera
         cap.setSource(camera);
         Mat _img = new Mat();                                                  // this follows the camera input but ...
@@ -279,15 +275,15 @@ public class Main {
             {
                 if (_img.height() != Cfg.image_height || _img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
                 {
-                    Main.LOGGER.log(Level.SEVERE, "image incorrect " + _img.width() + "x" + _img.height()
-                                                    + " should be " + Cfg.image_width + "x" + Cfg.image_height + " - ignoring it");
+                    logger.warn("camera size incorrect " + _img.width() + "x" + _img.height()
+                                        + "; user specified to calibrate at " + Cfg.image_width + "x" + Cfg.image_height + " - ignoring it");
                     continue;
                 }
                 _img.copyTo(img);
             }
             else
             {
-                LOGGER.log(Level.SEVERE, "grabFrame error " + cap.getError());
+                logger.warn("grabFrame error " + cap.getError());
                 force = false; // useless now with the continue below
                 continue; // pretend frame never happened - rkt addition; original reprocessed previous frame
             }
@@ -366,7 +362,7 @@ public class Main {
         {
             vnlog.close();
         }
-        Main.LOGGER.log(Level.CONFIG,"End of running main");
+        logger.debug("End of running main");
         System.exit(0);
     }   
 /*-------------------------------------------------------------------------------------------------*/
@@ -387,7 +383,7 @@ public class Main {
         {
             // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
             // {
-            // Main.LOGGER.log(Level.WARNING,ugui.user_info_text());
+            // logger.log(Level.WARNING,ugui.user_info_text());
             // }
             String message1 = ugui.user_info_text();
             Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);

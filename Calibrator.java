@@ -6,7 +6,6 @@ package org.photonvision.calibrator;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -14,6 +13,10 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
+
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -24,6 +27,8 @@ import org.opencv.core.Size;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 class Calibrator {
+    private static final Logger logger = new Logger(Calibrator.class, LogGroup.General);
+    static {logger.debug("Starting ----------------------------------------");}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -33,7 +38,6 @@ class Calibrator {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    static {Main.LOGGER.log(Level.CONFIG, "Starting ----------------------------------------");}
     private Size img_size;
     private int nintr = 9; // "fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"
     // unknowns not used
@@ -87,7 +91,7 @@ class Calibrator {
 
     Calibrator(Size img_size)
     {
-      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.img_size = img_size;
         // initial fake camera matrix to get things started
@@ -99,7 +103,7 @@ class Calibrator {
         this.Kin.put(2, 2, 1.);
         this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
         this.Kin.copyTo(this.K);
-        // Main.LOGGER.log(Level.WARNING, "K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
+        // logger.debug("K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -112,7 +116,7 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     private double[] get_intrinsics()
     {
-      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
       double[] intrinsics = {
         this.K.get(0, 0)[0],
         this.K.get(1, 1)[0],
@@ -124,8 +128,8 @@ class Calibrator {
         this.cdist.get(0, 3)[0],
         this.cdist.get(0, 4)[0]
         };
-      // Main.LOGGER.log(Level.WARNING, "K\n" + K.dump());
-      // Main.LOGGER.log(Level.WARNING, java.util.Arrays.toString(intrinsics));
+      // logger.debug("K\n" + K.dump());
+      // logger.debug(java.util.Arrays.toString(intrinsics));
       return intrinsics;
     }
 /*-------------------------------------------------------------------------------------------------*/
@@ -139,7 +143,7 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     double[] calibrate(List<keyframe> keyframes) throws Exception // force use of keyframes instead of default None
     {
-      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int flags = this.flags;
 
@@ -179,7 +183,7 @@ class Calibrator {
                     break;
 
                 default:
-                    Main.LOGGER.log(Level.SEVERE, "unknown initial pose " + PoseGeneratorDist.pose);
+                    logger.error("unknown initial pose " + PoseGeneratorDist.pose);
                     break;
             }
         }
@@ -212,14 +216,14 @@ class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     private static double[] index_of_dispersion(double[] mean, double[] variance)
     {
-      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // computes index of dispersion:
       // https://en.wikipedia.org/wiki/Index_of_dispersion
       // compute the 9 VMR's
       if (mean.length != variance.length)
       {
-        Main.LOGGER.log(Level.SEVERE, "mean and variance not the same size");
+        logger.error("mean and variance not the same size");
       }
       double[] VMR = new double[9];
       for (int i = 0; i < mean.length; i++)
@@ -259,7 +263,7 @@ class Calibrator {
      */
     private static double[] compute_pose_var(List<Mat> rvecs, List<Mat> tvecs)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         double[] ret = new double[6]; // return 
 
@@ -274,7 +278,7 @@ class Calibrator {
         {
           Calib3d.Rodrigues(r, dst);
           double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
-          // Main.LOGGER.log(Level.WARNING, "\nreuler degrees " + java.util.Arrays.toString(reuler) + "\nr " + r.t().dump());
+          // logger.debug("\nreuler degrees " + java.util.Arrays.toString(reuler) + "\nr " + r.t().dump());
           // workaround for the given board so r_x does not oscilate between +-180°
           reuler[0] = reuler[0] % 360.;
           reulers.add(reuler);
@@ -329,7 +333,7 @@ class Calibrator {
      */
     private static double[] simpleVariance(List<double[]> data)
     {
-        // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // always 3 components x, y, z so do all 3 at once
         double[] sum = {0., 0., 0.};
@@ -376,7 +380,7 @@ class Calibrator {
      */
     calibrateCameraReturn calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K) throws Exception
     {
-      // Main.LOGGER.log(Level.WARNING, "method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // split keyframes into its two separate components, image points and object points, for OpenCV calibrateCamera
         // we put them together when detected then we take them apart for calibration.
@@ -399,8 +403,8 @@ class Calibrator {
         List<Mat> tvecs = new ArrayList<>();
         Mat stdDeviationsIntrinsics = new Mat();
         double reperr = Double.NaN;
-        // Main.LOGGER.log(Level.WARNING, "K input to calibration\n" + K.dump());
-        // Main.LOGGER.log(Level.WARNING, UserGuidance.formatFlags(flags));
+        // logger.debug("K input to calibration\n" + K.dump());
+        // logger.debug(UserGuidance.formatFlags(flags));
         try
         {
            reperr = Calib3d.calibrateCameraExtended(
@@ -410,19 +414,19 @@ class Calibrator {
             stdDeviationsIntrinsics, new Mat(), new Mat(),
             flags, Cfg.calibrateCameraCriteria);
 
-          // Main.LOGGER.log(Level.WARNING, "camera matrix K " + K + "\n" + K.dump());
-          // Main.LOGGER.log(Level.WARNING, "distortion coefficients " + cdist.dump() + cdist);
-          // Main.LOGGER.log(Level.WARNING, "repError " + reperr);
+          // logger.debug("camera matrix K " + K + "\n" + K.dump());
+          // logger.debug("distortion coefficients " + cdist.dump() + cdist);
+          // logger.debug("repError " + reperr);
         }
         catch(CvException error)
         {
-          Main.LOGGER.log(Level.SEVERE, "Calib3d.calibrateCameraExtended error", error);
+          logger.error("Calib3d.calibrateCameraExtended error", error);
         }
-        // Main.LOGGER.log(Level.WARNING, "K output from calibration\n" + K.dump());
+        // logger.debug("K output from calibration\n" + K.dump());
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
 
-        // Main.LOGGER.log(Level.WARNING, "cdist " + cdist.dump() + ", N = " + N);
+        // logger.debug("cdist " + cdist.dump() + ", N = " + N);
 
         stdDeviationsIntrinsics.release();
 
