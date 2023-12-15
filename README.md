@@ -28,7 +28,7 @@ The top line of the guidance display has movement information that isn't very us
 
 The first two guidance poses are always the same.
 
-The first pose at a fairly steep angle to the board's left (camera's right) sets the initial camera matrix. I advise getting the angles correct but not at precisely the correct distance so the images do not align yet. Then carefully move closer or further to get the precise size alignment. The capture should be automatic. “Well begun is half done.” - Aristotle. [Rotated poses are good to calibrate the camera matrix.]
+The first pose at a fairly steep angle to the board's left (camera's right) sets the initial camera matrix. I advise getting the angles correct but not at precisely the correct distance so the images do not align yet. Then carefully move closer or further to get the precise size alignment. The capture should be automatic. “Well begun is half done.” - Aristotle. [Rotated poses are good to calibrate the camera matrix.] The guidance board is always intended to be able to be duplicated by a camera pose. An occaisonal distorted board that is bent, broken or split indicates previously captured poses weren't close enough to the guidance. Start over.
 
 Occaisionally the rotated first pose "jumps" to a different size. That is NOT a capture and is the program trying to use the latest estimate of the camera matrix for that first pose. That pose is captured when the second pose - the head-on pose - appears.
 
