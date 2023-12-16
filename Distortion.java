@@ -81,7 +81,7 @@ class Distortion
                     mx = i;
                 }
                 // logger.debug("Contour " + (mx+1) + " of " + contours.size() + ", area max so far " + areaContourMax
-                    // + ", contour size " + contours.get(mx).size(mx) + "\n" + contours.get(mx).dump());
+                //       + ", contour size " + contours.get(mx).size(mx) + "\n" + contours.get(mx).dump());
             }
             // Now have contour with largest area so check that area not already covered,
             // that is, it's not masked.

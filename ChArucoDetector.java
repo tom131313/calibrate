@@ -59,7 +59,6 @@ public class ChArucoDetector {
     Size img_size = new Size(Cfg.image_width, Cfg.image_height);
 
     // per frame data
-
     // p3d is the object coordinates of the perfect undistorted ChArUco Board corners that the camera is pointing at.
     // In this case the board is flat at its Z origin (say, the wall upon which it is mounted) so the Z coordinate is always 0.
     // p2d is the coordinates of the corresponding board corners as they are located in the camera image,
@@ -140,10 +139,9 @@ public class ChArucoDetector {
         if (Cfg.writeBoard)
         {
             // write ChArUco Board to file for print to use for calibration
-            final String boardFile = Cfg.boardFile;
             
             /* PNG */
-            final String boardFilePNG = boardFile + ".png";
+            final String boardFilePNG = Cfg.boardFile + ".png";
             FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
             logger.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
 
@@ -566,6 +564,7 @@ public class ChArucoDetector {
             return;            
         }
 
+        // remove outliers code below commented out because it didn't seem to help. Could be resurrected but needs to be tested better.
         // compress the object and image mats with only the in liers
         // if the same use the original mats if inliers < all then Compression
         

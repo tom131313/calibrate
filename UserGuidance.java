@@ -446,6 +446,10 @@ public class UserGuidance {
         // use the updated calibration results for tracking
         this.tracker.set_intrinsics(this.calib);
 
+        logger.debug("calibration image captured");
+        logger.debug("camera matrix\n" + this.calib.K().dump());
+        logger.debug("camera distortion " + this.calib.cdist());
+
         this.converged = isAllTrue(this.pconverged);
 
         if (this.converged)
@@ -600,7 +604,7 @@ void write()
     double[] distortionCoefficients = new double[5];
     this.calib.cdist().get(0, 0, distortionCoefficients);
 
-    logger.error("calibration data file " + calibrationDataFile);
+    logger.debug("calibration data file " + calibrationDataFile);
 
     try (PrintWriter pw = new PrintWriter(calibrationDataFile))
     {
@@ -620,24 +624,22 @@ void write()
         pw.format(" \"img_size\": [%.0f, %.0f],%n", this.calib.img_size().width, this.calib.img_size().height);
         pw.format(" \"calibration_time\": \"%s\"%n", LocalDateTime.now());
         pw.print("}");
-
-        logger.error("calibration_time: " + LocalDateTime.now());
-        logger.error("nr_of_frames: " + this.calib.keyframes.size());
-        logger.error("image_width: " + this.calib.img_size().width);
-        logger.error("image_height: " + this.calib.img_size().height);
-        logger.error("board_width: " + this.tracker.board_sz().width);
-        logger.error("board_height: " + this.tracker.board_sz().height);
-        logger.error("square_size: " + this.square_len);
-        logger.error("marker_size: " + this.marker_len);
-        logger.error(formatFlags(calib.flags()));
-        logger.error("fisheye_model: " + 0);
-        logger.error("camera_matrix:\n" + this.calib.K().dump());
-        logger.error("distortion_coefficients:\n" + this.calib.cdist().dump());
-        logger.error("avg_reprojection_error: " + this.calib.reperr());
-
     } catch (FileNotFoundException e) {
         e.printStackTrace();
     }
+    logger.debug("calibration_time: " + LocalDateTime.now());
+    logger.debug("nr_of_frames: " + this.calib.keyframes.size());
+    logger.debug("image_width: " + this.calib.img_size().width);
+    logger.debug("image_height: " + this.calib.img_size().height);
+    logger.debug("board_width: " + this.tracker.board_sz().width);
+    logger.debug("board_height: " + this.tracker.board_sz().height);
+    logger.debug("square_size: " + this.square_len);
+    logger.debug("marker_size: " + this.marker_len);
+    logger.debug(formatFlags(calib.flags()));
+    logger.debug("fisheye_model: " + 0);
+    logger.debug("camera_matrix:\n" + this.calib.K().dump());
+    logger.debug("distortion_coefficients:\n" + this.calib.cdist().dump());
+    logger.debug("avg_reprojection_error: " + this.calib.reperr());
 }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/

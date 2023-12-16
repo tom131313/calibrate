@@ -30,15 +30,23 @@ public class Cfg
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+// SHOULD BE USER SPECIFIED
+    static final boolean writeBoard = true;
+    static final String boardFile = "ChArUcoBoard";
     static boolean logDetectedCorners = false; // save to files captured images and detected corners
+    static String cornersLog = "corners.vnl";
+    static int resXDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
+    static int resYDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
+///////////////////////////
 
+// SHOULD COME FROM PV CAMERA
     // Checks for the specified camera - laptop internal or USB external and uses it if present.
     // 0 internal if no external or if external connected after boot-up
     // 0 external if connected at boot-up
     // 1 internal if external connected at boot-up
     // 1 is external if connected after boot-up
     static int camId = 0;
-    static PixelFormat pixelFormat = PixelFormat.kYUYV; // kMJPEG
+    static PixelFormat pixelFormat = PixelFormat.kYUYV;
     static final int displayPort = 1185;
     static int fps = 10;
     static final int exposureManual = 70;
@@ -48,15 +56,17 @@ public class Cfg
     // camera image size and thus user display screen size
     static int image_width = 1280;
     static int image_height = 720;
-    static final double initialFocalLength = 1000.; // fx and fy, aspect ratio = 1 (fy/fx)
+/////////////////////////////
 
+// ALL THE FOLLOWING STUFF MIGHT NEVER NEED TO BE CHANGED
+    static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released
+    static final double initialFocalLength = 1000.; // fx and fy, aspect ratio = 1 (fy/fx)
     // ChArUco Board pixels = (board_x*square_len, board_y*square_len)
     static final int board_x = 9;
     static final int board_y = 6;
     static final int square_len = 280;
     static final int marker_len = 182;
     static final int dictionary = 0;
-    static final boolean writeBoard = true;
     // intensity of the green guidance board
     // suggest "white" [-100]; (dull) -128 to -1 (bright)
     // suggest "black" [1]; (somewhat transparent) 1 to 64 (more obscuring)
@@ -65,10 +75,7 @@ public class Cfg
     static final Scalar progressInsertCameraGrey = new Scalar(170.);
     static final Scalar progressInsertGuidanceGrey = new Scalar(105.);
 
-    static int resXDPM = 9843; // printing pixels per meter 9843 = 250 DPI
-    static int resYDPM = 9843; // printing pixels per meter 9843 = 250 DPI
-
-    // user config for convergence criteria
+    // config for convergence criteria
     static final int pt_min_markers = 1;
     static final boolean tryRefineMarkers = true;
     static final int cornerRefinementMaxIterations = 2000;
@@ -91,11 +98,7 @@ public class Cfg
     static final double solvePnPRefineVVSLambda = 1.;
 
     static final TermCriteria undistortPointsIterCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON); // default cv::TermCriteria(cv::TermCriteria::COUNT, 5, 0.01)
-    
-    static final int wait = 1; // milliseconds to wait for user keyboard response to a new image
-    static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released
-    static final String logFile = "CalibrationLog.txt"; // user specified file name of the log
-    static final String boardFile = "ChArUcoBoard";
+/////////////////////////////////////////////////////////    
     private Cfg()
     {
         throw new UnsupportedOperationException("This is a utility class");

@@ -8,7 +8,6 @@ package org.photonvision.calibrator;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +31,8 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.Logger;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.CvSink;
@@ -41,10 +42,6 @@ import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.cscore.VideoMode;
 import edu.wpi.first.cscore.VideoMode.PixelFormat;
 import edu.wpi.first.cscore.VideoProperty;
-
-import org.photonvision.common.logging.LogGroup;
-import org.photonvision.common.logging.Logger;
-
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -56,15 +53,11 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.5"; // change this
-
-    static final Logger logger = new Logger(MethodHandles.lookup().lookupClass(), LogGroup.General);
-    // static final Logger logger = new Logger(Main.class), LogGroup.General);
+    private static final String VERSION = "beta 12.6"; // change this
+    static final Logger logger = new Logger(Main.class, LogGroup.General);
 
     static
     {
-        System.out.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
-        System.err.println("Starting class: " + MethodHandles.lookup().lookupClass().getCanonicalName() + " version " + VERSION);
         logger.info("Pose Guidance Camera Calibration version " + VERSION);
     }
 
@@ -82,19 +75,24 @@ public class Main {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    // keyboard mapping returns from waitKey
-    private static final int keyTerminate = 81;
-    private static final int keyCapture = 67;
-    private static final int keyMirrorToggle = 77;
+    // keyboard mapping returns from OpenCV waitKey
+    private static final int keyTerminateOpenCV = 81;
+    private static final int keyCaptureOpenCV = 67;
+    private static final int keyMirrorToggleOpenCV = 77;
+
+    // keyboard mapping returns from Java Scanner
     private static final int keyTerminateScanner = 113;
     private static final int keyCaptureScanner = 99;
     private static final int keyMirrorToggleScanner = 109;
     private static final int timedOut = -1;  // timed out no key pressed
   
     // Java Scanner alternative to OpenCV keyboard usage that is not in PV headless (AWT is missing)
+    // Turn Scanner keys into OpenCV keys to ease transition back and forth between PV terminal and OpenCV waitKey
     AtomicInteger dokeystroke = new AtomicInteger(-1);
     class Keystroke implements Runnable
     {
+        final Logger logger = new Logger(Main.Keystroke.class, LogGroup.General);
+
         public void run()
         {
             try (Scanner keyboard = new Scanner(System.in))
@@ -104,22 +102,23 @@ public class Main {
                     System.out.println("Pose should auto capture otherwise, press c (capture), m (mirror), q (quit) then the Enter key");
                     String entered = keyboard.next();
                     int keyScanner = entered.charAt(0);
+                    logger.debug("user entered action " + keyScanner);
                     // map Scanner character codes to OpenCV character codes
                     if (keyScanner == keyCaptureScanner)
                     {
-                        dokeystroke.set(keyCapture);
+                        dokeystroke.set(keyCaptureOpenCV);
                     }
                     if (keyScanner == keyMirrorToggleScanner)
                     {
-                        dokeystroke.set(keyMirrorToggle);
+                        dokeystroke.set(keyMirrorToggleOpenCV);
                     }
                     if (keyScanner == keyTerminateScanner)
                     {
-                        dokeystroke.set(keyTerminate);
+                        dokeystroke.set(keyTerminateOpenCV);
                     }
                 }
             } catch(Exception e) {logger.error(
-                "Terminal keyboard closed prematurely (Ctrl-c) or doesn't exist (jar file not run from command line; don't double click the jar to start it)", e);}
+                "Terminal keyboard closed prematurely (Ctrl-c) or doesn't exist (jar file not run from command line; don't double click the jar to start it)");}
         }
     }
 /*-------------------------------------------------------------------------------------------------*/
@@ -202,6 +201,7 @@ public class Main {
             }
         } catch (ParseException e) {
             logger.error("Failed to parse command-line options!", e);
+            System.exit(0);
         }
 
         org.photonvision.common.util.TestUtils.loadLibraries();
@@ -233,7 +233,7 @@ public class Main {
         // final UsbCamera camera = new UsbCamera("mycamera", Cfg.camId); // same camera as above but no interaction on port 181 or above
         for ( VideoMode vm : camera.enumerateVideoModes())
         {
-                 logger.debug("Camera mode choices " + vm.getPixelFormatFromInt(vm.pixelFormat.getValue()) + " " +
+            logger.debug("Camera mode choices " + vm.getPixelFormatFromInt(vm.pixelFormat.getValue()) + " "
                 + vm.width + "x" + vm.height + " " + vm.fps + " fps");
         }
         for ( VideoProperty vp : camera.enumerateProperties())
@@ -242,12 +242,12 @@ public class Main {
         }
         VideoMode videoMode = new VideoMode(Cfg.pixelFormat, Cfg.image_width, Cfg.image_height, Cfg.fps);
         logger.debug("Setting camera mode " + VideoMode.getPixelFormatFromInt(Cfg.pixelFormat.getValue()) + " " + Cfg.image_width + "x" + Cfg.image_height + " " + Cfg.fps + "fps");
-            try {
-                if ( ! camera.setVideoMode(videoMode)) throw new IllegalArgumentException("set video mode returned false");
-            } catch (Exception e) {
-                logger.error("camera set video mode error; mode is unchanged", e);
-            }
-        logger.debug("camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
+        try {
+            if ( ! camera.setVideoMode(videoMode)) throw new IllegalArgumentException("set video mode returned false");
+        } catch (Exception e) {
+            logger.error("camera set video mode error; mode is unchanged", e);
+        }
+        logger.info("camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
         CvSink cap = CameraServer.getVideo(camera); // Get a CvSink. This will capture Mats from the camera
         cap.setSource(camera);
         Mat _img = new Mat();                                                  // this follows the camera input but ...
@@ -266,8 +266,11 @@ public class Main {
         {
             frameNumber++;
             frame = String.format("%05d ", frameNumber);
-            if (frameNumber%Cfg.garbageCollectionFrames == 0) System.gc();
-
+            if (frameNumber%Cfg.garbageCollectionFrames == 0) // periodically cleanup old Mats
+            {
+                System.runFinalization();
+                System.gc();
+            }
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
 
             long status = cap.grabFrame(_img, 0.5);
@@ -330,15 +333,15 @@ public class Main {
             // have a key
             switch (k)
             {
-                case keyTerminate: // terminate key pressed to stop loop immediately
+                case keyTerminateOpenCV: // terminate key pressed to stop loop immediately
                         endMessage = "CANCELLED";
                         break grabFrameLoop;
 
-                case keyMirrorToggle: // mirror/no mirror key pressed
+                case keyMirrorToggleOpenCV: // mirror/no mirror key pressed
                         mirror = ! mirror;
                         break;
 
-                case keyCapture: // capture frame key pressed
+                case keyCaptureOpenCV: // capture frame key pressed
                         save = true;
                         break;
 
@@ -504,7 +507,7 @@ public class Main {
     {
         if (vnlog == null) // first time switch
         {
-            vnlog = new PrintWriter("corners.vnl");
+            vnlog = new PrintWriter(Cfg.cornersLog);
             vnlog.println("## produced by pose guidance calibration program");
             vnlog.println("# filename x y level cid boardX boardY");
         }

@@ -52,7 +52,6 @@ keyframe(Mat p2d, Mat p3d)
     {
         logger.error("size of p2d != p3d\n" + this.p2d.dump() + "\n" + this.p3d.dump());
     }
-    logger.debug("calibration image captured");
   }
 }
 /*-------------------------------------------------------------------------------------------------*/
