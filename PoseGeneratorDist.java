@@ -32,7 +32,6 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 public class PoseGeneratorDist {
     private static final Logger logger = new Logger(PoseGeneratorDist.class, LogGroup.General);
-    static {logger.debug("Starting ----------------------------------------");}
 
     enum Pose {NONE, ORBITAL, PLANAR_FULL_SCREEN, FROM_BOUNDS};
     static Pose pose = Pose.NONE; // probably shouldn't be static but they are mostly used in a static method and there is only one instantiation
@@ -531,7 +530,7 @@ public class PoseGeneratorDist {
  */
     PoseGeneratorDist(Size img_size)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        logger.debug("Starting ----------------------------------------");
 
         this.img_size = img_size;
         mask = Mat.zeros(

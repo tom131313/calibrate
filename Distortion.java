@@ -19,9 +19,6 @@ import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import org.photonvision.common.logging.LogGroup;
-import org.photonvision.common.logging.Logger;
-
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -33,8 +30,6 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 class Distortion
 {
-    private static final Logger logger = new Logger(Distortion.class, LogGroup.General);
-    static {logger.debug("Starting ----------------------------------------");}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */

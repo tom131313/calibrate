@@ -13,7 +13,6 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-
 import org.photonvision.common.logging.LogGroup;
 import org.photonvision.common.logging.Logger;
 
@@ -28,7 +27,6 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 class Calibrator {
     private static final Logger logger = new Logger(Calibrator.class, LogGroup.General);
-    static {logger.debug("Starting ----------------------------------------");}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -91,8 +89,7 @@ class Calibrator {
 
     Calibrator(Size img_size)
     {
-      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-
+        logger.debug("Starting ----------------------------------------");
         this.img_size = img_size;
         // initial fake camera matrix to get things started
         // initial K matrix

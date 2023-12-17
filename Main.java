@@ -32,6 +32,7 @@ import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.photonvision.common.logging.LogGroup;
+import org.photonvision.common.logging.LogLevel;
 import org.photonvision.common.logging.Logger;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -53,13 +54,8 @@ import edu.wpi.first.cscore.VideoProperty;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.6"; // change this
+    private static final String VERSION = "beta 12.7"; // change this
     static final Logger logger = new Logger(Main.class, LogGroup.General);
-
-    static
-    {
-        logger.info("Pose Guidance Camera Calibration version " + VERSION);
-    }
 
     private static int frameNumber = 0;
     static String frame = "00000 ";
@@ -192,6 +188,8 @@ public class Main {
 /*-------------------------------------------------------------------------------------------------*/
     public static void main(String[] args) throws Exception
     {
+        Logger.setLevel(LogGroup.General, LogLevel.DEBUG);
+        logger.info("Pose Guidance Camera Calibration version " + VERSION);
         // get the parameters for the user provided options
         logger.debug("Command Line Args " + Arrays.toString(args));
 

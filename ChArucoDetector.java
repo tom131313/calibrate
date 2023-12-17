@@ -27,7 +27,6 @@ import org.opencv.objdetect.DetectorParameters;
 import org.opencv.objdetect.Dictionary;
 import org.opencv.objdetect.Objdetect;
 import org.opencv.objdetect.RefineParameters;
-
 import org.photonvision.common.logging.LogGroup;
 import org.photonvision.common.logging.Logger;
 
@@ -42,7 +41,6 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 public class ChArucoDetector {
     private static final Logger logger = new Logger(ChArucoDetector.class, LogGroup.General);
-    static {logger.debug("Starting ----------------------------------------");}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -131,7 +129,7 @@ public class ChArucoDetector {
 
     public ChArucoDetector() throws FileNotFoundException, IOException
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        logger.debug("Starting ----------------------------------------");
 
         /// create board
         this.board.generateImage(this.boardImageSize, this.boardImage);

@@ -4,7 +4,6 @@ import java.util.zip.Deflater;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-
 import org.photonvision.common.logging.LogGroup;
 import org.photonvision.common.logging.Logger;
 
@@ -20,7 +19,6 @@ import org.photonvision.common.logging.Logger;
 public class ArrayUtils
 {
 	private static final Logger logger = new Logger(ArrayUtils.class, LogGroup.General);
-
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */

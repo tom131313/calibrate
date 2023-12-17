@@ -12,7 +12,6 @@ import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-
 import org.photonvision.common.logging.LogGroup;
 import org.photonvision.common.logging.Logger;
 
@@ -27,8 +26,6 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 class BoardPreview {
     private static final Logger logger = new Logger(BoardPreview.class, LogGroup.General);
-    static {logger.debug("Starting ----------------------------------------");}
-
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -114,7 +111,7 @@ class BoardPreview {
     private Mat Knew = new Mat();
     BoardPreview(Mat img)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        logger.debug("Starting ----------------------------------------");
 
         img.copyTo(this.img);
 

@@ -40,7 +40,6 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 public class UserGuidance {
     private static final Logger logger = new Logger(UserGuidance.class, LogGroup.General);
-    static {logger.debug("Starting ----------------------------------------");}
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -122,7 +121,7 @@ public class UserGuidance {
 
     UserGuidance(ChArucoDetector tracker, double var_terminate) throws Exception // force use of var_terminate=0.1 instead of defaulting
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        logger.debug("Starting ----------------------------------------");
 
         this.tracker = tracker;
         this.var_terminate = var_terminate;
@@ -448,7 +447,7 @@ public class UserGuidance {
 
         logger.debug("calibration image captured");
         logger.debug("camera matrix\n" + this.calib.K().dump());
-        logger.debug("camera distortion " + this.calib.cdist());
+        logger.debug("camera distortion " + this.calib.cdist().dump());
 
         this.converged = isAllTrue(this.pconverged);
 
