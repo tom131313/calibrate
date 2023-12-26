@@ -4,13 +4,8 @@
 
 package org.photonvision.calibrator;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.CRC32;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -50,11 +45,8 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    // configuration
-    private Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
-    private double square_len = Cfg.square_len;
-    private double marker_len = Cfg.marker_len;
-    Size img_size = new Size(Cfg.image_width, Cfg.image_height);
+
+    // Size img_size = new Size(Cfg.image_width, Cfg.image_height); not used in this class so fixup other classes' references to here
 
     // per frame data
     // p3d is the object coordinates of the perfect undistorted ChArUco Board corners that the camera is pointing at.
@@ -67,7 +59,10 @@ public class ChArucoDetector {
     private boolean pose_valid = false;
     // private Mat raw_img = null; // not used
 
-    /// Charuco Board
+    // Charuco Board configuration (duplicates ChArUcoBoardPrint)
+    private Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
+    private double square_len = Cfg.square_len;
+    private double marker_len = Cfg.marker_len;
     private final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
     private final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
     final Mat boardImage = new Mat();
@@ -127,143 +122,143 @@ public class ChArucoDetector {
         return cids;
     }
 
-    public ChArucoDetector() throws FileNotFoundException, IOException
+    public ChArucoDetector() // throws FileNotFoundException, IOException
     {
         logger.debug("Starting ----------------------------------------");
 
         /// create board
         this.board.generateImage(this.boardImageSize, this.boardImage);
 
-        if (Cfg.writeBoard)
-        {
-            // write ChArUco Board to file for print to use for calibration
+        // if (Cfg.writeBoard)
+        // {
+        //     // write ChArUco Board to file for print to use for calibration
             
-            /* PNG */
-            final String boardFilePNG = Cfg.boardFile + ".png";
-            FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
-            logger.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
+        //     /* PNG */
+        //     final String boardFilePNG = Cfg.boardFile + ".png";
+        //     FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
+        //     logger.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
 
-            byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
+        //     byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
 
-            CRC32 crc32 = new CRC32();
+        //     CRC32 crc32 = new CRC32();
 
-            // SIGNATURE
-            final byte[] signaturePNG =
-                {
-                (byte)0x89, (byte)0x50, (byte)0x4e, (byte)0x47, (byte)0x0d, (byte)0x0a, (byte)0x1a, (byte)0x0a // PNG magic number
-                };
-            outputStreamPNG.write(signaturePNG);
+        //     // SIGNATURE
+        //     final byte[] signaturePNG =
+        //         {
+        //         (byte)0x89, (byte)0x50, (byte)0x4e, (byte)0x47, (byte)0x0d, (byte)0x0a, (byte)0x1a, (byte)0x0a // PNG magic number
+        //         };
+        //     outputStreamPNG.write(signaturePNG);
 
-            // HEADER
-            byte[] IHDR =
-            {
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // length
-                (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // IHDR
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder
-                (byte)0x08,                                     // bit depth
-                (byte)0x00,                                     // color type - grey scale
-                (byte)0x00,                                     // compression method
-                (byte)0x00,                                     // filter method (default/only one?)
-                (byte)0x00,                                     // interlace method
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
-            };
-            // fetch the length data for the IHDR
-            int ihdrWidthOffset = 8;
-            int ihdrHeightOffset = 12;
-            ArrayUtils.intToByteArray(boardImage.cols(), IHDR, ihdrWidthOffset);
-            ArrayUtils.intToByteArray(boardImage.rows(), IHDR, ihdrHeightOffset);
+        //     // HEADER
+        //     byte[] IHDR =
+        //     {
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // length
+        //         (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // IHDR
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder
+        //         (byte)0x08,                                     // bit depth
+        //         (byte)0x00,                                     // color type - grey scale
+        //         (byte)0x00,                                     // compression method
+        //         (byte)0x00,                                     // filter method (default/only one?)
+        //         (byte)0x00,                                     // interlace method
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
+        //     };
+        //     // fetch the length data for the IHDR
+        //     int ihdrWidthOffset = 8;
+        //     int ihdrHeightOffset = 12;
+        //     ArrayUtils.intToByteArray(boardImage.cols(), IHDR, ihdrWidthOffset);
+        //     ArrayUtils.intToByteArray(boardImage.rows(), IHDR, ihdrHeightOffset);
     
-            crc32.reset();
-            crc32.update(IHDR, 4, IHDR.length-8); // skip the beginning 4 for length and ending 4 for crc
-            ArrayUtils.intToByteArray((int)crc32.getValue(), IHDR, IHDR.length-4);
-            outputStreamPNG.write(IHDR);
+        //     crc32.reset();
+        //     crc32.update(IHDR, 4, IHDR.length-8); // skip the beginning 4 for length and ending 4 for crc
+        //     ArrayUtils.intToByteArray((int)crc32.getValue(), IHDR, IHDR.length-4);
+        //     outputStreamPNG.write(IHDR);
 
-            // PHYSICAL RESOLUTION
-            byte[] PHYS = // varies with the requested resolution [pixels per meter]
-                {
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // length
-                (byte)0x70, (byte)0x48, (byte)0x59, (byte)0x73, // pHYs
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // x res [pixels per unit] place holder
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // y res [pixels per unit] place holder
-                (byte)0x01,                                     // units [unit is meter]
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
-                };
-            int physXresOffset = 8;
-            int physYresOffset = 12;
-            ArrayUtils.intToByteArray(Cfg.resXDPM, PHYS, physXresOffset);
-            ArrayUtils.intToByteArray(Cfg.resYDPM, PHYS, physYresOffset);
+        //     // PHYSICAL RESOLUTION
+        //     byte[] PHYS = // varies with the requested resolution [pixels per meter]
+        //         {
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // length
+        //         (byte)0x70, (byte)0x48, (byte)0x59, (byte)0x73, // pHYs
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // x res [pixels per unit] place holder
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // y res [pixels per unit] place holder
+        //         (byte)0x01,                                     // units [unit is meter]
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
+        //         };
+        //     int physXresOffset = 8;
+        //     int physYresOffset = 12;
+        //     ArrayUtils.intToByteArray(Cfg.resXDPM, PHYS, physXresOffset);
+        //     ArrayUtils.intToByteArray(Cfg.resYDPM, PHYS, physYresOffset);
 
-            crc32.reset();
-            crc32.update(PHYS, 4, PHYS.length-8); // skip the beginning 4 for length and ending 4 for crc
-            ArrayUtils.intToByteArray((int)crc32.getValue(), PHYS, PHYS.length - 4);
-            outputStreamPNG.write(PHYS);
+        //     crc32.reset();
+        //     crc32.update(PHYS, 4, PHYS.length-8); // skip the beginning 4 for length and ending 4 for crc
+        //     ArrayUtils.intToByteArray((int)crc32.getValue(), PHYS, PHYS.length - 4);
+        //     outputStreamPNG.write(PHYS);
 
-            // DATA
-            //The complete filtered PNG image is represented by a single zlib datastream that is stored in a number of IDAT chunks.
+        //     // DATA
+        //     //The complete filtered PNG image is represented by a single zlib datastream that is stored in a number of IDAT chunks.
 
-            // create the filtered, compressed datastream
+        //     // create the filtered, compressed datastream
 
-            boardImage.get(0, 0, boardByte); // board from OpenCV Mat
+        //     boardImage.get(0, 0, boardByte); // board from OpenCV Mat
 
-            // filter type begins each row so step through all the rows adding the filter type to each row
-            byte[] boardByteFilter = new byte[boardImage.rows() + boardByte.length];
-            int flatIndex = 0;
-            int flatIndexFilter = 0;
-            for (int row = 0; row < boardImage.rows(); row++)
-            {
-                boardByteFilter[flatIndexFilter++] = 0x00; // filter type none begins each row          
-                for (int col = 0; col < boardImage.cols(); col++)
-                {
-                    boardByteFilter[flatIndexFilter++] = boardByte[flatIndex++];
-                }
-            }
-            // complete filtered PNG image is represented by a single zlib compression datastream
-            byte[] boardCompressed = ArrayUtils.compress(boardByteFilter);
+        //     // filter type begins each row so step through all the rows adding the filter type to each row
+        //     byte[] boardByteFilter = new byte[boardImage.rows() + boardByte.length];
+        //     int flatIndex = 0;
+        //     int flatIndexFilter = 0;
+        //     for (int row = 0; row < boardImage.rows(); row++)
+        //     {
+        //         boardByteFilter[flatIndexFilter++] = 0x00; // filter type none begins each row          
+        //         for (int col = 0; col < boardImage.cols(); col++)
+        //         {
+        //             boardByteFilter[flatIndexFilter++] = boardByte[flatIndex++];
+        //         }
+        //     }
+        //     // complete filtered PNG image is represented by a single zlib compression datastream
+        //     byte[] boardCompressed = ArrayUtils.compress(boardByteFilter);
 
-            // chunk the compressed datastream
-            // chunking not necessary for the ChArUcoBoard but it's potentially good for other uses
-            int chunkSize = 0;
-            int chunkSizeMax = 100_000; // arbitrary "small" number
-            int dataWritten = 0;
+        //     // chunk the compressed datastream
+        //     // chunking not necessary for the ChArUcoBoard but it's potentially good for other uses
+        //     int chunkSize = 0;
+        //     int chunkSizeMax = 100_000; // arbitrary "small" number
+        //     int dataWritten = 0;
 
-            while (dataWritten < boardCompressed.length) // chunk until done
-            {
-                chunkSize = Math.min(chunkSizeMax, boardCompressed.length - dataWritten); // max or what's left in the last chunk
+        //     while (dataWritten < boardCompressed.length) // chunk until done
+        //     {
+        //         chunkSize = Math.min(chunkSizeMax, boardCompressed.length - dataWritten); // max or what's left in the last chunk
 
-                byte[] IDAT = new byte[4 + 4 + chunkSize + 4]; // 4 length + 4 "IDAT" + chunk length + 4 CRC
+        //         byte[] IDAT = new byte[4 + 4 + chunkSize + 4]; // 4 length + 4 "IDAT" + chunk length + 4 CRC
 
-                ArrayUtils.intToByteArray(chunkSize, IDAT, 0); // stash length of the chunk data in first 4 bytes
-                IDAT[4] = (byte)("IDAT".charAt(0));
-                IDAT[5] = (byte)("IDAT".charAt(1));
-                IDAT[6] = (byte)("IDAT".charAt(2));
-                IDAT[7] = (byte)("IDAT".charAt(3));
-                for(int i=0; i < chunkSize; i++)
-                {
-                    IDAT[8 + i] = boardCompressed[dataWritten + i]; // stash data from where we left off to its place in the chunk
-                }
+        //         ArrayUtils.intToByteArray(chunkSize, IDAT, 0); // stash length of the chunk data in first 4 bytes
+        //         IDAT[4] = (byte)("IDAT".charAt(0));
+        //         IDAT[5] = (byte)("IDAT".charAt(1));
+        //         IDAT[6] = (byte)("IDAT".charAt(2));
+        //         IDAT[7] = (byte)("IDAT".charAt(3));
+        //         for(int i=0; i < chunkSize; i++)
+        //         {
+        //             IDAT[8 + i] = boardCompressed[dataWritten + i]; // stash data from where we left off to its place in the chunk
+        //         }
 
-                crc32.reset();
-                crc32.update(IDAT, 4, IDAT.length - 8); // skip the beginning 4 for length and ending 4 for crc
-                ArrayUtils.intToByteArray((int)crc32.getValue(), IDAT, IDAT.length - 4); // crc in last 4 bytes  
+        //         crc32.reset();
+        //         crc32.update(IDAT, 4, IDAT.length - 8); // skip the beginning 4 for length and ending 4 for crc
+        //         ArrayUtils.intToByteArray((int)crc32.getValue(), IDAT, IDAT.length - 4); // crc in last 4 bytes  
 
-                outputStreamPNG.write(IDAT);
-                dataWritten += chunkSize;
-           }
+        //         outputStreamPNG.write(IDAT);
+        //         dataWritten += chunkSize;
+        //    }
 
-            // END
-            final byte[] IEND =
-                {
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // length
-                (byte)0x49, (byte)0x45, (byte)0x4e, (byte)0x44, // IEND
-                (byte)0xae, (byte)0x42, (byte)0x60, (byte)0x82  // crc
-                };
+        //     // END
+        //     final byte[] IEND =
+        //         {
+        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // length
+        //         (byte)0x49, (byte)0x45, (byte)0x4e, (byte)0x44, // IEND
+        //         (byte)0xae, (byte)0x42, (byte)0x60, (byte)0x82  // crc
+        //         };
             
-            outputStreamPNG.write(IEND);
+        //     outputStreamPNG.write(IEND);
 
-            outputStreamPNG.close();
-        }
-        /// end create board
+        //     outputStreamPNG.close();
+        // }
+        // /// end create board
         
         /// board detector
         final DetectorParameters detectParams = new DetectorParameters();
@@ -474,16 +469,25 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    public void detect(Mat img) throws Exception
+/**
+ * 
+ * @param img
+ * @return true if too few corners to use image
+ * @throws Exception
+ */
+    public boolean detect(Mat img) throws Exception
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         // raw_img never used - not converted
+        boolean fewCorners = false;
         this.detect_pts(img);
 
         if (this.intrinsic_valid)
         {
-            this.update_pose();
+            fewCorners = this.update_pose();
         }
+
+        return fewCorners;
     } 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -524,16 +528,23 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    public void update_pose() throws Exception
+
+/**
+ * 
+ * @return fewCorners
+ * @throws Exception
+ */
+    public boolean update_pose() throws Exception
     {
+        boolean fewCorners = false;
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
             // logger.debug("too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
-            Main.fewCorners = true;
+            fewCorners = true;
             this.pose_valid = false;
-            return;
+            return fewCorners;
         }
 
         MatOfPoint3f p3dReTyped = new MatOfPoint3f(this.p3d);
@@ -559,7 +570,7 @@ public class ChArucoDetector {
         if ( ! this.pose_valid)
         {
             // logger.debug("pose not valid");
-            return;            
+            return fewCorners;            
         }
 
         // remove outliers code below commented out because it didn't seem to help. Could be resurrected but needs to be tested better.
@@ -628,6 +639,7 @@ public class ChArucoDetector {
 
         // logger.debug("out rvec\n" + this.rvec.dump());
         // logger.debug("out tvec\n" + this.tvec.dump());
+        return fewCorners;
     }
 }
 /*-------------------------------------------------------------------------------------------------*/

@@ -8,8 +8,6 @@ import org.opencv.core.Scalar;
 import org.opencv.core.TermCriteria;
 import org.opencv.objdetect.Objdetect;
 
-import edu.wpi.first.cscore.VideoMode.PixelFormat;
-
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -31,32 +29,12 @@ public class Cfg
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 // SHOULD BE USER SPECIFIED
-    static final boolean writeBoard = true;
     static final String boardFile = "ChArUcoBoard";
-    static boolean logDetectedCorners = false; // save to files captured images and detected corners
-    static String cornersLog = "corners.vnl";
     static int resXDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
     static int resYDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
+    // static boolean logDetectedCorners = false; // save to files captured images and detected corners
+    static String cornersLog = "corners.vnl";
 ///////////////////////////
-
-// SHOULD COME FROM PV CAMERA
-    // Checks for the specified camera - laptop internal or USB external and uses it if present.
-    // 0 internal if no external or if external connected after boot-up
-    // 0 external if connected at boot-up
-    // 1 internal if external connected at boot-up
-    // 1 is external if connected after boot-up
-    static int camId = 0;
-    static PixelFormat pixelFormat = PixelFormat.kYUYV;
-    static final int displayPort = 1185;
-    static int fps = 10;
-    static final int exposureManual = 70;
-    static final int brightness = 70;
-    
-    // a few icky int-float-double conversion scattered throughout the program.
-    // camera image size and thus user display screen size
-    static int image_width = 1280;
-    static int image_height = 720;
-/////////////////////////////
 
 // ALL THE FOLLOWING STUFF MIGHT NEVER NEED TO BE CHANGED
     static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released

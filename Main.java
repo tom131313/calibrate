@@ -22,7 +22,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.Point;
@@ -54,14 +53,16 @@ import edu.wpi.first.cscore.VideoProperty;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.7"; // change this
+    private static final String VERSION = "beta 12.8"; // change this
+
     static final Logger logger = new Logger(Main.class, LogGroup.General);
 
-    private static int frameNumber = 0;
-    static String frame = "00000 ";
+///////////////////////////////////////////////////////////////////////////////////////
+// START OF SHOULD COME FROM PV
+///////////////////////////////////////////////////////////////////////////////////////
+
     private static PrintWriter vnlog = null;
-    static Mat progressInsert;
-    static boolean fewCorners = true;
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -137,6 +138,7 @@ public class Main {
         options.addOption("pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
         options.addOption("cameraId", true, "camera id (0)");
         options.addOption("fps", true, "frames per second (10)");
+        options.addOption("printBoard", false, "print to file ChArUco Board");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -148,11 +150,11 @@ public class Main {
         }
         
         if ( cmd.hasOption("width")) {
-            Cfg.image_width = Integer.parseInt(cmd.getOptionValue("width"));
+            image_width = Integer.parseInt(cmd.getOptionValue("width"));
         }
         
         if (cmd.hasOption("height")) {
-            Cfg.image_height = Integer.parseInt(cmd.getOptionValue("height"));
+            image_height = Integer.parseInt(cmd.getOptionValue("height"));
         }
         
         if (cmd.hasOption("dpmX")) {
@@ -164,19 +166,42 @@ public class Main {
         }
         
         if (cmd.hasOption("pxFmt")) {
-            Cfg.pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt"));
+            pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt"));
         }
         
         if (cmd.hasOption("cameraId")) {
-            Cfg.camId = Integer.parseInt(cmd.getOptionValue("cameraId"));
+            camId = Integer.parseInt(cmd.getOptionValue("cameraId"));
         }
         
         if (cmd.hasOption("fps")) {
-            Cfg.fps = Integer.parseInt(cmd.getOptionValue("fps"));
+            fps = Integer.parseInt(cmd.getOptionValue("fps"));
+        }
+
+        if (cmd.hasOption("printBoard")) {
+            new ChArUcoBoardPrint();
+            return false; // exit program
         }
 
         return true;
     }
+    // Checks for the specified camera - laptop internal or USB external and uses it if present.
+    // 0 internal if no external or if external connected after boot-up
+    // 0 external if connected at boot-up
+    // 1 internal if external connected at boot-up
+    // 1 is external if connected after boot-up
+    static int camId = 0;
+    static PixelFormat pixelFormat = PixelFormat.kYUYV;
+    static int fps = 10;
+    
+    // a few icky int-float-double conversions scattered throughout the program.
+    // camera image size and thus user display screen size
+    static int image_width = 1280;
+    static int image_height = 720;
+/////////////////////////////
+
+// OUTPUT DISPLAY
+    static final int displayPort = 1185;
+/////////////////////////////
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -193,6 +218,8 @@ public class Main {
         // get the parameters for the user provided options
         logger.debug("Command Line Args " + Arrays.toString(args));
 
+        org.photonvision.common.util.TestUtils.loadLibraries();
+       
         try {
             if ( ! handleArgs(args)) {
                 System.exit(0);
@@ -202,32 +229,17 @@ public class Main {
             System.exit(0);
         }
 
-        org.photonvision.common.util.TestUtils.loadLibraries();
-
-        progressInsert = new Mat();
-        
         // keyboard handler for PV environment using the web interface
-        Main MainInstance = null;
         Keystroke keystroke;
         Thread keyboardThread;
-        MainInstance = new Main();
+        Main MainInstance = new Main();
         keystroke = MainInstance.new Keystroke();
         keyboardThread = new Thread(keystroke, "keys");
         keyboardThread.setDaemon(true);
         keyboardThread.start();
 
-        // output display of the camera image with guidance board
-        CvSource networkDisplay = null;
-        MjpegServer mjpegServer;
-        networkDisplay = new CvSource("calibPV", /*VideoMode.*/PixelFormat.kMJPEG,
-                Cfg.image_height, Cfg.image_width, Cfg.fps);
-        mjpegServer = new MjpegServer("GuidanceView", Cfg.displayPort);
-        logger.info("View Guidance Board On Port " + Cfg.displayPort);
-        mjpegServer.setSource(networkDisplay);      
-        Mat out = new Mat(); // user display Mat
-
         // camera input
-        final UsbCamera camera = CameraServer.startAutomaticCapture(Cfg.camId); // gives access to camera parameters on port 181 or above
+        final UsbCamera camera = CameraServer.startAutomaticCapture(camId); // gives access to camera parameters on port 181 or above
         // final UsbCamera camera = new UsbCamera("mycamera", Cfg.camId); // same camera as above but no interaction on port 181 or above
         for ( VideoMode vm : camera.enumerateVideoModes())
         {
@@ -238,32 +250,67 @@ public class Main {
         {
             logger.debug("camera property choices " + vp.get() + " " + vp.getName() + " " + VideoProperty.getKindFromInt(vp.get()));
         }
-        VideoMode videoMode = new VideoMode(Cfg.pixelFormat, Cfg.image_width, Cfg.image_height, Cfg.fps);
-        logger.debug("Setting camera mode " + VideoMode.getPixelFormatFromInt(Cfg.pixelFormat.getValue()) + " " + Cfg.image_width + "x" + Cfg.image_height + " " + Cfg.fps + "fps");
+        VideoMode videoMode = new VideoMode(pixelFormat, image_width, image_height, fps);
+        logger.debug("Setting camera mode "
+                + VideoMode.getPixelFormatFromInt(pixelFormat.getValue()) + " " + image_width + "x" + image_height + " " + fps + "fps");
         try {
             if ( ! camera.setVideoMode(videoMode)) throw new IllegalArgumentException("set video mode returned false");
         } catch (Exception e) {
             logger.error("camera set video mode error; mode is unchanged", e);
         }
-        logger.info("camera " + Cfg.camId + " properties can be seen and changed on port 1181 or higher");
+        logger.info("camera " + camId + " properties can be seen and changed on port 1181 or higher");
         CvSink cap = CameraServer.getVideo(camera); // Get a CvSink. This will capture Mats from the camera
         cap.setSource(camera);
-        Mat _img = new Mat();                                                  // this follows the camera input but ...
-        Mat  img = new Mat(Cfg.image_height, Cfg.image_width, CvType.CV_8UC3); // set by user config - need camera to return this size, too
+        Mat  img = new Mat();
 
+        // output display of the camera image with guidance board
+        CvSource networkDisplay = null;
+        MjpegServer mjpegServer;
+        networkDisplay = new CvSource("calibPV", /*VideoMode.*/PixelFormat.kMJPEG,
+                image_height, image_width, fps);
+        mjpegServer = new MjpegServer("GuidanceView", displayPort);
+        logger.info("View Guidance Board On Port " + displayPort);
+        mjpegServer.setSource(networkDisplay);
+
+    bigLoop: // simulate the PV loop and multi-cameras
+    while ( ! Thread.interrupted())
+    {
+        // Grab first good image from camera to set the size. In PV this will already be set for us
+        while ( ! Thread.interrupted())
+        {
+            long status = cap.grabFrame(img, 0.5);
+            if (status != 0)
+            {
+                break;
+            }
+            else
+            {
+                logger.warn("initial grabFrame error " + cap.getError());
+            }
+        }
+///////////////////////////////////////////////////////////////////////////////////////
+// END OF SHOULD COME FROM PV
+//////////////////////////////////////////////////////////////////////////////////////
+
+        Size img_size = new Size(img.width(), img.height());
+        Size img_size_prev = img_size.clone();        
+        Mat out = new Mat(); // user display Mat
+        Mat progressInsert = new Mat();
+     
         ChArucoDetector tracker = new ChArucoDetector();
-        UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate);
+        UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate, img_size);
 
         // runtime variables
         boolean mirror = false;
         boolean save = false; // indicator for user pressed the "c" key to capture (save) manually
         String endMessage = "logic error"; // status of calibration at the end - if this initial value isn't reset, indicates a screw-up in the code
 
+        int frameNumber = 0;
+
         grabFrameLoop:
         while ( ! Thread.interrupted())
         {
             frameNumber++;
-            frame = String.format("%05d ", frameNumber);
             if (frameNumber%Cfg.garbageCollectionFrames == 0) // periodically cleanup old Mats
             {
                 System.runFinalization();
@@ -271,16 +318,17 @@ public class Main {
             }
             boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
 
-            long status = cap.grabFrame(_img, 0.5);
+            long status = cap.grabFrame(img, 0.5);
             if (status != 0)
             {
-                if (_img.height() != Cfg.image_height || _img.width() != Cfg.image_width) // enforce camera matches user spec for testing and no good camera setup
+                img_size = new Size(img.width(), img.height());
+                // if image size changes during calibration bail out and get ready to calibrate again with new size
+                if ( ! img_size_prev.equals(img_size))               
                 {
-                    logger.warn("camera size incorrect " + _img.width() + "x" + _img.height()
-                                        + "; user specified to calibrate at " + Cfg.image_width + "x" + Cfg.image_height + " - ignoring it");
-                    continue;
+                    logger.warn("changing image size to " + img_size + " from " + img_size_prev + ", restarting calibration");
+                    img_size_prev = img_size.clone();
+                    continue bigLoop; // quit this calibration and start anew
                 }
-                _img.copyTo(img);
             }
             else
             {
@@ -289,7 +337,7 @@ public class Main {
                 continue; // pretend frame never happened - rkt addition; original reprocessed previous frame
             }
 
-            tracker.detect(img);
+            boolean fewCorners = tracker.detect(img); // detect the board
 
             if (save)
             {
@@ -301,14 +349,14 @@ public class Main {
 
             ugui.draw(out, mirror); // this adds the guidance board to the camera image (out) to make the new out
 
-            boolean capturedPose = ugui.update(force); // calibrate
+            boolean capturedPose = ugui.update(force, progressInsert); // calibrate
             
-            if (capturedPose && Cfg.logDetectedCorners)
+            if (capturedPose /*&& Cfg.logDetectedCorners*/)
             {
                 logDetectedCorners(img, ugui);
             }
 
-            displayOverlay(out, ugui);
+            displayOverlay(out, ugui, fewCorners, frameNumber, progressInsert);
 
             int k;
             networkDisplay.putFrame(out);
@@ -352,17 +400,15 @@ public class Main {
         Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
         Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 0), 2);
 
-        for (int runOut = 0; runOut < 10; runOut++) // last frame won't display so repeat it a bunch of times to see it; q lags these 2 seconds
-        {
-            networkDisplay.putFrame(out);
-            Thread.sleep(200L);
-        }
-        networkDisplay.close();
+        networkDisplay.putFrame(out);
 
         if (vnlog != null)
         {
             vnlog.close();
+            vnlog = null;
         }
+    }
+        networkDisplay.close();
         logger.debug("End of running main");
         System.exit(0);
     }   
@@ -375,10 +421,11 @@ public class Main {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    public static void displayOverlay(Mat out, UserGuidance ugui)
+    public static void displayOverlay(Mat out, UserGuidance ugui, boolean fewCorners, int frameNumber, Mat progressInsert)
     {
-        Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-        Imgproc.putText(out, Main.frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+        String frame = String.format("%05d ", frameNumber);
+        Imgproc.putText(out, frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
+        Imgproc.putText(out, frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
 
         if (ugui.user_info_text().length() > 0) // is there a message to display?
         {
@@ -396,7 +443,6 @@ public class Main {
             String message2 = "moving or bad aim\n";
             Imgproc.putText(out, message2, new Point(80, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
             Imgproc.putText(out, message2, new Point(80, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
-            fewCorners = false;
         }
 
         // ugui.tgt_r() ugui.tgt_t guidance board target rotation and translation from pose generation
@@ -449,7 +495,7 @@ public class Main {
         if ( ! progressInsert.empty())
         {
             // add to the display the board/camera overlap image
-            Imgproc.resize(progressInsert, progressInsert, new Size(Cfg.image_width*0.1, Cfg.image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
+            Imgproc.resize(progressInsert, progressInsert, new Size(image_width*0.1, image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
             List<Mat> temp1 = new ArrayList<>(3); // make the 1 b&w channel into 3 channels
             temp1.add(progressInsert);
             temp1.add(progressInsert);
@@ -460,12 +506,12 @@ public class Main {
                 new Point(0, 0),
                 new Point(progressInsert.cols()-1., progressInsert.rows()-1.),
                 new Scalar(255., 255., 0.), 1);
-            temp2.copyTo(out.submat((int)(Cfg.image_height*0.45), (int)(Cfg.image_height*0.45)+progressInsert.rows(), 0,progressInsert.cols()));
+            temp2.copyTo(out.submat((int)(image_height*0.45), (int)(image_height*0.45)+progressInsert.rows(), 0,progressInsert.cols()));
             temp2.release();
 
             Imgproc.putText(out,
                 String.format("similar%5.2f/%4.2f", ugui.pose_close_to_tgt_get(), Cfg.pose_close_to_tgt_min),
-                new Point(0,(int)(Cfg.image_height*0.45)+progressInsert.rows()+20) , Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(255, 255, 255), 1);
+                new Point(0,(int)(image_height*0.45)+progressInsert.rows()+20) , Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(255, 255, 255), 1);
         }  
 
         // display intrinsics convergence
@@ -480,9 +526,9 @@ public class Main {
             {
                 color = new Scalar(0, 0, 255);
             }
-            Imgproc.rectangle(out, new Point((double)i*20,Cfg.image_height*0.4), new Point((double)(i+1)*20, Cfg.image_height*0.4+20), color, Imgproc.FILLED);
+            Imgproc.rectangle(out, new Point((double)i*20,image_height*0.4), new Point((double)(i+1)*20, image_height*0.4+20), color, Imgproc.FILLED);
             Imgproc.putText(out, ugui.INTRINSICS()[i],
-                new Point((double)i*20, Cfg.image_height*0.4+15),
+                new Point((double)i*20, image_height*0.4+15),
                 Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
         }
     }

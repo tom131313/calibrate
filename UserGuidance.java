@@ -119,19 +119,19 @@ public class UserGuidance {
         return pose_close_to_tgt;
     }
 
-    UserGuidance(ChArucoDetector tracker, double var_terminate) throws Exception // force use of var_terminate=0.1 instead of defaulting
+    UserGuidance(ChArucoDetector tracker, double var_terminate, Size img_size) throws Exception // force use of var_terminate=0.1 instead of defaulting
     {
         logger.debug("Starting ----------------------------------------");
 
+        this.img_size = img_size;
         this.tracker = tracker;
         this.var_terminate = var_terminate;
-        this.calib = new Calibrator(tracker.img_size);
+        this.calib = new Calibrator(this.img_size);
         this.pconverged = new boolean[this.calib.nintr()]; // initialized to false by Java
         this.allpts = (Cfg.board_x-1)*(Cfg.board_y-1); // board w = 9 h = 6 => 54 squares; 8x5 => 40 interior corners
         this.square_len = Cfg.square_len;
         this.marker_len = Cfg.marker_len;
         this.SQUARE_LEN_PIX = this.square_len;
-        this.img_size = tracker.img_size;
         this.overlap = Mat.zeros((int)this.img_size.height, (int)this.img_size.width, CvType.CV_8UC1);
 
         // preview image
@@ -298,9 +298,10 @@ public class UserGuidance {
      * Change from original - Returning numerical index instead of the true/false decision of close to target.
      * Calling program can decide what to do with the number. This can put all the decisions
      * in the same place instead of dispersed.
+     * @param progressInsert
      * @return Jaccard similarity coefficient of estimated image pose and desired (target) guidance pose
      */
-    private double pose_close_to_tgt()
+    private double pose_close_to_tgt(Mat progressInsert)
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
@@ -339,12 +340,12 @@ public class UserGuidance {
                                     Imgproc.INTER_NEAREST);
         // debug display
         Mat tempImg = new Mat();
-        tmp.copyTo(Main.progressInsert); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
+        tmp.copyTo(progressInsert); // test 1 has the board projected (warped) from where the detector thinks is the camera image pose
         this.overlap.copyTo(tempImg); // tempImg has the warped guidance board
 
-        Core.multiply(Main.progressInsert, Cfg.progressInsertCameraGrey, Main.progressInsert); // brighten (to near white) so it can be seen by humans
+        Core.multiply(progressInsert, Cfg.progressInsertCameraGrey, progressInsert); // brighten (to near white) so it can be seen by humans
         Core.multiply(tempImg, Cfg.progressInsertGuidanceGrey, tempImg); // brighten (to dark gray) so it can be seen by humans
-        Core.add(Main.progressInsert, tempImg, Main.progressInsert); // where they overlap is bright white
+        Core.add(progressInsert, tempImg, progressInsert); // where they overlap is bright white
 
         // logger.debug("shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
 
@@ -377,7 +378,7 @@ public class UserGuidance {
      * @return true if a new pose was captured
      * @throws Exception
      */ 
-    boolean update(boolean force) throws Exception
+    boolean update(boolean force, Mat progressInsert) throws Exception
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
@@ -399,7 +400,7 @@ public class UserGuidance {
 
         this.pose_reached = force && this.tracker.N_pts() >= Cfg.minCorners; // original had > 4
 
-        this.pose_close_to_tgt = this.pose_close_to_tgt();
+        this.pose_close_to_tgt = this.pose_close_to_tgt(progressInsert);
 
         if (this.pose_close_to_tgt > Cfg.pose_close_to_tgt_min)
         {
