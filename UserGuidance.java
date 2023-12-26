@@ -170,7 +170,7 @@ public class UserGuidance {
         boolean first = this.calib.keyframes.size() == 2;
 
         // compute the new intrinsics in calibrate
-        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1)); // dummy arg to avoid overloaded method
+        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1), false); // dummy arg to avoid overloaded method
 
         double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics (shorter name to match original code) to compare with the previous
 
@@ -387,7 +387,7 @@ public class UserGuidance {
         {
             // logger.debug("initial calibrate");
             // try to estimate intrinsic params from single frame
-            this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()));
+            this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()), false);
 
             if (this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be, original checked for nan but it never was
             {
@@ -635,7 +635,7 @@ void write()
     logger.debug("board_height: " + this.tracker.board_sz().height);
     logger.debug("square_size: " + this.square_len);
     logger.debug("marker_size: " + this.marker_len);
-    logger.debug(formatFlags(calib.flags()));
+    // logger.debug(formatFlags(calib.flags())); seems irrelevant since the first few and last calibrations don't use calib.flags
     logger.debug("fisheye_model: " + 0);
     logger.debug("camera_matrix:\n" + this.calib.K().dump());
     logger.debug("distortion_coefficients:\n" + this.calib.cdist().dump());

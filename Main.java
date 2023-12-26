@@ -53,7 +53,7 @@ import edu.wpi.first.cscore.VideoProperty;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.8"; // change this
+    private static final String VERSION = "beta 12.9"; // change this
 
     static final Logger logger = new Logger(Main.class, LogGroup.General);
 
@@ -364,6 +364,8 @@ public class Main {
 
             if (ugui.converged()) // are we there yet?
             {
+                ugui.calib.calibrate(ugui.calib.keyframes, true); // final, maybe more accurate calibration
+
                 ugui.write(); // write all the calibration data
 
                 endMessage = "CALIBRATED";
@@ -404,10 +406,15 @@ public class Main {
 
         if (vnlog != null)
         {
-            vnlog.close();
+            vnlog.close(); // user has to grab this file before the next capture otherwise it's gone and starting over
             vnlog = null;
         }
-    }
+
+        Thread.sleep(5000); // wait a bit for user to see it ended before starting anew
+
+    } // end bigLoop
+
+        // not likely to ever get here
         networkDisplay.close();
         logger.debug("End of running main");
         System.exit(0);

@@ -42,7 +42,7 @@ class Calibrator {
     private Mat Kin;
     private Mat K = new Mat();
     private Mat cdist = Mat.zeros(1,5, CvType.CV_64FC1);
-    private int flags = Calib3d.CALIB_USE_LU;
+    private int flags = Calib3d.CALIB_USE_LU; // might be less accurate and faster than default 0; K is not used as an input
 
     // calibration data
     List<keyframe> keyframes = new ArrayList<>(20);
@@ -138,13 +138,13 @@ class Calibrator {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    double[] calibrate(List<keyframe> keyframes) throws Exception // force use of keyframes instead of default None
+    double[] calibrate(List<keyframe> keyframes, boolean finalCalibration) throws Exception // force use of keyframes instead of default None
     {
       // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int flags = this.flags;
 
-        if ( keyframes.isEmpty()) // pose #1 hasn't been captured yet
+        if ( keyframes.isEmpty()) // pose #1 hasn't been captured yet or at the end use all of them
         {
           keyframes.addAll(this.keyframes); // gives size 1 keyframe for the first 2 poses so hard to tell the 2nd pose is in action since it's still #1
         }
@@ -185,8 +185,13 @@ class Calibrator {
             }
         }
 
+        if (finalCalibration)
+        {
+          flags = 0; // default 0 might be more accurate and slower than others; K is not used as an input
+        }
+
         calibrateCameraReturn res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
- 
+
         this.reperr = res.reperr;
         res.K.copyTo(this.K);
         res.cdist.copyTo(this.cdist);
