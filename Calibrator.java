@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
@@ -138,15 +155,17 @@ class Calibrator {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    double[] calibrate(List<keyframe> keyframes, boolean finalCalibration) throws Exception // force use of keyframes instead of default None
+    double[] calibrate(List<keyframe> keyframes) throws Exception // force use of keyframes instead of default None
     {
-      // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
+        int nkeyframes = this.keyframes.size(); // first pose is called #0 which is the number of previously captured poses
+ 
         int flags = this.flags;
 
-        if ( keyframes.isEmpty()) // pose #1 hasn't been captured yet or at the end use all of them
+        if (keyframes.isEmpty()) // indicates use all captured keyframes (not empty means use the individual frame before a capture)
         {
-          keyframes.addAll(this.keyframes); // gives size 1 keyframe for the first 2 poses so hard to tell the 2nd pose is in action since it's still #1
+          keyframes.addAll(this.keyframes);
         }
 
         if (keyframes.isEmpty())
@@ -154,41 +173,30 @@ class Calibrator {
           throw new Exception("keyframes is empty");
         }
 
-        int nkeyframes = keyframes.size();
-
-        // initialization process
-        if (nkeyframes <= 1)
-        // first pose hasn't been captured yet so it's 0 + the initial keyframe from above making 1
-        // second pose has the previous captured pose #1 and the second pose hasn't been captured yet making it #1, also.
-        // thus, RKT saved the pose that was last used.
-        // Probably could have determined what to do by saving the number of keyframes on entry to this method the first is 0 and the second is 1.
-
         // The flags were modified from the original under the assumption that this is what the author meant to do but could not get it to
         // work right because of a (likely) bug that trashed the initial K values. Hope the two fixes are right - seems to work better this way.
+        if (nkeyframes <= 1)
         {
-            switch (PoseGeneratorDist.pose)
-            {
-                case ORBITAL:
-                    // restrict early orbital calibrations to K matrix parameters and don't mess with distortion
-                    flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
-                    flags |= Calib3d.CALIB_ZERO_TANGENT_DIST | Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
-                    break;
-                
-                case PLANAR_FULL_SCREEN:
-                    // restrict early planar calibrations to distortion and don't mess with focal length
-                    flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT | Calib3d.CALIB_FIX_FOCAL_LENGTH;
-                    break;
-
-                default:
-                    logger.error("unknown initial pose " + PoseGeneratorDist.pose);
-                    break;
-            }
+              // 0: initialization process - first pose is orbital - bootstrap before the capture
+              // 1: initialization process - first pose is orbital - immediately after the capture
+              // restrict first orbital calibration to K matrix parameters and don't mess with distortion
+              flags |= Calib3d.CALIB_FIX_ASPECT_RATIO;
+              flags |= Calib3d.CALIB_ZERO_TANGENT_DIST | Calib3d.CALIB_FIX_K1 | Calib3d.CALIB_FIX_K2 | Calib3d.CALIB_FIX_K3;
         }
-
-        if (finalCalibration)
+        else
+        if (nkeyframes == 2)
         {
-          flags = 0; // default 0 might be more accurate and slower than others; K is not used as an input
+             // 2: initialization process - second pose is planar - immediately after the capture
+             // restrict first planar calibration to distortion and don't mess with focal length - use the K from first capture
+             flags |= Calib3d.CALIB_FIX_PRINCIPAL_POINT | Calib3d.CALIB_FIX_FOCAL_LENGTH;
         }
+        // if want to rerun the last calibration with flags = 0 could check previous to see if any new captures
+        // else
+        // if (nkeyframesPrevious = nkeyframes) // last calibration rerun with OpenCV default flag
+        // {
+          // flags = 0; // default 0 might be more accurate and slower than others; K is not used as an input
+        // }
+        // nkeyframesPrevious = nkeyframes;
 
         calibrateCameraReturn res = calibrateCamera(keyframes, this.img_size, flags, this.Kin);
 

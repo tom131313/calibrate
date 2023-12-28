@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
@@ -33,8 +50,6 @@ import org.photonvision.common.logging.Logger;
 public class PoseGeneratorDist {
     private static final Logger logger = new Logger(PoseGeneratorDist.class, LogGroup.General);
 
-    enum Pose {NONE, ORBITAL, PLANAR_FULL_SCREEN, FROM_BOUNDS};
-    static Pose pose = Pose.NONE; // probably shouldn't be static but they are mostly used in a static method and there is only one instantiation
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -157,7 +172,6 @@ public class PoseGeneratorDist {
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        pose = Pose.ORBITAL;
         // logger.debug("bbox " + bbox + "\n" + bbox.dump());
         // logger.debug("rx " + rx);
         // logger.debug("ry " + ry);
@@ -291,7 +305,7 @@ public class PoseGeneratorDist {
     private static List<Mat> pose_planar_fullscreen(Mat K, Mat cdist, Size img_size, Mat bbox)
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        pose = Pose.PLANAR_FULL_SCREEN;
+
         // don't use the principal point throughout just have X and Y no Z until it's calculated in the middle
         // compute a new Z
         // logger.debug("camera matrix K " + K + "\n" + K.dump());
@@ -354,7 +368,7 @@ public class PoseGeneratorDist {
     private pose_from_boundsReturn pose_from_bounds(Mat src_extParm, Rect tgt_rect, Mat K, Mat cdist, Size img_sz)
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        pose = Pose.FROM_BOUNDS;
+
         // logger.debug("src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
         // logger.debug("tgt_rect " + tgt_rect); // guidance board posed
         // logger.debug("camera matrix K " + K + "\n" + K.dump());

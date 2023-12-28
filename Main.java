@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
@@ -53,7 +70,7 @@ import edu.wpi.first.cscore.VideoProperty;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.9"; // change this
+    private static final String VERSION = "beta 12.10"; // change this
 
     static final Logger logger = new Logger(Main.class, LogGroup.General);
 
@@ -364,7 +381,7 @@ public class Main {
 
             if (ugui.converged()) // are we there yet?
             {
-                ugui.calib.calibrate(ugui.calib.keyframes, true); // final, maybe more accurate calibration
+                ugui.calib.calibrate(new ArrayList<>(1)); // final, maybe more accurate calibration; dummy arg to use all captures
 
                 ugui.write(); // write all the calibration data
 

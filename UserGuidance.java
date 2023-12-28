@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
@@ -144,9 +161,7 @@ public class UserGuidance {
         this.board_units.put(1, 0, tracker.board_sz().height*this.square_len);
         this.board_units.put(2, 0, tracker.board_sz().width*this.square_len);
         this.posegen = new PoseGeneratorDist(this.img_size);
-
-        // set first pose
-        this.set_next_pose();
+        this.set_next_pose(); // set first pose
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -161,7 +176,9 @@ public class UserGuidance {
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        if (this.calib.keyframes.size() < 2) // need at least 2 keyframes
+
+        // need at least 2 keyframes to compute the variances, etc.
+        if (this.calib.keyframes.size() < 2)
         {
             return;
         }
@@ -170,7 +187,7 @@ public class UserGuidance {
         boolean first = this.calib.keyframes.size() == 2;
 
         // compute the new intrinsics in calibrate
-        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1), false); // dummy arg to avoid overloaded method
+        double[] index_of_dispersion = this.calib.calibrate(new ArrayList<>(1)); // dummy arg to use all captures
 
         double[] pvar = this.calib.varIntrinsics(); // save the new intrinsics (shorter name to match original code) to compare with the previous
 
@@ -382,21 +399,27 @@ public class UserGuidance {
     {
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        // first time need to see at least half of the interior corners or force
-        if ((this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2))
+        // first pose needs to see at least half of the interior corners
+        // this image frame may or may not be good enough to capture so check if better than previous reperr (or initial minimum allowed)
+        // if image frame not good enough to capture we'll be back here next time
+        // if it is good enough to capture, the calibration is redone far below but that's not too much of a waste
+        if (this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2) // tempting to make this more corners required but not sure about all cameras
         {
             // logger.debug("initial calibrate");
             // try to estimate intrinsic params from single frame
-            this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts()), false);
-
+            this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts())); // no captures yet so estimate from this frame detection
+            // is this bootstrap calibration good enough to use at least for the next guidance display
             if (this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be, original checked for nan but it never was
             {
+                // better than previous reperr so use these intrinsics for next guidance display
                 // logger.debug("initial set_next_pose and intrinsics");
-                this.set_next_pose();  // update target pose
-                this.tracker.set_intrinsics(this.calib);
-                this.min_reperr_init = this.calib.reperr();
+                this.tracker.set_intrinsics(this.calib); // use the better (we are hopeful) intrinsics (rkt reversed this and the next line! did I screw up?)
+                this.set_next_pose();  // update target guidance pose display based on the new intrinsics
+                this.min_reperr_init = this.calib.reperr(); // ratchet what's considered better
             }
         }
+
+        // check if alignment to guidance board is good enough to calibrate and keep as a capture
 
         this.pose_reached = force && this.tracker.N_pts() >= Cfg.minCorners; // original had > 4
 
@@ -439,14 +462,15 @@ public class UserGuidance {
         // set the next guidance board pose if not all converged
 
         this.calib.keyframes.add(this.tracker.get_calib_pts());
-        // logger.debug("keyframe captured " + this.calib.keyframes.size());
-        // update calibration with all keyframe
+
+        logger.info("image capture number " + this.calib.keyframes.size());
+
+        // update calibration with all keyframes
         this.calibrate();
 
         // use the updated calibration results for tracking
         this.tracker.set_intrinsics(this.calib);
 
-        logger.debug("calibration image captured");
         logger.debug("camera matrix\n" + this.calib.K().dump());
         logger.debug("camera distortion " + this.calib.cdist().dump());
 

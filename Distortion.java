@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
@@ -192,7 +209,10 @@ class Distortion
         // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // best I can tell step is always 20 (subsample) and never 1 so this should not be executed
-        if (step == 1) throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
+        if (step == 1)
+        {
+            throw new IllegalArgumentException("step = 1 full image sampling not converted and tested");
+        }
         // make smaller 2-D Mat of x,y points from full size image Mat
         // the values in the smaller Mat are the original x, y coordinates from the larger Mat
 

@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) Photon Vision.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
@@ -341,6 +358,22 @@ public class ChArucoDetector {
         {
             logger.error("detectBoard error\n" + img + "\n" + this.ccorners.dump() + "\n" + this.cids.dump(), e);
             return; // skipping this image frame
+            // sometimes a likely OpenCV error:
+            // [General - ChArucoDetector] [ERROR] CvException [org.opencv.core.CvException: cv::Exception: OpenCV(4.8.0)
+            // D:\a\thirdparty-opencv\thirdparty-opencv\opencv\modules\objdetect\src\aruco\charuco_detector.cpp:202:
+            // error: (-215:Assertion failed) markerCorners.total() == markerIds.getMat().total()
+            // in function 'cv::aruco::CharucoDetector::CharucoDetectorImpl::interpolateCornersCharucoLocalHom'
+            // OR
+            // [General - ChArucoDetector] [ERROR] detectBoard error
+            // Mat [ 720*1280*CV_8UC3, isCont=true, isSubmat=false, nativeObj=0x29c22dad310, dataAddr=0x29c24e0e080 ]
+            // []
+            // []: unknown exception[0m
+            // [General - ChArucoDetector] [ERROR] java.lang.Exception: unknown exception
+            // at org.opencv.objdetect.CharucoDetector.detectBoard_0(Native Method)
+            // at org.opencv.objdetect.CharucoDetector.detectBoard(CharucoDetector.java:172)
+            // at org.photonvision.calibrator.ChArucoDetector.detect_pts(ChArucoDetector.java:355)
+            // at org.photonvision.calibrator.ChArucoDetector.detect(ChArucoDetector.java:505)
+            // at org.photonvision.calibrator.Main.main(Main.java:357)
         }
 
         // double check detect results since there was some unknown rare failure to get the N_pts set right
