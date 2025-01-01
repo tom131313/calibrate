@@ -1,50 +1,23 @@
-/*
- * Copyright (C) Photon Vision.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
 
-package org.photonvision.calibrator;
+package Guidance;
 
-import static org.photonvision.calibrator.ArrayUtils.argmax;
-import static org.photonvision.calibrator.ArrayUtils.argmin;
-import static org.photonvision.calibrator.ArrayUtils.isAllTrue;
+import static Guidance.ArrayUtils.argmax;
+import static Guidance.ArrayUtils.argmin;
+import static Guidance.ArrayUtils.isAllTrue;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.logging.Logger;
 
-import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-
-import org.photonvision.common.logging.LogGroup;
-import org.photonvision.common.logging.Logger;
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -56,7 +29,11 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class UserGuidance {
-    private static final Logger logger = new Logger(UserGuidance.class, LogGroup.General);
+    private static Logger LOGGER;
+    static {
+      LOGGER = Logger.getLogger("");
+      LOGGER.finest("Loading");     
+    }
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -67,9 +44,9 @@ public class UserGuidance {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    Calibrator calib;
+    public Calibrator calib;
 
-    private final String[] AX_NAMES = {"red", "green", "blue"};
+    // private final String[] AX_NAMES = {"red", "green", "blue"};
     private final String[] INTRINSICS = {"fx", "fy", "cx", "cy", "k1", "k2", "p1", "p2", "k3"};
     private final String[] POSE = {"fx", "ry", "rz", "tx", "ty", "tz"};
 
@@ -77,11 +54,11 @@ public class UserGuidance {
     private final int PARAM_GROUPS[][] = {{0, 1, 2, 3}, {4, 5, 6, 7, 8}}; // grouping and numbering the INTRINSICS
 
     // get geometry from tracker
-    ChArucoDetector tracker;
+    public ChArucoDetector tracker;
     private int allpts;
     private int square_len;
     private int marker_len;
-    private int SQUARE_LEN_PIX = 12;
+    // private int SQUARE_LEN_PIX = 12;
 
     private Size img_size;
     private Mat overlap;
@@ -107,38 +84,38 @@ public class UserGuidance {
     private Mat tgt_t = new Mat();
 
     // getters
-    boolean converged()
+    public boolean converged()
     {
         return converged;
     }
-    String user_info_text()
+    public String user_info_text()
     {
         return user_info_text;
     }
-    Mat tgt_r()
+    public Mat tgt_r()
     {
         return tgt_r;
     }
-    Mat tgt_t()
+    public Mat tgt_t()
     {
         return tgt_t;
     }
-    boolean[] pconverged()
+    public boolean[] pconverged()
     {
         return pconverged;
     }
-    String[] INTRINSICS()
+    public String[] INTRINSICS()
     {
         return INTRINSICS;
     }
-    double pose_close_to_tgt_get()
+    public double pose_close_to_tgt_get()
     {
         return pose_close_to_tgt;
     }
 
-    UserGuidance(ChArucoDetector tracker, double var_terminate, Size img_size) throws Exception // force use of var_terminate=0.1 instead of defaulting
+    public UserGuidance(ChArucoDetector tracker, double var_terminate, Size img_size) // force use of var_terminate=0.1 instead of defaulting
     {
-        logger.debug("Starting ----------------------------------------");
+        LOGGER.finest("Instantiating ----------------------------------------");
 
         this.img_size = img_size;
         this.tracker = tracker;
@@ -148,7 +125,7 @@ public class UserGuidance {
         this.allpts = (Cfg.board_x-1)*(Cfg.board_y-1); // board w = 9 h = 6 => 54 squares; 8x5 => 40 interior corners
         this.square_len = Cfg.square_len;
         this.marker_len = Cfg.marker_len;
-        this.SQUARE_LEN_PIX = this.square_len;
+        // this.SQUARE_LEN_PIX = this.square_len;
         this.overlap = Mat.zeros((int)this.img_size.height, (int)this.img_size.width, CvType.CV_8UC1);
 
         // preview image
@@ -172,9 +149,9 @@ public class UserGuidance {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    private void calibrate() throws Exception
+    private void calibrate()
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
 
         // need at least 2 keyframes to compute the variances, etc.
@@ -200,7 +177,7 @@ public class UserGuidance {
 
             if (total_var > total_var_prev)
             {
-                // logger.debug("note: total var degraded");
+                // LOGGER.finest("note: total var degraded");
             }
             // check for convergence
             for (int i = 0; i < pvar.length; i++)
@@ -208,11 +185,11 @@ public class UserGuidance {
                 rel_pstd[i] = 1 - Math.sqrt(pvar[i]) / Math.sqrt(pvar_prev[i]); //relative change to each std dev
             }
 
-            // logger.debug("relative stddev " + Arrays.toString(rel_pstd));
+            // LOGGER.finest("relative stddev " + Arrays.toString(rel_pstd));
             
             if (rel_pstd[this.tgt_param] < 0)
             {
-                // logger.debug(this.INTRINSICS[this.tgt_param] + " degraded");
+                // LOGGER.finest(this.INTRINSICS[this.tgt_param] + " degraded");
             }
 
             // g0(p0 p1 p2 p3)  g1(p4 p5 p6 p7 p8)
@@ -249,7 +226,7 @@ public class UserGuidance {
                 }
                 if (converged.length() > 0)
                 {
-                    // logger.debug("{" + converged + "} converged");
+                    // LOGGER.finest("{" + converged + "} converged");
                 }
             }
         }
@@ -273,9 +250,9 @@ public class UserGuidance {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    private void set_next_pose() throws Exception
+    private void set_next_pose()
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int nk = this.calib.keyframes.size();
     
@@ -299,7 +276,7 @@ public class UserGuidance {
          
         this.board_warped = this.board.project(this.tgt_r, this.tgt_t, false, Imgproc.INTER_NEAREST);
 
-        // logger.debug("r/t and board_warped " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
+        // LOGGER.finest("r/t and board_warped " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -320,9 +297,9 @@ public class UserGuidance {
      */
     private double pose_close_to_tgt(Mat progressInsert)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        // logger.debug("pose_valid " + this.tracker.pose_valid() + ", tgt_r empty " + this.tgt_r.empty());
+        // LOGGER.finest("pose_valid " + this.tracker.pose_valid() + ", tgt_r empty " + this.tgt_r.empty());
         
         double jaccard = 0.;
     
@@ -364,7 +341,7 @@ public class UserGuidance {
         Core.multiply(tempImg, Cfg.progressInsertGuidanceGrey, tempImg); // brighten (to dark gray) so it can be seen by humans
         Core.add(progressInsert, tempImg, progressInsert); // where they overlap is bright white
 
-        // logger.debug("shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
+        // LOGGER.finest("shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
 
         int Ab = Core.countNonZero(tmp); // number of on (1) pixels in the warped shadow board
         Core.bitwise_and(this.overlap, tmp, this.overlap); // make the overlapped pixels on (1)
@@ -377,7 +354,7 @@ public class UserGuidance {
         tmp.release();
         tempImg.release();
 
-        // logger.debug("jaccard " + jaccard);
+        // LOGGER.finest("jaccard " + jaccard);
     
         return jaccard;
     }
@@ -393,11 +370,10 @@ public class UserGuidance {
     /**
      * @param force
      * @return true if a new pose was captured
-     * @throws Exception
      */ 
-    boolean update(boolean force, Mat progressInsert) throws Exception
+    public boolean update(boolean force, Mat progressInsert)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // first pose needs to see at least half of the interior corners
         // this image frame may or may not be good enough to capture so check if better than previous reperr (or initial minimum allowed)
@@ -405,14 +381,14 @@ public class UserGuidance {
         // if it is good enough to capture, the calibration is redone far below but that's not too much of a waste
         if (this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2) // tempting to make this more corners required but not sure about all cameras
         {
-            // logger.debug("initial calibrate");
+            // LOGGER.finest("initial calibrate");
             // try to estimate intrinsic params from single frame
             this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts())); // no captures yet so estimate from this frame detection
             // is this bootstrap calibration good enough to use at least for the next guidance display
             if (this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be, original checked for nan but it never was
             {
                 // better than previous reperr so use these intrinsics for next guidance display
-                // logger.debug("initial set_next_pose and intrinsics");
+                // LOGGER.finest("initial set_next_pose and intrinsics");
                 this.tracker.set_intrinsics(this.calib); // use the better (we are hopeful) intrinsics (rkt reversed this and the next line! did I screw up?)
                 this.set_next_pose();  // update target guidance pose display based on the new intrinsics
                 this.min_reperr_init = this.calib.reperr(); // ratchet what's considered better
@@ -444,7 +420,7 @@ public class UserGuidance {
 
         this.capture = this.pose_reached && (this.still || force);
 
-        // logger.log(Level.WARNING,
+        // LOGGER.warning(
             // "corners " + this.tracker.N_pts() +
             // ", pose_close_to_tgt " + pose_close_to_tgt +
             // ", still " + this.still +
@@ -463,7 +439,7 @@ public class UserGuidance {
 
         this.calib.keyframes.add(this.tracker.get_calib_pts());
 
-        logger.info("image capture number " + this.calib.keyframes.size());
+        LOGGER.info("image capture number " + this.calib.keyframes.size());
 
         // update calibration with all keyframes
         this.calibrate();
@@ -471,8 +447,8 @@ public class UserGuidance {
         // use the updated calibration results for tracking
         this.tracker.set_intrinsics(this.calib);
 
-        logger.debug("camera matrix\n" + this.calib.K().dump());
-        logger.debug("camera distortion " + this.calib.cdist().dump());
+        LOGGER.finest("camera matrix\n" + this.calib.K().dump());
+        LOGGER.finest("camera distortion " + this.calib.cdist().dump());
 
         this.converged = isAllTrue(this.pconverged);
 
@@ -501,7 +477,7 @@ public class UserGuidance {
 /*-------------------------------------------------------------------------------------------------*/
     private void _update_user_info()
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.user_info_text = "";
 
@@ -554,11 +530,10 @@ public class UserGuidance {
      * add the guidance board to the camera image to make the new user display
      * @param img in/out; the composite of everything Mat that will be displayed to the user
      * @param mirror
-     * @throws Exception
      */
-    void draw(Mat img, boolean mirror) throws Exception // force users to specify mirror false instead of defaulting
+    public void draw(Mat img, boolean mirror) // force users to specify mirror false instead of defaulting
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // assumes both img and board are 3 color channels BGR
         if ( ! this.tgt_r.empty())
@@ -567,8 +542,9 @@ public class UserGuidance {
             byte[] imgBuff = new byte[img.rows()*img.cols()*img.channels()];
             byte[] board_warpedBuff = new byte[this.board_warped.rows()*this.board_warped.cols()*this.board_warped.channels()];
 
-            if (imgBuff.length != board_warpedBuff.length) throw new Exception("major trouble here");
-
+            if (imgBuff.length != board_warpedBuff.length) {
+                LOGGER.severe("major trouble here");
+            }
             img.get(0, 0, imgBuff); // get the Mat
             this.board_warped.get(0, 0,board_warpedBuff); // get the Mat
 
@@ -594,11 +570,7 @@ public class UserGuidance {
         }
     }
 
-/**
- *    seed NOT USED -- NOT CONVERTED
- *    seed NOT USED -- NOT CONVERTED
- *    seed NOT USED -- NOT CONVERTED
-*/
+//    seed NOT USED -- NOT CONVERTED
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -609,112 +581,22 @@ public class UserGuidance {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-void write()
-{
-    // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-
-    String pattern = "yyyy-MM-dd-HH-mm-ss";
-    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-    
-    
-    //????????????????????????????????????????????
-    //FIXME use the PV way to format JSON from MAT
-    //????????????????????????????????????????????
-
-
-    String calibrationDataFile = "CameraCalibrationData_" + simpleDateFormat.format(new Date()) + ".json";
-    double[] cameraMatrix = new double[9];
-    this.calib.K().get(0, 0, cameraMatrix);
-    double[] distortionCoefficients = new double[5];
-    this.calib.cdist().get(0, 0, distortionCoefficients);
-
-    logger.debug("calibration data file " + calibrationDataFile);
-
-    try (PrintWriter pw = new PrintWriter(calibrationDataFile))
+    public void write()
     {
-        pw.println("{");
-        pw.println(" \"camera\": \"unknown\",");
-        pw.println(" \"platform\":  \"unknown\",");
-        pw.println(" \"avg_reprojection_error\": " + this.calib.reperr() + ",");
-        pw.format (" \"camera_matrix\": [%n" +
-                   "  [%f, %f, %f],%n  [%f, %f, %f],%n  [%f, %f, %f]%n" +
-                   "],%n",
-                   cameraMatrix[0],cameraMatrix[1],cameraMatrix[2],
-                   cameraMatrix[3],cameraMatrix[4],cameraMatrix[5],
-                   cameraMatrix[6],cameraMatrix[7],cameraMatrix[8]);
-        pw.format(" \"distortion_coefficients\":%n  [%f, %f, %f, %f, %f ],%n",
-                   distortionCoefficients[0], distortionCoefficients[1], distortionCoefficients[2], distortionCoefficients[3], distortionCoefficients[4]);
-        pw.println(" \"distortion_model\": \"rectilinear\",");
-        pw.format(" \"img_size\": [%.0f, %.0f],%n", this.calib.img_size().width, this.calib.img_size().height);
-        pw.format(" \"calibration_time\": \"%s\"%n", LocalDateTime.now());
-        pw.print("}");
-    } catch (FileNotFoundException e) {
-        e.printStackTrace();
-    }
-    logger.debug("calibration_time: " + LocalDateTime.now());
-    logger.debug("nr_of_frames: " + this.calib.keyframes.size());
-    logger.debug("image_width: " + this.calib.img_size().width);
-    logger.debug("image_height: " + this.calib.img_size().height);
-    logger.debug("board_width: " + this.tracker.board_sz().width);
-    logger.debug("board_height: " + this.tracker.board_sz().height);
-    logger.debug("square_size: " + this.square_len);
-    logger.debug("marker_size: " + this.marker_len);
-    // logger.debug(formatFlags(calib.flags())); seems irrelevant since the first few and last calibrations don't use calib.flags
-    logger.debug("fisheye_model: " + 0);
-    logger.debug("camera_matrix:\n" + this.calib.K().dump());
-    logger.debug("distortion_coefficients:\n" + this.calib.cdist().dump());
-    logger.debug("avg_reprojection_error: " + this.calib.reperr());
-}
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     formatFlags                                                 */
-/*                                     formatFlags                                                 */
-/*                                     formatFlags                                                 */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-    static String formatFlags(int flagsCalibration)
-    {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        HashMap<Integer, String> flags = new HashMap<>(3);
-        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix_principal_point");
-        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero_tangent_dist");
-        flags.put(Calib3d.CALIB_USE_LU, "+use_lu");
-        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, "+fix aspect ratio");
-        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix principal point");
-        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero tangent dist");
-        flags.put(Calib3d.CALIB_FIX_K1, "+fix k1");
-        flags.put(Calib3d.CALIB_FIX_K2, "+fix k2");
-        flags.put(Calib3d.CALIB_FIX_K3, "+fix k3");
-       
-        StringBuilder flags_str = new StringBuilder("flags: ");
-        int unknownFlags = flagsCalibration; // initially assume all flags are unknown to the hashmap
-
-        for (Map.Entry<Integer, String> flag : flags.entrySet())
-        {
-            if ((flagsCalibration & flag.getKey()) == flag.getKey())
-            {
-                flags_str.append(flag.getValue());
-                unknownFlags -= flag.getKey(); // this flag is known so un-mark unknown flags
-            }                       
-        }
-
-        flags_str.append(String.format("\nflags: %08x", flagsCalibration));
-        if (unknownFlags != 0)
-        {
-            flags_str.append(String.format("; unknown flag usage = %08x", unknownFlags));          
-        }
-        return flags_str.toString();
+        LOGGER.config("Camera Calibration Data");
+        LOGGER.config("nr_of_frames: " + this.calib.keyframes.size());
+        LOGGER.config("image_width: " + this.calib.img_size().width);
+        LOGGER.config("image_height: " + this.calib.img_size().height);
+        LOGGER.config("board_width: " + this.tracker.board_sz().width);
+        LOGGER.config("board_height: " + this.tracker.board_sz().height);
+        LOGGER.config("square_size: " + this.square_len);
+        LOGGER.config("marker_size: " + this.marker_len);
+        LOGGER.config("fisheye_model: " + 0);
+        LOGGER.config("camera_matrix:\n" + this.calib.K().dump());
+        LOGGER.config("distortion_coefficients:\n" + this.calib.cdist().dump());
+        LOGGER.config("avg_reprojection_error: " + this.calib.reperr());
+        LOGGER.config("End of Calibration");
     }
 }
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     End UserGuidance class                                      */
-/*                                     End UserGuidance class                                      */
-/*                                     End UserGuidance class                                      */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/

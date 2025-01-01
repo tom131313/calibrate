@@ -1,35 +1,17 @@
-/*
- * Copyright (C) Photon Vision.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
 
 // Calibrate Camera with efficient camera Pose Guidance provided on screen to the user
 
-package org.photonvision.calibrator;
+package Guidance;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
+import java.io.StringWriter;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -37,28 +19,39 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.opencv.calib3d.Calib3d;
+import org.apache.commons.lang3.tuple.Pair;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.Point;
-import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import org.photonvision.common.logging.LogGroup;
-import org.photonvision.common.logging.LogLevel;
-import org.photonvision.common.logging.Logger;
 
-import edu.wpi.first.cameraserver.CameraServer;
+import Guidance.CVPipe.CVPipeResult;
+import Guidance.FindBoardCornersGuidancePipe.FindBoardCornersGuidancePipeResult;
 import edu.wpi.first.cscore.CvSink;
 import edu.wpi.first.cscore.CvSource;
 import edu.wpi.first.cscore.MjpegServer;
-import edu.wpi.first.cscore.UsbCamera;
-import edu.wpi.first.cscore.VideoMode;
-import edu.wpi.first.cscore.VideoMode.PixelFormat;
-import edu.wpi.first.cscore.VideoProperty;
+import edu.wpi.first.util.PixelFormat;
+
+/*
+ * The PhotonVision Calibrate3dPipeline.java class separately calls
+ * PV FindBoardCorners.java to find the corners of the board and then calls
+ * PV Calibrate3dPipe.java to use those corners to calibrate the camera.
+ * 
+ * The PV user and camera interfaces are handled by other PV processes.
+ *  
+ * This Guidance Main class calls FindBoardCornersGuidance.java to both find the corners
+ * and continuously calibrate the camera as those corners are found - the two processes
+ * are integrated. If convergence criteria for calibration accuracy are met then the last
+ * calibration performed is accepted as the result.
+ * 
+ * This Main, also handles the user and camera interfaces and stands alone from the PV
+ * framework but does similarly use some PV structures, WPILib functions, and Apache
+ * commons libraries.
+ */
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -70,155 +63,53 @@ import edu.wpi.first.cscore.VideoProperty;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta 12.10"; // change this
+    private static final String VERSION = "beta-13"; // change this
 
-    static final Logger logger = new Logger(Main.class, LogGroup.General);
 
-///////////////////////////////////////////////////////////////////////////////////////
-// START OF SHOULD COME FROM PV
-///////////////////////////////////////////////////////////////////////////////////////
+    private static Logger LOGGER;
+    static {
+        LOGGER = LoggerSetup.setupLogger();
 
-    private static PrintWriter vnlog = null;
+        LOGGER.finest("Loading");
+        LOGGER.config("Pose Guidance Camera Calibration version " + VERSION);
 
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     handle keystrokes                                           */
-/*                                     handle keystrokes                                           */
-/*                                     handle keystrokes                                           */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+    }
+
+    private static FindBoardCornersGuidancePipe findBoardCornersGuidancePipe;
+    private static CVPipeResult<FindBoardCornersGuidancePipeResult> findBoardCornersGuidancePipeResult;
+
+    private static PrintWriter vnlog = null; // first time switch value is null
+
     // keyboard mapping returns from OpenCV waitKey
+    // Identical copy to the list in "Keystroke" class. Sorry about that! Could fix.
     private static final int keyTerminateOpenCV = 81;
     private static final int keyCaptureOpenCV = 67;
     private static final int keyMirrorToggleOpenCV = 77;
-
-    // keyboard mapping returns from Java Scanner
-    private static final int keyTerminateScanner = 113;
-    private static final int keyCaptureScanner = 99;
-    private static final int keyMirrorToggleScanner = 109;
     private static final int timedOut = -1;  // timed out no key pressed
-  
-    // Java Scanner alternative to OpenCV keyboard usage that is not in PV headless (AWT is missing)
-    // Turn Scanner keys into OpenCV keys to ease transition back and forth between PV terminal and OpenCV waitKey
-    AtomicInteger dokeystroke = new AtomicInteger(-1);
-    class Keystroke implements Runnable
-    {
-        final Logger logger = new Logger(Main.Keystroke.class, LogGroup.General);
 
-        public void run()
-        {
-            try (Scanner keyboard = new Scanner(System.in))
-            {
-                while( ! Thread.interrupted())
-                {
-                    System.out.println("Pose should auto capture otherwise, press c (capture), m (mirror), q (quit) then the Enter key");
-                    String entered = keyboard.next();
-                    int keyScanner = entered.charAt(0);
-                    logger.debug("user entered action " + keyScanner);
-                    // map Scanner character codes to OpenCV character codes
-                    if (keyScanner == keyCaptureScanner)
-                    {
-                        dokeystroke.set(keyCaptureOpenCV);
-                    }
-                    if (keyScanner == keyMirrorToggleScanner)
-                    {
-                        dokeystroke.set(keyMirrorToggleOpenCV);
-                    }
-                    if (keyScanner == keyTerminateScanner)
-                    {
-                        dokeystroke.set(keyTerminateOpenCV);
-                    }
-                }
-            } catch(Exception e) {logger.error(
-                "Terminal keyboard closed prematurely (Ctrl-c) or doesn't exist (jar file not run from command line; don't double click the jar to start it)");}
-        }
-    }
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     handleArgs                                                  */
-/*                                     handleArgs                                                  */
-/*                                     handleArgs                                                  */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-    private static boolean handleArgs(String[] args) throws ParseException {
-
-        final var options = new Options();
-        options.addOption("h", "help", false, "Show this help text and exit");
-        options.addOption("width", true, "camera image width (1280)");
-        options.addOption("height", true, "camera image height (720)");
-        options.addOption("dpmX", true, "print width pixels per meter (9843=250 DPI)");
-        options.addOption("dpmY", true, "print height pixels per meter (9843=250 DPI");
-        options.addOption("pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
-        options.addOption("cameraId", true, "camera id (0)");
-        options.addOption("fps", true, "frames per second (10)");
-        options.addOption("printBoard", false, "print to file ChArUco Board");
-
-        CommandLineParser parser = new DefaultParser();
-        CommandLine cmd = parser.parse(options, args);
-
-        if (cmd.hasOption("help")) {
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("java -jar <your jar file>.jar [options]", options);
-            return false; // exit program
-        }
-        
-        if ( cmd.hasOption("width")) {
-            image_width = Integer.parseInt(cmd.getOptionValue("width"));
-        }
-        
-        if (cmd.hasOption("height")) {
-            image_height = Integer.parseInt(cmd.getOptionValue("height"));
-        }
-        
-        if (cmd.hasOption("dpmX")) {
-            Cfg.resXDPM = Integer.parseInt(cmd.getOptionValue("dpmX"));
-        }
-        
-        if (cmd.hasOption("dpmY")) {
-            Cfg.resYDPM = Integer.parseInt(cmd.getOptionValue("dpmY"));
-        }
-        
-        if (cmd.hasOption("pxFmt")) {
-            pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt"));
-        }
-        
-        if (cmd.hasOption("cameraId")) {
-            camId = Integer.parseInt(cmd.getOptionValue("cameraId"));
-        }
-        
-        if (cmd.hasOption("fps")) {
-            fps = Integer.parseInt(cmd.getOptionValue("fps"));
-        }
-
-        if (cmd.hasOption("printBoard")) {
-            new ChArUcoBoardPrint();
-            return false; // exit program
-        }
-
-        return true;
-    }
+    ///////////////////////////// USER INPUT ARGUMENTS ///////////////////////////////
+    // camera ID instructions:
     // Checks for the specified camera - laptop internal or USB external and uses it if present.
     // 0 internal if no external or if external connected after boot-up
     // 0 external if connected at boot-up
     // 1 internal if external connected at boot-up
     // 1 is external if connected after boot-up
-    static int camId = 0;
-    static PixelFormat pixelFormat = PixelFormat.kYUYV;
-    static int fps = 10;
-    
-    // a few icky int-float-double conversions scattered throughout the program.
-    // camera image size and thus user display screen size
-    static int image_width = 1280;
-    static int image_height = 720;
-/////////////////////////////
+    static String camId;
 
-// OUTPUT DISPLAY
-    static final int displayPort = 1185;
-/////////////////////////////
+    // camera format specification
+    static PixelFormat pixelFormat;
+    static int fps;
+    // Note that user output display screen size follows the same as the camera size
+    static int image_width;
+    static int image_height;
+
+    static boolean focus; // specify focus mode (or calibration mode if focus mode is false)
+    static boolean logSnapshot; // specify saving images and corners used for calibration
+
+    // output URL port - focus and calibration modes
+    static int displayPort;
+    ///////////////////////////// END USER INPUT ARGUMENTS ///////////////////////////////
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -228,373 +119,342 @@ public class Main {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+
     public static void main(String[] args) throws Exception
     {
-        Logger.setLevel(LogGroup.General, LogLevel.DEBUG);
-        logger.info("Pose Guidance Camera Calibration version " + VERSION);
-        // get the parameters for the user provided options
-        logger.debug("Command Line Args " + Arrays.toString(args));
 
-        org.photonvision.common.util.TestUtils.loadLibraries();
-       
+        // get the parameters for the user provided options
+        LOGGER.config("Command Line Args " + Arrays.toString(args));  
         try {
             if ( ! handleArgs(args)) {
                 System.exit(0);
             }
         } catch (ParseException e) {
-            logger.error("Failed to parse command-line options!", e);
+            LOGGER.severe("Failed to parse command-line options! " + e);
             System.exit(0);
         }
 
-        // keyboard handler for PV environment using the web interface
+        // establish keyboard handler
         Keystroke keystroke;
         Thread keyboardThread;
-        Main MainInstance = new Main();
-        keystroke = MainInstance.new Keystroke();
+        keystroke = new Keystroke();
         keyboardThread = new Thread(keystroke, "keys");
         keyboardThread.setDaemon(true);
         keyboardThread.start();
 
-        // camera input
-        final UsbCamera camera = CameraServer.startAutomaticCapture(camId); // gives access to camera parameters on port 181 or above
-        // final UsbCamera camera = new UsbCamera("mycamera", Cfg.camId); // same camera as above but no interaction on port 181 or above
-        for ( VideoMode vm : camera.enumerateVideoModes())
-        {
-            logger.debug("Camera mode choices " + vm.getPixelFormatFromInt(vm.pixelFormat.getValue()) + " "
-                + vm.width + "x" + vm.height + " " + vm.fps + " fps");
-        }
-        for ( VideoProperty vp : camera.enumerateProperties())
-        {
-            logger.debug("camera property choices " + vp.get() + " " + vp.getName() + " " + VideoProperty.getKindFromInt(vp.get()));
-        }
-        VideoMode videoMode = new VideoMode(pixelFormat, image_width, image_height, fps);
-        logger.debug("Setting camera mode "
-                + VideoMode.getPixelFormatFromInt(pixelFormat.getValue()) + " " + image_width + "x" + image_height + " " + fps + "fps");
-        try {
-            if ( ! camera.setVideoMode(videoMode)) throw new IllegalArgumentException("set video mode returned false");
-        } catch (Exception e) {
-            logger.error("camera set video mode error; mode is unchanged", e);
-        }
-        logger.info("camera " + camId + " properties can be seen and changed on port 1181 or higher");
-        CvSink cap = CameraServer.getVideo(camera); // Get a CvSink. This will capture Mats from the camera
-        cap.setSource(camera);
-        Mat  img = new Mat();
+        // image input source - determine if USB attached camera or URL for remote camera
+        CvSink capture;
 
-        // output display of the camera image with guidance board
+        var remoteCamera = camId.toLowerCase().contains("http://"); // assume it's a URL remote feed or not
+
+        if (remoteCamera) {
+            capture = CameraHTTP.getSource(
+                camId.substring(0, camId.indexOf(",")),
+                camId.substring(camId.indexOf(",") + 1).trim());
+        }
+        else { // assume it's an integer camera id
+            capture = CameraUSB.getSource(Integer.parseInt(camId), image_width, image_height, fps, pixelFormat);            
+        }
+
+        Mat img = new Mat();
+
+        // output display for pose guidance board with input image or focus board
         CvSource networkDisplay = null;
         MjpegServer mjpegServer;
-        networkDisplay = new CvSource("calibPV", /*VideoMode.*/PixelFormat.kMJPEG,
+        networkDisplay = new CvSource("calibPV", PixelFormat.kMJPEG,
                 image_height, image_width, fps);
         mjpegServer = new MjpegServer("GuidanceView", displayPort);
-        logger.info("View Guidance Board On Port " + displayPort);
         mjpegServer.setSource(networkDisplay);
+        LOGGER.config("View Guidance Board with Camera Image On Port " + displayPort);
 
-    bigLoop: // simulate the PV loop and multi-cameras
-    while ( ! Thread.interrupted())
-    {
-        // Grab first good image from camera to set the size. In PV this will already be set for us
+        // Grab first good image from camera to set the size.
+
+        // Attached USB camera would already know the size here so this is a bit redundant.
+        // For remote camera this sets the size and that must not change from now on.
+
+        // Note that PV changes the stream image size when it enters calibration mode
+        // so start PV calibration before starting this pose guidance.
+
         while ( ! Thread.interrupted())
         {
-            long status = cap.grabFrame(img, 0.5);
+            long status = capture.grabFrame(img, 0.5);
             if (status != 0)
             {
                 break;
             }
             else
             {
-                logger.warn("initial grabFrame error " + cap.getError());
+                LOGGER.warning("initial grabFrame error " + capture.getError() + " - retrying");
             }
         }
-///////////////////////////////////////////////////////////////////////////////////////
-// END OF SHOULD COME FROM PV
-//////////////////////////////////////////////////////////////////////////////////////
-
         Size img_size = new Size(img.width(), img.height());
+        LOGGER.config("image size " + img_size.toString());
         Size img_size_prev = img_size.clone();        
         Mat out = new Mat(); // user display Mat
-        Mat progressInsert = new Mat();
-     
-        ChArucoDetector tracker = new ChArucoDetector();
-        UserGuidance ugui = new UserGuidance(tracker, Cfg.var_terminate, img_size);
 
-        // runtime variables
-        boolean mirror = false;
-        boolean save = false; // indicator for user pressed the "c" key to capture (save) manually
-        String endMessage = "logic error"; // status of calibration at the end - if this initial value isn't reset, indicates a screw-up in the code
+        findBoardCornersGuidancePipe = new FindBoardCornersGuidancePipe();
 
-        int frameNumber = 0;
+        // initialize the params - "save" and "mirror" can change with each image frame
+        var param = new FindBoardCornersGuidancePipe.FindCornersGuidancePipeParams(
+            false,
+            false,
+            Cfg.board_x,
+            Cfg.board_y,
+            UICalibrationData.BoardType.CHESSBOARD,
+            25.4,
+            FrameDivisor.NONE
+        );
 
-        grabFrameLoop:
-        while ( ! Thread.interrupted())
-        {
-            frameNumber++;
-            if (frameNumber%Cfg.garbageCollectionFrames == 0) // periodically cleanup old Mats
-            {
-                System.runFinalization();
-                System.gc();
-            }
-            boolean force = false;  // force add frame to calibration (no support yet still images else (force = !live)
+        findBoardCornersGuidancePipe.setParams(param);
+        findBoardCornersGuidancePipeResult = null;
+        long holdMessageTimer = System.currentTimeMillis();
+        var recentSnapshot = false;
+        
+        // Grab a camera image, process it, and interpret any keyed entry commands.
+        // Loop until calibration is automatically complete or user quits (especially focus mode).
 
-            long status = cap.grabFrame(img, 0.5);
+        frameGrabLoop:
+        while ( ! Thread.interrupted()) {
+
+            // get an image frame and validate it
+            long status = capture.grabFrame(img, 0.5);
             if (status != 0)
             {
                 img_size = new Size(img.width(), img.height());
                 // if image size changes during calibration bail out and get ready to calibrate again with new size
                 if ( ! img_size_prev.equals(img_size))               
                 {
-                    logger.warn("changing image size to " + img_size + " from " + img_size_prev + ", restarting calibration");
+                    LOGGER.warning("changing image size to " + img_size + " from " + img_size_prev + ", quitting guidance calibration");
                     img_size_prev = img_size.clone();
-                    continue bigLoop; // quit this calibration and start anew
+                    break frameGrabLoop; // quit
                 }
             }
             else
             {
-                logger.warn("grabFrame error " + cap.getError());
-                force = false; // useless now with the continue below
-                continue; // pretend frame never happened - rkt addition; original reprocessed previous frame
+                LOGGER.warning("grabFrame error " + capture.getError());
+                continue frameGrabLoop; // pretend frame never happened - rkt addition; original reprocessed previous frame
             }
 
-            boolean fewCorners = tracker.detect(img); // detect the board
+            /* process the good image frame */
 
-            if (save)
-            {
-                save = false;
-                force = true;
+            // focus mode processing
+            if (focus) {
+                
+                // get any user keyed input useful for focus mode (ignore the rest)
+                switch (keystroke.getKey())
+                {
+                    case timedOut: // no key press to process
+                            break;
+                    case keyTerminateOpenCV:
+                            LOGGER.info("Pose Guidance Camera action CANCELLED");
+                            break frameGrabLoop; // quit
+                    default: // unassigned key
+                            break;
+                }
+
+                Class.forName("Guidance.Focus"); // force loading the history buffer if it's not already loaded
+                out = Focus.drawSiemensStar();
+                var sharpness = Focus.sharpnessMetric(img);
+                Imgproc.putText(out, Integer.toString(sharpness), new Point(0, 52), Imgproc.FONT_HERSHEY_SIMPLEX, 2., new Scalar(210), 3);
+                // focus process loops until user input q(uits)
             }
 
-            img.copyTo(out); // out has the camera image at his point
+            // calibrate mode processing
+            else {
 
-            ugui.draw(out, mirror); // this adds the guidance board to the camera image (out) to make the new out
+                // calibration image frame initialization
+                param.save = false;
+                
+                // get any user keyed input useful for calibration mode (ignore the rest)
+                switch (keystroke.getKey())
+                {
+                    case timedOut: // no key press to process
+                            break;
+                    case keyTerminateOpenCV:
+                            LOGGER.info("Pose Guidance Camera action CANCELLED");
+                            break frameGrabLoop; // quit
+                    case keyMirrorToggleOpenCV:
+                            LOGGER.info("Toggled mirror guidance");
+                            param.mirror = ! param.mirror;
+                            break;
+                    case keyCaptureOpenCV:
+                            LOGGER.info("Forced capture snapshot");
+                            param.save = true; // yes, it's one frame behind what user sees but it's usually too fast to notice
+                            break;
+                    default: // unassigned key
+                            break;
+                }
 
-            boolean capturedPose = ugui.update(force, progressInsert); // calibrate
-            
-            if (capturedPose /*&& Cfg.logDetectedCorners*/)
-            {
-                logDetectedCorners(img, ugui);
+                findBoardCornersGuidancePipe.setParams(param); // update find corners params in case they changed
+                var images = Pair.of(img,out ); // define the find corners input and output
+                findBoardCornersGuidancePipeResult = findBoardCornersGuidancePipe.run(images);
+
+                // act on find corners results
+                if (findBoardCornersGuidancePipeResult.output.madeSnapshot)
+                {
+                    // The guidance program saves elsewhere its own snapshot needed for guidance and notifies us here.
+                    // In addition, corners and images could be logged here and saved snapshots could be further
+                    // processed by say Mr.Cal.
+                    if (logSnapshot) {
+                        logSnapshot(img, findBoardCornersGuidancePipeResult);
+                    }
+
+                    recentSnapshot = true; // trigger snapshot display message
+
+                    LOGGER.info("Snapshot taken");
+                }
+
+                // if calibrating on another program user needs to inform it of this guidance pose snapshot
+                if (recentSnapshot && remoteCamera && (holdMessageTimer + Cfg.messageHoldTime) > System.currentTimeMillis()) {
+                    Imgproc.putText(out, "HOLD STEADY", new Point(0.,  45.), Imgproc.FONT_HERSHEY_SIMPLEX, 2., new Scalar(255, 255, 255), 5);
+                    Imgproc.putText(out, "TAKE SNAPSHOT", new Point(0., 110.), Imgproc.FONT_HERSHEY_SIMPLEX, 2., new Scalar(255, 255, 255), 5);
+                    Imgproc.putText(out, "ON REMOTE", new Point(0., 175.), Imgproc.FONT_HERSHEY_SIMPLEX, 2., new Scalar(255, 255, 255), 5);
+                }
+                else { // message held long enough so reset hold message timing
+                    holdMessageTimer = System.currentTimeMillis();
+                    recentSnapshot = false;
+                }
+
+                if (findBoardCornersGuidancePipeResult.output.haveEnough) // done calibrating
+                {
+                    // The guidance program prints elsewhere its calibration results to the LOGGER and notifies us here.
+                    if(logSnapshot && vnlog != null) {
+                        vnlog.close();
+                        vnlog = null; // redundant cleanup just to make sure a logic error doesn't try to use it again
+                    //  further processing of the complete set of snapshots could be done here - this is the end    
+                    }
+
+                    LOGGER.severe("Pose Guidance Camera action calibrated");
+                    break frameGrabLoop; // done with calibration
+                }
+                else    
+                if (findBoardCornersGuidancePipeResult.output.cancelCalibration)
+                {
+                    break frameGrabLoop; // quit
+                }
             }
 
-            displayOverlay(out, ugui, fewCorners, frameNumber, progressInsert);
-
-            int k;
+            // completed processing image frame - display results
             networkDisplay.putFrame(out);
-            k = MainInstance.dokeystroke.getAndSet(timedOut);
 
-            if (ugui.converged()) // are we there yet?
-            {
-                ugui.calib.calibrate(new ArrayList<>(1)); // final, maybe more accurate calibration; dummy arg to use all captures
+        } // bottom of frameGrabLoop loop
 
-                ugui.write(); // write all the calibration data
-
-                endMessage = "CALIBRATED";
-
-                break grabFrameLoop; // the end - rkt addition; the original kept looping somehow
-            }
-
-            if (k == timedOut)
-            {
-                continue; // no key press to process
-            }
-            
-            // have a key
-            switch (k)
-            {
-                case keyTerminateOpenCV: // terminate key pressed to stop loop immediately
-                        endMessage = "CANCELLED";
-                        break grabFrameLoop;
-
-                case keyMirrorToggleOpenCV: // mirror/no mirror key pressed
-                        mirror = ! mirror;
-                        break;
-
-                case keyCaptureOpenCV: // capture frame key pressed
-                        save = true;
-                        break;
-
-                default: // unassigned key
-                        break;
-            }
-        } // end grabFrameLoop
-
-        Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(0, 0, 0), 5);
-        Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 255), 3);
-        Imgproc.putText(out, endMessage, new Point(50, 250), Imgproc.FONT_HERSHEY_SIMPLEX, 2.8, new Scalar(255, 255, 0), 2);
-
-        networkDisplay.putFrame(out);
-
-        if (vnlog != null)
-        {
-            vnlog.close(); // user has to grab this file before the next capture otherwise it's gone and starting over
-            vnlog = null;
-        }
-
-        Thread.sleep(5000); // wait a bit for user to see it ended before starting anew
-
-    } // end bigLoop
-
-        // not likely to ever get here
+        // quitting
+        mjpegServer.close();
         networkDisplay.close();
-        logger.debug("End of running main");
-        System.exit(0);
-    }   
+        LOGGER.finest("End of running main");
+    } // end main method
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
-/*                                     displayOverlay                                              */
-/*                                     displayOverlay                                              */
-/*                                     displayOverlay                                              */
+/*                                     handleArgs                                                  */
+/*                                     handleArgs                                                  */
+/*                                     handleArgs                                                  */
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    public static void displayOverlay(Mat out, UserGuidance ugui, boolean fewCorners, int frameNumber, Mat progressInsert)
-    {
-        String frame = String.format("%05d ", frameNumber);
-        Imgproc.putText(out, frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-        Imgproc.putText(out, frame, new Point(0, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+private static boolean handleArgs(String[] args) throws ParseException {
 
-        if (ugui.user_info_text().length() > 0) // is there a message to display?
-        {
-            // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
-            // {
-            // logger.log(Level.WARNING,ugui.user_info_text());
-            // }
-            String message1 = ugui.user_info_text();
-            Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
-        } 
+        Options options = new Options();
 
-        if (fewCorners)
-        {
-            String message2 = "moving or bad aim\n";
-            Imgproc.putText(out, message2, new Point(80, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, message2, new Point(80, 40), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(255, 255, 255), 1);
+        options.addOption("h", "help", false, "Show this help text and exit");
+        options.addOption("W", "width", true, "camera image width (1280)");
+        options.addOption("H", "height", true, "camera image height (720)");
+        options.addOption("X", "dpmX", true, "print width pixels per meter (9843=250 DPI)");
+        options.addOption("Y", "dpmY", true, "print height pixels per meter (9843=250 DPI");
+        options.addOption("F", "pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
+        options.addOption("c", "cameraId", true, "camera id (0); two forms: 1. integer or 2. name, http://...");
+        options.addOption("R", "fps", true, "frames per second (10)");
+        options.addOption("B", "printBoard", false, "print to file ChArUco Board");
+        options.addOption("f", "focus", false, "sharpness measure mode - no calibration");
+        options.addOption("d", "displayPort", true, "output image port (1185)");
+        options.addOption("S", "logSnapshot", false, "save snapshots image file and corners");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if(cmd.getArgs().length > 0) {
+            LOGGER.warning("Arguments Not Recognized: " + Arrays.toString(cmd.getArgs()));            
         }
 
-        // ugui.tgt_r() ugui.tgt_t guidance board target rotation and translation from pose generation
-        Mat rotationMatrix = new Mat();
-        double[] rotationDegrees;
-        double[] translation = new double[3];
-        
-        // if Guidance Board has a pose then display it (end of program is missing this pose)
-        if ( ! ugui.tgt_r().empty() && ! ugui.tgt_t().empty())
-        {
-            Calib3d.Rodrigues(ugui.tgt_r(), rotationMatrix);
-            rotationDegrees = Calib3d.RQDecomp3x3(rotationMatrix, new Mat(), new Mat()); // always returns reuler.length = 3
-            rotationDegrees[0] -= 180.;
-
-            ugui.tgt_t().get(0, 0, translation);
-
-            Imgproc.putText(out, String.format("r{%4.0f %4.0f %4.0f} t{%4.0f %4.0f %4.0f}Guidance",
-                rotationDegrees[0], rotationDegrees[1], rotationDegrees[2], translation[0], translation[1], translation[2]),
-                new Point(250, 60), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, String.format("r{%4.0f %4.0f %4.0f} t{%4.0f %4.0f %4.0f}Guidance",
-                rotationDegrees[0], rotationDegrees[1], rotationDegrees[2], translation[0], translation[1], translation[2]),
-                new Point(250, 60), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+        if (cmd.hasOption("h")) {
+            // make a string to hold the help and log it
+            StringWriter sw = new StringWriter(1000);
+            PrintWriter pw = new PrintWriter(sw);
+            HelpFormatter helpFormatter = new HelpFormatter.Builder().setPrintWriter(pw).get();
+            helpFormatter.printHelp("\n\njava -jar <your jar file>.jar [options]", options);
+            LOGGER.config("\n\n" + sw.toString());
+            return false; // exit program
         }
 
-        // if camera has a ChArUco Board pose then display it (if camera not on target this pose is missing)
-        if ( ! ugui.tracker.rvec().empty() && ! ugui.tracker.tvec().empty())
-        {
-            Calib3d.Rodrigues(ugui.tracker.rvec(), rotationMatrix);
-            rotationDegrees = Calib3d.RQDecomp3x3(rotationMatrix, new Mat(), new Mat()); // always returns reuler.length = 3
-            rotationDegrees[1] = -rotationDegrees[1];
-            rotationDegrees[2] = -rotationDegrees[2];
+        image_width = Integer.parseInt(cmd.getOptionValue("width", "1280"));
+        image_height = Integer.parseInt(cmd.getOptionValue("height", "720"));
+        Cfg.resXDPM = Integer.parseInt(cmd.getOptionValue("dpmX", "9843"));
+        Cfg.resYDPM = Integer.parseInt(cmd.getOptionValue("dpmY", "9843"));
+        pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt", "kYUYV"));
+        camId = cmd.getOptionValue("cameraId", "0");
+        fps = Integer.parseInt(cmd.getOptionValue("fps", "10"));
+        displayPort = Integer.parseInt(cmd.getOptionValue("displayPort", "1185"));
 
-            ugui.tracker.tvec().get(0, 0, translation);
-            // translation[1] = -translation[1];
-            translation[0] = (double)(((int)(translation[0])+5)/10*10);
-            translation[1] = (double)(((int)(translation[1])+5)/10*10);
-            translation[2] = (double)(((int)(translation[2])+5)/10*10);
-            Imgproc.putText(out, String.format("r{%4.0f %4.0f %4.0f} t{%4.0f %4.0f %4.0fCamera",
-                rotationDegrees[0], rotationDegrees[1], rotationDegrees[2], translation[0], translation[1], translation[2]),
-                new Point(250, 80), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(0, 0, 0), 2);
-            Imgproc.putText(out, String.format("r{%4.0f %4.0f %4.0f} t{%4.0f %4.0f %4.0f}Camera",
-                rotationDegrees[0], rotationDegrees[1], rotationDegrees[2], translation[0], translation[1], translation[2]),
-                new Point(250, 80), Imgproc.FONT_HERSHEY_SIMPLEX, .6, new Scalar(255, 255, 255), 1);
+        if (cmd.hasOption("B")) {
+            ChArUcoBoardPrint.print(); // do the function here rather than pass back a switch to do it
+            return false; // exit program
         }
 
-        // write a frame to a file name java<frame nbr>.jpg
-        // final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // debugging - pair-wise; param1, value1, ...
-        // Imgcodecs.imwrite("java" + frame + ".jpg", out, writeBoardParams); // debugging - save image in jpg file
-        
-        if ( ! progressInsert.empty())
-        {
-            // add to the display the board/camera overlap image
-            Imgproc.resize(progressInsert, progressInsert, new Size(image_width*0.1, image_height*0.1), 0, 0, Imgproc.INTER_CUBIC);
-            List<Mat> temp1 = new ArrayList<>(3); // make the 1 b&w channel into 3 channels
-            temp1.add(progressInsert);
-            temp1.add(progressInsert);
-            temp1.add(progressInsert);
-            Mat temp2 = new Mat();
-            Core.merge(temp1, temp2);
-            Imgproc.rectangle(temp2, // outline the insert for better visibility
-                new Point(0, 0),
-                new Point(progressInsert.cols()-1., progressInsert.rows()-1.),
-                new Scalar(255., 255., 0.), 1);
-            temp2.copyTo(out.submat((int)(image_height*0.45), (int)(image_height*0.45)+progressInsert.rows(), 0,progressInsert.cols()));
-            temp2.release();
+        focus = cmd.hasOption("f");
+        logSnapshot = cmd.hasOption("S");
 
-            Imgproc.putText(out,
-                String.format("similar%5.2f/%4.2f", ugui.pose_close_to_tgt_get(), Cfg.pose_close_to_tgt_min),
-                new Point(0,(int)(image_height*0.45)+progressInsert.rows()+20) , Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(255, 255, 255), 1);
-        }  
+        return true;
 
-        // display intrinsics convergence
-        for (int i = 0; i < 9; i++)
-        {
-            Scalar color;
-            if (ugui.pconverged()[i])
-            {
-                color = new Scalar(0, 190, 0);
-            }
-            else
-            {
-                color = new Scalar(0, 0, 255);
-            }
-            Imgproc.rectangle(out, new Point((double)i*20,image_height*0.4), new Point((double)(i+1)*20, image_height*0.4+20), color, Imgproc.FILLED);
-            Imgproc.putText(out, ugui.INTRINSICS()[i],
-                new Point((double)i*20, image_height*0.4+15),
-                Imgproc.FONT_HERSHEY_SIMPLEX, .4, new Scalar(255, 255, 255), 1);
-        }
-    }
+    } // end handleArgs method
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
-/*                                     logDetectedCorners                                          */
-/*                                     logDetectedCorners                                          */
-/*                                     logDetectedCorners                                          */
+/*                                     logSnapshot                                                 */
+/*                                     logSnapshot                                                 */
+/*                                     logSnapshot                                                 */
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
+    private static int captureCount = 0; // image save file name sequence number
+    
     /**
-     * Detected Board data in mrgingham format plus the board info
-     * @param img Camera image
-     * @param ugui User Guidance Class
+     * Save Detected Board data in mrgingham format plus the board info
+     * Save snapshot images
+     * Vnlog (“vanilla-log”) file format (https://github.com/dkogan/vnlog)
+     * @param img Camera image to be saved
+     * @param findBoardCornersGuidancePipeResult Detection to be saved
      * @throws FileNotFoundException
      */
-    public static void logDetectedCorners(Mat img, UserGuidance ugui) throws FileNotFoundException
+    public static void logSnapshot(Mat img, CVPipeResult<FindBoardCornersGuidancePipeResult> findBoardCornersGuidancePipeResult) throws FileNotFoundException
     {
         if (vnlog == null) // first time switch
         {
-            vnlog = new PrintWriter(Cfg.cornersLog);
+            captureCount = 0;
+            vnlog = new PrintWriter(Cfg.cornersLog + new SimpleDateFormat("_yyyy-MM-dd_HH-mm-ss").format(System.currentTimeMillis()));
             vnlog.println("## produced by pose guidance calibration program");
             vnlog.println("# filename x y level cid boardX boardY");
         }
 
-        // write the captured frame to a file name
-        int captureCount = ugui.calib.keyframes.size();
-
-        String filename = String.format("img%02d.jpg", captureCount);
+        // write the captured frame to a sequenced file name
+        String filename = String.format("img%03d.jpg", ++captureCount);
         final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
         Imgcodecs.imwrite(filename, img, writeBoardParams); // save camera image
 
         // for efficiency put Mat data in arrays
-        Point3[] ChessboardCorners = ugui.tracker.board().getChessboardCorners().toArray(); // 1 col 3 channels x, y, z in a Point3 (float)
 
-        int[] DetectedCIDs = new int[ugui.tracker.cids().rows()]; // get detected corners - assume captured image does have corners
-        ugui.tracker.cids().get(0, 0, DetectedCIDs);
+        float[] ChessboardCorners = new float[findBoardCornersGuidancePipeResult.output.objectPoints.rows()
+            *findBoardCornersGuidancePipeResult.output.objectPoints.cols()
+            *findBoardCornersGuidancePipeResult.output.objectPoints.channels()]; // below assumes x and y in a row
+        findBoardCornersGuidancePipeResult.output.objectPoints.get(0, 0, ChessboardCorners);
 
-        float[] DetectedCorners = new float[ugui.tracker.ccorners().rows()*ugui.tracker.ccorners().cols()*ugui.tracker.ccorners().channels()]; // below assumes x and y in a row
-        ugui.tracker.ccorners().get(0, 0, DetectedCorners);
+        int[] DetectedCIDs = new int[findBoardCornersGuidancePipeResult.output.idCorners.rows()]; // get detected corners - assume captured image does have corners
+        findBoardCornersGuidancePipeResult.output.idCorners.get(0, 0, DetectedCIDs);
+
+        float[] DetectedCorners = new float[findBoardCornersGuidancePipeResult.output.imagePoints.rows()
+            *findBoardCornersGuidancePipeResult.output.imagePoints.cols()
+            *findBoardCornersGuidancePipeResult.output.imagePoints.channels()]; // below assumes x and y in a row
+        findBoardCornersGuidancePipeResult.output.imagePoints.get(0, 0, DetectedCorners);
 
         // save vnlog     
         for (int detectedCornerIndex = 0; detectedCornerIndex < DetectedCIDs.length; detectedCornerIndex++)
@@ -609,24 +469,46 @@ public class Main {
             logLine.append(" 0 "); // intended to be decimations always 0
             logLine.append(boardCornerId);
             logLine.append(" ");
-            logLine.append(ChessboardCorners[boardCornerId].x); // x
+            logLine.append(ChessboardCorners[detectedCornerIndex*2]); // x
             logLine.append(" ");
-            logLine.append(ChessboardCorners[boardCornerId].y); // y
+            logLine.append(ChessboardCorners[detectedCornerIndex*2+1]); // y
             vnlog.println(logLine.toString());                    
         }
+        vnlog.flush();
     }
 }
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     End Main class                                              */
-/*                                     End Main class                                              */
-/*                                     End Main class                                              */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
+/*
+partial sample final calibration output
 
-//  https://github.com/mcm001/photonvision/tree/2023-10-30_pose_calib_integration
+2024-12-30 14:17:43.977 INFO    [ Guidance.UserGuidance update] image capture number 14 
+2024-12-30 14:17:44.008 FINEST  [ Guidance.UserGuidance update] camera matrix
+[904.7665459523686, 0, 601.9607576366333;
+ 0, 904.3826311013136, 414.9059682892109;
+ 0, 0, 1] 
+2024-12-30 14:17:44.008 FINEST  [ Guidance.UserGuidance update] camera distortion [0.0358651354893901, 0.02390999179756997, 0.0005797443857783846, -0.001179131497828185, -0.1237528713726453] 
+
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] Camera Calibration Data 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] nr_of_frames: 14 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] image_width: 1280.0 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] image_height: 800.0 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] board_width: 8.0 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] board_height: 8.0 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] square_size: 250 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] marker_size: 188 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] fisheye_model: 0 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] camera_matrix:
+[904.7665459523686, 0, 601.9607576366333;
+ 0, 904.3826311013136, 414.9059682892109;
+ 0, 0, 1] 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] distortion_coefficients:
+[0.0358651354893901, 0.02390999179756997, 0.0005797443857783846, -0.001179131497828185, -0.1237528713726453] 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] avg_reprojection_error: 0.41918087385668834 
+2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] End of Calibration 
+ */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  parking lot for PV instructions from Matt (not this Guidance program instructions)
+// https://github.com/mcm001/photonvision/tree/2023-10-30_pose_calib_integration
 //  I made this by running 
 // gradlew clean
 //  then for RPi
@@ -642,4 +524,5 @@ public class Main {
 // java -jar photonvision-dev-v2024.1.1-beta-3.1-5-ga99e85a8-linuxarm64.jar
 //  is all you should need
 
-// Disable spotless in VSCode extensions or Append "-x spotlessapply" to the commands you run to disable it
+// Disable spotless in VSCode extensions or Append "-x spotlessapply" to the
+// commands you run to disable it

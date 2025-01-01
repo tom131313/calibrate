@@ -1,25 +1,9 @@
-/*
- * Copyright (C) Photon Vision.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-package org.photonvision.calibrator;
+package Guidance;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
 import org.opencv.core.Mat;
@@ -27,40 +11,44 @@ import org.opencv.core.Size;
 import org.opencv.objdetect.CharucoBoard;
 import org.opencv.objdetect.Dictionary;
 import org.opencv.objdetect.Objdetect;
-import org.photonvision.common.logging.LogGroup;
-import org.photonvision.common.logging.Logger;
 
 public class ChArUcoBoardPrint {
-    private static final Logger logger = new Logger(ChArUcoBoardPrint.class, LogGroup.General);
+	private static Logger LOGGER;
+	static {
+	  LOGGER = Logger.getLogger("");
+	  LOGGER.finest("Loading");     
+	}
+
+    private ChArUcoBoardPrint() {}
 
     // Charuco Board configuration (duplicates ChArucoDetector)
-    private Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
-    private final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
-    private final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
-    final Mat boardImage = new Mat();
-    private final CharucoBoard board = new CharucoBoard(this.board_sz, Cfg.square_len, Cfg.marker_len, this.dictionary);
+    private static Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
+    private static final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
+    private static final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
+    static final Mat boardImage = new Mat();
+    private static final CharucoBoard board = new CharucoBoard(board_sz, Cfg.square_len, Cfg.marker_len, dictionary);
 
-    ChArUcoBoardPrint()
+    public static void print()
     {
-        logger.debug("Starting ----------------------------------------");
+        LOGGER.finest("Instantiating ----------------------------------------");
 
         /// create board
-        this.board.generateImage(this.boardImageSize, this.boardImage);
+        board.generateImage(boardImageSize, boardImage);
 
         // write ChArUco Board to file for print to use for calibration
         
         /* PNG */
         final String boardFilePNG = Cfg.boardFile + ".png";
         try (FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG))) {
-            logger.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
+            LOGGER.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
 
-            byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
+            byte[] boardByte = new byte[boardImage.rows()*boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
 
             CRC32 crc32 = new CRC32();
 
             // SIGNATURE
             final byte[] signaturePNG =
-                {
+                { //     ‰           P           N           G          CR          LF         SUB          LF
                 (byte)0x89, (byte)0x50, (byte)0x4e, (byte)0x47, (byte)0x0d, (byte)0x0a, (byte)0x1a, (byte)0x0a // PNG magic number
                 };
             outputStreamPNG.write(signaturePNG);
@@ -68,8 +56,8 @@ public class ChArUcoBoardPrint {
             // HEADER
             byte[] IHDR =
             {
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // length
-                (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // IHDR
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // chunk length (not including length, "IHDR", crc)
+                (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // "IHDR"
                 (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder
                 (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder
                 (byte)0x08,                                     // bit depth
@@ -80,10 +68,10 @@ public class ChArUcoBoardPrint {
                 (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
             };
             // fetch the length data for the IHDR
-            int ihdrWidthOffset = 8;
-            int ihdrHeightOffset = 12;
-            ArrayUtils.intToByteArray(boardImage.cols(), IHDR, ihdrWidthOffset);
-            ArrayUtils.intToByteArray(boardImage.rows(), IHDR, ihdrHeightOffset);
+            int ihdrDataWidthOffset = 8;
+            int ihdrDataHeightOffset = 12;
+            ArrayUtils.intToByteArray(boardImage.cols(), IHDR, ihdrDataWidthOffset);
+            ArrayUtils.intToByteArray(boardImage.rows(), IHDR, ihdrDataHeightOffset);
 
             crc32.reset();
             crc32.update(IHDR, 4, IHDR.length-8); // skip the beginning 4 for length and ending 4 for crc
@@ -91,10 +79,10 @@ public class ChArUcoBoardPrint {
             outputStreamPNG.write(IHDR);
 
             // PHYSICAL RESOLUTION
-            byte[] PHYS = // varies with the requested resolution [pixels per meter]
+            byte[] pHYs = // varies with the requested resolution [pixels per meter]
                 {
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // length
-                (byte)0x70, (byte)0x48, (byte)0x59, (byte)0x73, // pHYs
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // chunk length (not including length, "pHYs", crc)
+                (byte)0x70, (byte)0x48, (byte)0x59, (byte)0x73, // "pHYs"
                 (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // x res [pixels per unit] place holder
                 (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // y res [pixels per unit] place holder
                 (byte)0x01,                                     // units [unit is meter]
@@ -102,13 +90,13 @@ public class ChArUcoBoardPrint {
                 };
             int physXresOffset = 8;
             int physYresOffset = 12;
-            ArrayUtils.intToByteArray(Cfg.resXDPM, PHYS, physXresOffset);
-            ArrayUtils.intToByteArray(Cfg.resYDPM, PHYS, physYresOffset);
+            ArrayUtils.intToByteArray(Cfg.resXDPM, pHYs, physXresOffset);
+            ArrayUtils.intToByteArray(Cfg.resYDPM, pHYs, physYresOffset);
 
             crc32.reset();
-            crc32.update(PHYS, 4, PHYS.length-8); // skip the beginning 4 for length and ending 4 for crc
-            ArrayUtils.intToByteArray((int)crc32.getValue(), PHYS, PHYS.length - 4);
-            outputStreamPNG.write(PHYS);
+            crc32.update(pHYs, 4, pHYs.length-8); // skip the beginning 4 for length and ending 4 for crc
+            ArrayUtils.intToByteArray((int)crc32.getValue(), pHYs, pHYs.length - 4);
+            outputStreamPNG.write(pHYs);
 
             // DATA
             //The complete filtered PNG image is represented by a single zlib datastream that is stored in a number of IDAT chunks.
@@ -165,8 +153,8 @@ public class ChArUcoBoardPrint {
             // END
             final byte[] IEND =
                 {
-                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // length
-                (byte)0x49, (byte)0x45, (byte)0x4e, (byte)0x44, // IEND
+                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // chunk length (not including length, "IEND", crc)
+                (byte)0x49, (byte)0x45, (byte)0x4e, (byte)0x44, // "IEND"
                 (byte)0xae, (byte)0x42, (byte)0x60, (byte)0x82  // crc
                 };
             
@@ -176,5 +164,4 @@ public class ChArUcoBoardPrint {
             e.printStackTrace();
         }
     }
-    /// end create board
 }

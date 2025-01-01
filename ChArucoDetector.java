@@ -1,28 +1,12 @@
-/*
- * Copyright (C) Photon Vision.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
 
-package org.photonvision.calibrator;
+package Guidance;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -39,8 +23,7 @@ import org.opencv.objdetect.DetectorParameters;
 import org.opencv.objdetect.Dictionary;
 import org.opencv.objdetect.Objdetect;
 import org.opencv.objdetect.RefineParameters;
-import org.photonvision.common.logging.LogGroup;
-import org.photonvision.common.logging.Logger;
+
 
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -52,7 +35,11 @@ import org.photonvision.common.logging.Logger;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class ChArucoDetector {
-    private static final Logger logger = new Logger(ChArucoDetector.class, LogGroup.General);
+    private static Logger LOGGER;
+    static {
+      LOGGER = Logger.getLogger("");
+      LOGGER.finest("Loading");     
+    }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -63,7 +50,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 
-    // Size img_size = new Size(Cfg.image_width, Cfg.image_height); not used in this class so fixup other classes' references to here
+    private Size img_size;
 
     // per frame data
     // p3d is the object coordinates of the perfect undistorted ChArUco Board corners that the camera is pointing at.
@@ -78,12 +65,12 @@ public class ChArucoDetector {
 
     // Charuco Board configuration (duplicates ChArUcoBoardPrint)
     private Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
-    private double square_len = Cfg.square_len;
-    private double marker_len = Cfg.marker_len;
+    private int square_len = Cfg.square_len;
+    private int marker_len = Cfg.marker_len;
     private final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
-    private final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
+    private final Size boardImageSize = new Size(Cfg.board_x*square_len, Cfg.board_y*square_len);
     final Mat boardImage = new Mat();
-    private final CharucoBoard board = new CharucoBoard(this.board_sz, Cfg.square_len, Cfg.marker_len, this.dictionary);
+    private final CharucoBoard board = new CharucoBoard(this.board_sz, square_len, marker_len, this.dictionary);
     private CharucoDetector detector; // the OpenCV detector spelled almost the same - fooled me too many times!!!!!
 
     private Mat rvec = new Mat();
@@ -102,7 +89,7 @@ public class ChArucoDetector {
     private double mean_flow = Double.MAX_VALUE; // mean flow of the same corners that are detected in consecutive frames (relaxed from original)
 
     // getters
-    CharucoBoard board()
+    public CharucoBoard board()
     {
         return board;
     }
@@ -118,11 +105,11 @@ public class ChArucoDetector {
     {
         return this.pose_valid;
     }
-    Mat rvec()
+    public Mat rvec()
     {
         return rvec;
     }
-    Mat tvec()
+    public Mat tvec()
     {
         return tvec;
     }
@@ -130,153 +117,23 @@ public class ChArucoDetector {
     {
         return this.mean_flow;
     }
-    Mat ccorners()
+    public Mat ccorners()
     {
         return ccorners;
     }
-    Mat cids()
+    public Mat cids()
     {
         return cids;
     }
 
-    public ChArucoDetector() // throws FileNotFoundException, IOException
+    public ChArucoDetector(Size img_size) // throws FileNotFoundException, IOException
     {
-        logger.debug("Starting ----------------------------------------");
+        LOGGER.finest("Instantiating ----------------------------------------");
 
+        this.img_size = img_size;
         /// create board
         this.board.generateImage(this.boardImageSize, this.boardImage);
 
-        // if (Cfg.writeBoard)
-        // {
-        //     // write ChArUco Board to file for print to use for calibration
-            
-        //     /* PNG */
-        //     final String boardFilePNG = Cfg.boardFile + ".png";
-        //     FileOutputStream outputStreamPNG = new FileOutputStream(new File(boardFilePNG));
-        //     logger.info("ChArUcoBoard to be printed is in file " + boardFilePNG);
-
-        //     byte[] boardByte = new byte[this.boardImage.rows()*this.boardImage.cols()]; // assumes 1 channel Mat [ 1680*2520*CV_8UC1, isCont=true, isSubmat=false, nativeObj=0x294e475cc20, dataAddr=0x294e55f7080 ]
-
-        //     CRC32 crc32 = new CRC32();
-
-        //     // SIGNATURE
-        //     final byte[] signaturePNG =
-        //         {
-        //         (byte)0x89, (byte)0x50, (byte)0x4e, (byte)0x47, (byte)0x0d, (byte)0x0a, (byte)0x1a, (byte)0x0a // PNG magic number
-        //         };
-        //     outputStreamPNG.write(signaturePNG);
-
-        //     // HEADER
-        //     byte[] IHDR =
-        //     {
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x0d, // length
-        //         (byte)0x49, (byte)0x48, (byte)0x44, (byte)0x52, // IHDR
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data width place holder
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // data height place holder
-        //         (byte)0x08,                                     // bit depth
-        //         (byte)0x00,                                     // color type - grey scale
-        //         (byte)0x00,                                     // compression method
-        //         (byte)0x00,                                     // filter method (default/only one?)
-        //         (byte)0x00,                                     // interlace method
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
-        //     };
-        //     // fetch the length data for the IHDR
-        //     int ihdrWidthOffset = 8;
-        //     int ihdrHeightOffset = 12;
-        //     ArrayUtils.intToByteArray(boardImage.cols(), IHDR, ihdrWidthOffset);
-        //     ArrayUtils.intToByteArray(boardImage.rows(), IHDR, ihdrHeightOffset);
-    
-        //     crc32.reset();
-        //     crc32.update(IHDR, 4, IHDR.length-8); // skip the beginning 4 for length and ending 4 for crc
-        //     ArrayUtils.intToByteArray((int)crc32.getValue(), IHDR, IHDR.length-4);
-        //     outputStreamPNG.write(IHDR);
-
-        //     // PHYSICAL RESOLUTION
-        //     byte[] PHYS = // varies with the requested resolution [pixels per meter]
-        //         {
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // length
-        //         (byte)0x70, (byte)0x48, (byte)0x59, (byte)0x73, // pHYs
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // x res [pixels per unit] place holder
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // y res [pixels per unit] place holder
-        //         (byte)0x01,                                     // units [unit is meter]
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  // crc place holder
-        //         };
-        //     int physXresOffset = 8;
-        //     int physYresOffset = 12;
-        //     ArrayUtils.intToByteArray(Cfg.resXDPM, PHYS, physXresOffset);
-        //     ArrayUtils.intToByteArray(Cfg.resYDPM, PHYS, physYresOffset);
-
-        //     crc32.reset();
-        //     crc32.update(PHYS, 4, PHYS.length-8); // skip the beginning 4 for length and ending 4 for crc
-        //     ArrayUtils.intToByteArray((int)crc32.getValue(), PHYS, PHYS.length - 4);
-        //     outputStreamPNG.write(PHYS);
-
-        //     // DATA
-        //     //The complete filtered PNG image is represented by a single zlib datastream that is stored in a number of IDAT chunks.
-
-        //     // create the filtered, compressed datastream
-
-        //     boardImage.get(0, 0, boardByte); // board from OpenCV Mat
-
-        //     // filter type begins each row so step through all the rows adding the filter type to each row
-        //     byte[] boardByteFilter = new byte[boardImage.rows() + boardByte.length];
-        //     int flatIndex = 0;
-        //     int flatIndexFilter = 0;
-        //     for (int row = 0; row < boardImage.rows(); row++)
-        //     {
-        //         boardByteFilter[flatIndexFilter++] = 0x00; // filter type none begins each row          
-        //         for (int col = 0; col < boardImage.cols(); col++)
-        //         {
-        //             boardByteFilter[flatIndexFilter++] = boardByte[flatIndex++];
-        //         }
-        //     }
-        //     // complete filtered PNG image is represented by a single zlib compression datastream
-        //     byte[] boardCompressed = ArrayUtils.compress(boardByteFilter);
-
-        //     // chunk the compressed datastream
-        //     // chunking not necessary for the ChArUcoBoard but it's potentially good for other uses
-        //     int chunkSize = 0;
-        //     int chunkSizeMax = 100_000; // arbitrary "small" number
-        //     int dataWritten = 0;
-
-        //     while (dataWritten < boardCompressed.length) // chunk until done
-        //     {
-        //         chunkSize = Math.min(chunkSizeMax, boardCompressed.length - dataWritten); // max or what's left in the last chunk
-
-        //         byte[] IDAT = new byte[4 + 4 + chunkSize + 4]; // 4 length + 4 "IDAT" + chunk length + 4 CRC
-
-        //         ArrayUtils.intToByteArray(chunkSize, IDAT, 0); // stash length of the chunk data in first 4 bytes
-        //         IDAT[4] = (byte)("IDAT".charAt(0));
-        //         IDAT[5] = (byte)("IDAT".charAt(1));
-        //         IDAT[6] = (byte)("IDAT".charAt(2));
-        //         IDAT[7] = (byte)("IDAT".charAt(3));
-        //         for(int i=0; i < chunkSize; i++)
-        //         {
-        //             IDAT[8 + i] = boardCompressed[dataWritten + i]; // stash data from where we left off to its place in the chunk
-        //         }
-
-        //         crc32.reset();
-        //         crc32.update(IDAT, 4, IDAT.length - 8); // skip the beginning 4 for length and ending 4 for crc
-        //         ArrayUtils.intToByteArray((int)crc32.getValue(), IDAT, IDAT.length - 4); // crc in last 4 bytes  
-
-        //         outputStreamPNG.write(IDAT);
-        //         dataWritten += chunkSize;
-        //    }
-
-        //     // END
-        //     final byte[] IEND =
-        //         {
-        //         (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // length
-        //         (byte)0x49, (byte)0x45, (byte)0x4e, (byte)0x44, // IEND
-        //         (byte)0xae, (byte)0x42, (byte)0x60, (byte)0x82  // crc
-        //         };
-            
-        //     outputStreamPNG.write(IEND);
-
-        //     outputStreamPNG.close();
-        // }
-        // /// end create board
-        
         /// board detector
         final DetectorParameters detectParams = new DetectorParameters();
         final RefineParameters refineParams = new RefineParameters();
@@ -305,12 +162,12 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void set_intrinsics(Calibrator calib)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
         this.cdist = calib.cdist();
-        // logger.debug("K\n" + this.K.dump() + "\n" + calib.K().dump());
+        // LOGGER.finest("K\n" + this.K.dump() + "\n" + calib.K().dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -327,10 +184,10 @@ public class ChArucoDetector {
      */
     public void draw_axis(Mat img)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         Calib3d.drawFrameAxes(
-            img, this.K, this.cdist, this.rvec, this.tvec, (float)this.square_len*2.5f, 2);
+            img, this.K, this.cdist, this.rvec, this.tvec, square_len*2.5f, 2);
     }   
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -341,9 +198,9 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    public void detect_pts(Mat img) throws Exception
+    public void detect_pts(Mat img)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         final List<Mat> markerCorners = new ArrayList<>();
         final Mat markerIds = new Mat();
@@ -354,9 +211,9 @@ public class ChArucoDetector {
         {
             detector.detectBoard( img, this.ccorners, this.cids, markerCorners, markerIds );
         }
-        catch(Exception e) // shouldn't happen
+        catch(Exception e) // shouldn't happen but it does; likely OpenCV error since it should handle whatever image it is given
         {
-            logger.error("detectBoard error\n" + img + "\n" + this.ccorners.dump() + "\n" + this.cids.dump(), e);
+            LOGGER.severe("OpenCV detectBoard error - skipping frame: " + e.getMessage());
             return; // skipping this image frame
             // sometimes a likely OpenCV error:
             // [General - ChArucoDetector] [ERROR] CvException [org.opencv.core.CvException: cv::Exception: OpenCV(4.8.0)
@@ -379,7 +236,7 @@ public class ChArucoDetector {
         // double check detect results since there was some unknown rare failure to get the N_pts set right
         if ( this.cids.rows() != this.ccorners.rows() ) // shouldn't happen
         {
-            logger.error("detectBoard has inconsistent number of outputs\n" + this.ccorners.dump() + "\n" + this.cids.dump());
+            LOGGER.severe("detectBoard has inconsistent number of outputs\n" + this.ccorners.dump() + "\n" + this.cids.dump());
             return; // skipping this image frame
         }
 
@@ -388,15 +245,15 @@ public class ChArucoDetector {
             this.N_pts = this.cids.rows();
         }
 
-        // logger.debug("N_pts " + this.N_pts);
+        // LOGGER.finest("N_pts " + this.N_pts);
     
         if (this.N_pts <= 0) // the less than shouldn't happen (maybe use the min N_pts from Cfg?)
         {
             return; // skipping this image frame
         }
 
-        // logger.debug("detected ccorners\n" + this.ccorners.dump());
-        // logger.debug("detected cids\n" + this.cids.dump());
+        // LOGGER.finest("detected ccorners\n" + this.ccorners.dump());
+        // LOGGER.finest("detected cids\n" + this.cids.dump());
         
         // reformat the Mat to a List<Mat> for matchImagePoints
         final List<Mat> ccornersList = new ArrayList<>();
@@ -411,14 +268,14 @@ public class ChArucoDetector {
         // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
         // after copying to MatOfPoint2f. A waste of cpu and memory.
 
-        // logger.debug("p3d\n" + this.p3d.dump()); // data okay here
-        // logger.debug("p2d\n" + this.p2d.dump()); // data okay here
+        // LOGGER.finest("p3d\n" + this.p3d.dump()); // data okay here
+        // LOGGER.finest("p2d\n" + this.p2d.dump()); // data okay here
 
         if (this.p3d.empty() || this.p2d.empty()) // shouldn't happen
         {
             this.N_pts = 0;
             this.mean_flow = Double.MAX_VALUE;   
-            logger.error("p3d or p2d empty from matchImagePoints");
+            LOGGER.severe("p3d or p2d empty from matchImagePoints");
             return; // skipping this image frame
         }
 
@@ -508,9 +365,9 @@ public class ChArucoDetector {
  * @return true if too few corners to use image
  * @throws Exception
  */
-    public boolean detect(Mat img) throws Exception
+    public boolean detect(Mat img)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         // raw_img never used - not converted
         boolean fewCorners = false;
         this.detect_pts(img);
@@ -533,7 +390,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public Mat get_pts3d()
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return this.p3d;
     }
@@ -548,9 +405,9 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public keyframe get_calib_pts()
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        return new keyframe(this.ccorners.clone(), this.get_pts3d().clone());
+        return new keyframe(this.img_size, this.get_pts3d().clone(), this.ccorners.clone(), this.cids.clone());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -567,14 +424,14 @@ public class ChArucoDetector {
  * @return fewCorners
  * @throws Exception
  */
-    public boolean update_pose() throws Exception
+    public boolean update_pose()
     {
         boolean fewCorners = false;
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
-            // logger.debug("too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
+            // LOGGER.finest("too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
             fewCorners = true;
             this.pose_valid = false;
             return fewCorners;
@@ -584,8 +441,8 @@ public class ChArucoDetector {
         MatOfPoint2f p2dReTyped = new MatOfPoint2f(this.p2d);
         MatOfDouble distReTyped = new MatOfDouble(this.cdist);
 
-        // logger.debug("p3d\n" + p3dReTyped.dump());
-        // logger.debug("p2d\n" + p2dReTyped.dump());
+        // LOGGER.finest("p3d\n" + p3dReTyped.dump());
+        // LOGGER.finest("p2d\n" + p2dReTyped.dump());
         
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
@@ -598,11 +455,11 @@ public class ChArucoDetector {
             rvec, tvec,
             false, 100, 8.0f, 0.99, inLiers, Calib3d.SOLVEPNP_ITERATIVE);
 
-        // logger.debug("inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
+        // LOGGER.finest("inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
         
         if ( ! this.pose_valid)
         {
-            // logger.debug("pose not valid");
+            // LOGGER.finest("pose not valid");
             return fewCorners;            
         }
 
@@ -670,17 +527,8 @@ public class ChArucoDetector {
         this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
         this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
 
-        // logger.debug("out rvec\n" + this.rvec.dump());
-        // logger.debug("out tvec\n" + this.tvec.dump());
+        // LOGGER.finest("out rvec\n" + this.rvec.dump());
+        // LOGGER.finest("out tvec\n" + this.tvec.dump());
         return fewCorners;
     }
 }
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     End ChArucoDetector class                                   */
-/*                                     End ChArucoDetector class                                   */
-/*                                     End ChArucoDetector class                                   */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/

@@ -1,25 +1,8 @@
-/*
- * Copyright (C) Photon Vision.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 // This project and file are derived in part from the "Pose Calib" project by
 // @author Pavel Rojtberg
 // It is subject to his license terms in the PoseCalibLICENSE file.
 
-package org.photonvision.calibrator;
+package Guidance;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,15 +43,15 @@ class Distortion
     {
         // seems like a better strategy would be to see what contour actually contributes the most and not just check the largest ones
         // and use true area of contour and not just the number of points in the contour
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // logger.debug("thresh " + thresh);        
-        // logger.debug("mask " + mask);
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("thresh " + thresh);        
+        // LOGGER.finest("mask " + mask);
 
         List<MatOfPoint> contours = new ArrayList<>(20); // arbitrary initial size - what is a better guess?
         Mat hierarchy = new Mat();
         Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
        
-        // logger.debug(contours.size() + " contours");
+        // LOGGER.finest(contours.size() + " contours");
         // look for the largest object that is not masked
         // This is essentially a Sort and Filter. It's not very efficient but that makes it easier
         // by not having to reorder the contours. The list is expected to be very short so it's not
@@ -92,7 +75,7 @@ class Distortion
                     areaContourMax = areaContour;
                     mx = i;
                 }
-                // logger.debug("Contour " + (mx+1) + " of " + contours.size() + ", area max so far " + areaContourMax
+                // LOGGER.finest("Contour " + (mx+1) + " of " + contours.size() + ", area max so far " + areaContourMax
                 //       + ", contour size " + contours.get(mx).size(mx) + "\n" + contours.get(mx).dump());
             }
             // Now have contour with largest area so check that area not already covered,
@@ -104,7 +87,7 @@ class Distortion
             int y = aabb.y;
             int w = aabb.width;
             int h = aabb.height;
-            // logger.debug("processing Rect aabb " + aabb);
+            // LOGGER.finest("processing Rect aabb " + aabb);
 
             if ( ! mask.empty() // amount of mask already filled where this contour would fill
                 && (double)Core.countNonZero(mask.submat(y, y+h, x, x+w)) / (double)(w*h) > Cfg.MAX_OVERLAP)
@@ -112,11 +95,11 @@ class Distortion
                 contours.remove(mx); // largest contour wouldn't contribute enough in the right places so skip it
                 continue;
             }
-            // logger.debug("returning aabb " + aabb); // best contributing contour for the pose
+            // LOGGER.finest("returning aabb " + aabb); // best contributing contour for the pose
             return aabb; // best contour in list so return it
         }
 
-        // logger.debug("returning null aabb"); // pose doesn't contribute enough
+        // LOGGER.finest("returning null aabb"); // pose doesn't contribute enough
 
         return null; // no contours met the criteria
     }
@@ -140,11 +123,11 @@ class Distortion
      */
     static Mat make_distort_map(Mat K, Size sz, Mat dist, Mat Knew)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // logger.debug("camera matrix K " + K + "\n" + K.dump());
-        // logger.debug("sz " + sz);
-        // logger.debug("distortion coefficients dist " + dist.dump() + dist);
-        // logger.debug("Knew " + Knew.dump()); // null pointer (or empty?) Knew
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
+        // LOGGER.finest("sz " + sz);
+        // LOGGER.finest("distortion coefficients dist " + dist.dump() + dist);
+        // LOGGER.finest("Knew " + Knew.dump()); // null pointer (or empty?) Knew
 
         // pts = np.array(np.meshgrid(range(sz[0]), range(sz[1]))).T.reshape(-1, 1, 2)
                 // inclusive 0, to not included final, step; fills one column down the rows then the next column and down the rows
@@ -182,10 +165,10 @@ class Distortion
         
         Mat dpts2D = dpts.reshape(2, h);
 
-        // logger.debug("pts " + pts + "\n" + ArrayUtils.brief(pts));
-        // logger.debug("dpts " + dpts + "\n" + ArrayUtils.brief(dpts));
-        // logger.debug("returning dpts2D " + dpts2D + ArrayUtils.brief(dpts2D));
-        // logger.debug("maybe returning Knew\n" + Knew.dump());
+        // LOGGER.finest("pts " + pts + "\n" + ArrayUtils.brief(pts));
+        // LOGGER.finest("dpts " + dpts + "\n" + ArrayUtils.brief(dpts));
+        // LOGGER.finest("returning dpts2D " + dpts2D + ArrayUtils.brief(dpts2D));
+        // LOGGER.finest("maybe returning Knew\n" + Knew.dump());
 
         pts.release();
         dpts.release();
@@ -206,7 +189,7 @@ class Distortion
     //     @return: distorted points, original points
     static List<Mat> sparse_undistort_map(Mat K, Size sz, Mat dist, Mat Knew, int step)
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // best I can tell step is always 20 (subsample) and never 1 so this should not be executed
         if (step == 1)
@@ -299,18 +282,18 @@ class Distortion
      */
     static Rect loc_from_dist(Mat pts, Mat dpts, Mat mask, boolean lower, double thres) // force specifying all parameters
     {
-        // logger.debug("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // logger.debug("pts " + pts);
-        // logger.debug("dpts " + dpts);
-        // logger.debug("mask " + mask);
-        // logger.debug("lower " + lower);
-        // logger.debug("thres " + thres);
+        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        // LOGGER.finest("pts " + pts);
+        // LOGGER.finest("dpts " + dpts);
+        // LOGGER.finest("mask " + mask);
+        // LOGGER.finest("lower " + lower);
+        // LOGGER.finest("thres " + thres);
         Mat diffpts = new Mat();
         Core.subtract(pts, dpts, diffpts);
-        // logger.debug("diffpts " + diffpts);
+        // LOGGER.finest("diffpts " + diffpts);
 
         Mat normMat = new Mat(pts.rows(), pts.cols(), CvType.CV_32FC1);
-        // logger.debug("normMat empty " + normMat);
+        // LOGGER.finest("normMat empty " + normMat);
 
         for (int row = 0; row < pts.rows(); row++)
         for (int col = 0; col < pts.cols(); col++)
@@ -320,15 +303,15 @@ class Distortion
             float norm = (float)Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2)); // L2 norm (Frobenious)
             normMat.put(row, col, norm);
         }
-        // logger.debug("normMat filled " + normMat);
+        // LOGGER.finest("normMat filled " + normMat);
 
         normMat = normMat.reshape(0,mask.rows())/*.t()*/;
-        // logger.debug("normMat reshaped " + normMat);
+        // LOGGER.finest("normMat reshaped " + normMat);
 
         Mat diff = new Mat();
         Core.normalize(normMat, diff, 0, 255, Core.NORM_MINMAX, CvType.CV_8U);
-        // logger.debug("diff " + diff.dump());
-        // logger.debug("normMat normalized=diff " + diff);
+        // LOGGER.finest("diff " + diff.dump());
+        // LOGGER.finest("normMat normalized=diff " + diff);
 
         Rect bounds = null;
 
@@ -345,7 +328,7 @@ class Distortion
                 thres -= 0.05;
                 Imgproc.threshold(diff, thres_img, thres * 255., 255., Imgproc.THRESH_BINARY);
             }
-            // logger.debug("thres_img " + thres_img /*+ "\n" + brief(thres_img.dump())*/);
+            // LOGGER.finest("thres_img " + thres_img /*+ "\n" + brief(thres_img.dump())*/);
 
             bounds = get_bounds(thres_img, mask);
 
@@ -364,7 +347,7 @@ class Distortion
         diff.release();
         diffpts.release();
 
-        // logger.debug("bounds " + (bounds == null ? "is null" : bounds));
+        // LOGGER.finest("bounds " + (bounds == null ? "is null" : bounds));
 
         return bounds;
     }
@@ -382,12 +365,3 @@ class Distortion
         throw new UnsupportedOperationException("This is a utility class");
     }
 }
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
-/*                                                                                                 */
-/*                                     End Distortion class                                        */
-/*                                     End Distortion class                                        */
-/*                                     End Distortion class                                        */
-/*                                                                                                 */
-/*-------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------*/
