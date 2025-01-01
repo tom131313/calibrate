@@ -8,7 +8,7 @@ corresponding snapshot in the other program. An on screen message helps to remin
 The user has to hold the camera still and trigger the other program's snapshot despite those distractions. Two people working together may make this a 
 lot easier.
 
-**Run from a Windows terminal window the jar**
+**Run the jar with the correct version id file name from a Windows command terminal**
 
 **don't double click the jar file name**
 
@@ -22,7 +22,6 @@ C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-h"
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-f"
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-B"
-
 
 Run log is in the directory with the jar file.
 
@@ -95,6 +94,8 @@ Camera calibration data is logged to the console (terminal) and file.
 
 The program has an option to display a Siemens Star for aid camera focusing.
 
+[Usage observations: PhotonVision runs its output stream at lower resolution (maybe half). LimeLight alternate output stream (5802) runs at full resolution and it's slow.]
+
 References:
 
 https://arxiv.org/pdf/1907.04096.pdf
@@ -102,30 +103,3 @@ https://arxiv.org/pdf/1907.04096.pdf
 https://www.calibdb.net/#
 
 https://github.com/paroj/pose_calib
-
-        options.addOption("h", "help", false, "Show this help text and exit");
-        options.addOption("W", "width", true, "camera image width (1280)");
-        options.addOption("H", "height", true, "camera image height (720)");
-        options.addOption("X", "dpmX", true, "print width pixels per meter (9843=250 DPI)");
-        options.addOption("Y", "dpmY", true, "print height pixels per meter (9843=250 DPI");
-        options.addOption("F", "pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
-        options.addOption("c", "cameraId", true, "camera id (0); two forms: 1. integer or 2. name, http://...");
-        options.addOption("R", "fps", true, "frames per second (10)");
-        options.addOption("B", "printBoard", false, "print to file ChArUco Board");
-        options.addOption("f", "focus", false, "sharpness measure mode - no calibration");
-        options.addOption("d", "displayPort", true, "output image port (1185)");
-        options.addOption("S", "logSnapshot", false, "save snapshots image file and corners");
-
-                        "-S",
-                // "-help",
-                // "-focus",
-                // "-cameraId=1",
-                "-cameraId=PV, http://localhost:1182/stream.mjpg",
-                "-fps=100",
-                "-height=800",
-                "-width=1280",
-                // "-B",
-                // "junk test",
-                "-pxFmt=kMJPEG"
-
-                
