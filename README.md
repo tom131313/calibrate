@@ -1,12 +1,14 @@
 # Java Camera Calibrator
 Program guides user to pose the camera to the ChArUcoBoard for most efficient and accurate calibration.
 
-It accepts a USB camera as input for standalone calibration or can use the stream output of another program such as PhotonVision or LimeLight to provide 
+It accepts a USB camera as input for standalone calibration or can use the stream output of another program such as LimeLight to provide 
 more efficient pose guidance for those programs. There is no automated connection between this guidance automatically capturing a calibration 
 snapshot and the other program. When the Guidance captures a snapshot, the user should hold the camera very steady in that position and then trigger the 
 corresponding snapshot in the other program. An on screen message helps to remind the user. The Guidance has moved on to the next guidance pose or ended. 
 The user has to hold the camera still and trigger the other program's snapshot despite those distractions. Two people working together may make this a 
 lot easier.
+
+[PhotonVision has no pure raw camera stream output and its slightly damaged "raw" stream is disabled during calibration so this guidance doesn't work with PV.]
 
 **Run the jar with the correct version id file name from a Windows command terminal**
 
@@ -15,12 +17,17 @@ lot easier.
 `java -jar CalibrationGuidance.jar [options]`
 
 Examples:
-C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-S" "-cameraId=PV, http://localhost:1182/stream.mjpg"
+
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-S" "-cameraId=LL, http://10.42.37.22:5802"
+
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-S" "-cameraId=1" "-fps=100" "-height=800" "-width=1280" "-pxFmt=kMJPEG"
+
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-f"
+
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-h"
+
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-f"
+
 C:\Users\bike1\FRC\2025\CalibrationGuidance>java -jar CalibrationGuidance.jar "-B"
 
 Run log is in the directory with the jar file.
