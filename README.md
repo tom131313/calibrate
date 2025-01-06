@@ -8,8 +8,6 @@ corresponding snapshot in the other program. An on screen message helps to remin
 The user has to hold the camera still and trigger the other program's snapshot despite those distractions. Two people working together may make this a 
 lot easier.
 
-[PhotonVision has no pure raw camera stream output and its slightly damaged "raw" stream is disabled during calibration so this guidance doesn't work with PV.]
-
 **Run the jar with the correct version id file name from a Windows command terminal**
 
 **don't double click the jar file name**
@@ -101,7 +99,10 @@ Camera calibration data is logged to the console (terminal) and file.
 
 The program has an option to display a Siemens Star for aid camera focusing.
 
-[Usage observations: PhotonVision runs its output stream at lower resolution (maybe half). LimeLight alternate output stream (5802) runs at full resolution and it's slow.]
+[Usage observations:
+LimeLight alternate output stream (5802) runs at full resolution. For a responsive camera image use the "Viewfinder" pipeline to take snapshots.
+
+PhotonVision has no pure raw camera stream output and that slightly damaged "raw" stream is disabled during calibration so this guidance doesn't work with PV.]
 
 References:
 

@@ -28,7 +28,8 @@ public class Cfg
     static final String boardFile = "ChArUcoBoard";
     static int resXDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
     static int resYDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
-    static final String cornersLog = "corners.vnl"; // only used for a snapshot log
+    static final String cornersLog = "Corners"; // only used for a snapshot log
+    static final String videoFile = "CalibrationVideo"; // video format of saved images
     static final long messageHoldTime = 5000L; // milliseconds to hold display of message
 
 // ALL THE FOLLOWING STUFF MIGHT NEVER NEED TO BE CHANGED

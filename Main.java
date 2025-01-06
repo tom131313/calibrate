@@ -63,7 +63,7 @@ import edu.wpi.first.util.PixelFormat;
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 public class Main {
-    private static final String VERSION = "beta-13"; // change this
+    private static final String VERSION = "beta-14"; // change this
 
 
     private static Logger LOGGER;
@@ -80,13 +80,7 @@ public class Main {
     private static CVPipeResult<FindBoardCornersGuidancePipeResult> findBoardCornersGuidancePipeResult;
 
     private static PrintWriter vnlog = null; // first time switch value is null
-
-    // keyboard mapping returns from OpenCV waitKey
-    // Identical copy to the list in "Keystroke" class. Sorry about that! Could fix.
-    private static final int keyTerminateOpenCV = 81;
-    private static final int keyCaptureOpenCV = 67;
-    private static final int keyMirrorToggleOpenCV = 77;
-    private static final int timedOut = -1;  // timed out no key pressed
+    private static VideoCreation video = null; // first time switch value is null
 
     ///////////////////////////// USER INPUT ARGUMENTS ///////////////////////////////
     // camera ID instructions:
@@ -243,9 +237,9 @@ public class Main {
                 // get any user keyed input useful for focus mode (ignore the rest)
                 switch (keystroke.getKey())
                 {
-                    case timedOut: // no key press to process
+                    case Keystroke.keyNone: // no key press to process
                             break;
-                    case keyTerminateOpenCV:
+                    case Keystroke.keyTerminate:
                             LOGGER.info("Pose Guidance Camera action CANCELLED");
                             break frameGrabLoop; // quit
                     default: // unassigned key
@@ -268,18 +262,18 @@ public class Main {
                 // get any user keyed input useful for calibration mode (ignore the rest)
                 switch (keystroke.getKey())
                 {
-                    case timedOut: // no key press to process
+                    case Keystroke.keyNone: // no key press to process
                             break;
-                    case keyTerminateOpenCV:
+                    case Keystroke.keyTerminate:
                             LOGGER.info("Pose Guidance Camera action CANCELLED");
                             break frameGrabLoop; // quit
-                    case keyMirrorToggleOpenCV:
+                    case Keystroke.keyMirrorToggle:
                             LOGGER.info("Toggled mirror guidance");
                             param.mirror = ! param.mirror;
                             break;
-                    case keyCaptureOpenCV:
+                    case Keystroke.keyCapture:
                             LOGGER.info("Forced capture snapshot");
-                            param.save = true; // yes, it's one frame behind what user sees but it's usually too fast to notice
+                            param.save = true; // it's one frame behind what user sees but it's usually too fast to notice
                             break;
                     default: // unassigned key
                             break;
@@ -317,15 +311,25 @@ public class Main {
 
                 if (findBoardCornersGuidancePipeResult.output.haveEnough) // done calibrating
                 {
+                    //  further processing of the complete set of snapshots could be done here - this is the end   
                     // The guidance program prints elsewhere its calibration results to the LOGGER and notifies us here.
-                    if(logSnapshot && vnlog != null) {
-                        vnlog.close();
-                        vnlog = null; // redundant cleanup just to make sure a logic error doesn't try to use it again
-                    //  further processing of the complete set of snapshots could be done here - this is the end    
+                    if(logSnapshot) {
+                        if(vnlog != null) {
+                            vnlog.close();
+                            vnlog = null; // redundant cleanup just to make sure a logic error doesn't try to use it again
+                        }
+                        if(video != null) {
+                            video.close();
+                            video = null; // redundant cleanup just to make sure a logic error doesn't try to use it again
+                        }
                     }
+                        LOGGER.severe("Pose Guidance Camera action calibrated");
 
-                    LOGGER.severe("Pose Guidance Camera action calibrated");
-                    break frameGrabLoop; // done with calibration
+                    // check for holding the last message before quitting
+                    if (!recentSnapshot)
+                    {
+                        break frameGrabLoop; // done with calibration
+                    }
                 }
                 else    
                 if (findBoardCornersGuidancePipeResult.output.cancelCalibration)
@@ -428,20 +432,35 @@ private static boolean handleArgs(String[] args) throws ParseException {
      */
     public static void logSnapshot(Mat img, CVPipeResult<FindBoardCornersGuidancePipeResult> findBoardCornersGuidancePipeResult) throws FileNotFoundException
     {
+        var fileTime = new SimpleDateFormat("_yyyy-MM-dd_HH-mm-ss")
+                    .format(System.currentTimeMillis());
+
         if (vnlog == null) // first time switch
         {
             captureCount = 0;
-            vnlog = new PrintWriter(Cfg.cornersLog + new SimpleDateFormat("_yyyy-MM-dd_HH-mm-ss").format(System.currentTimeMillis()));
+            vnlog = new PrintWriter(
+                Cfg.cornersLog + fileTime + ".vnl");
             vnlog.println("## produced by pose guidance calibration program");
             vnlog.println("# filename x y level cid boardX boardY");
         }
+
+        if (video == null) // first time switch
+        {
+            captureCount = 0;
+            video = new VideoCreation(
+                Cfg.videoFile + fileTime + ".mp4",
+                img.size());
+        }
+
+        // write the captured frame to the video file
+        video.addFrame(img);
 
         // write the captured frame to a sequenced file name
         String filename = String.format("img%03d.jpg", ++captureCount);
         final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
         Imgcodecs.imwrite(filename, img, writeBoardParams); // save camera image
 
-        // for efficiency put Mat data in arrays
+        // for efficiency put Mat data in primative arrays
 
         float[] ChessboardCorners = new float[findBoardCornersGuidancePipeResult.output.objectPoints.rows()
             *findBoardCornersGuidancePipeResult.output.objectPoints.cols()

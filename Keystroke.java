@@ -15,16 +15,16 @@ class Keystroke implements Runnable
         }
 
     // keyboard mapping returns from OpenCV waitKey
-    private static final int keyTerminateOpenCV = 81;
-    private static final int keyCaptureOpenCV = 67;
-    private static final int keyMirrorToggleOpenCV = 77;
+    // can't use enum in switches (maybe with the latest java you can)
+    static final int keyTerminate = 81; // q
+    static final int keyCapture = 67; // c
+    static final int keyMirrorToggle = 77; // m
+    static final int keyNone = -1;  // timed out, no key pressed
 
     // keyboard mapping returns from Java Scanner
-    private static final int keyTerminateScanner = 113;
-    private static final int keyCaptureScanner = 99;
-    private static final int keyMirrorToggleScanner = 109;
-
-    private static final int timedOut = -1;  // timed out no key pressed
+    private static final int keyTerminateScanner = 113; // q
+    private static final int keyCaptureScanner = 99; // c
+    private static final int keyMirrorToggleScanner = 109; // m
 
     AtomicInteger dokeystroke = new AtomicInteger(-1);
 
@@ -53,15 +53,15 @@ class Keystroke implements Runnable
                 // map Scanner character codes to OpenCV character codes
                 if (keyScanner == keyCaptureScanner)
                 {
-                    dokeystroke.set(keyCaptureOpenCV);
+                    dokeystroke.set(keyCapture);
                 }
                 else if (keyScanner == keyMirrorToggleScanner)
                 {
-                    dokeystroke.set(keyMirrorToggleOpenCV);
+                    dokeystroke.set(keyMirrorToggle);
                 }
                 else if (keyScanner == keyTerminateScanner)
                 {
-                    dokeystroke.set(keyTerminateOpenCV);
+                    dokeystroke.set(keyTerminate);
                 }
                 else // ignore any keys that weren't mapped above
                 {
@@ -75,11 +75,11 @@ class Keystroke implements Runnable
     /**
      * Get the command entered on the terminal
      * 
-     * Expected to be called by a different thread than the "run" method above so
-     * access to the character command is in a thread safe manner.
+     * This getter is expected to be called by a different thread than the "run" method
+     * above so access to the character command is in a thread safe manner.
      * @return the character command
      */
     public int getKey() {
-        return dokeystroke.getAndSet(timedOut);
+        return dokeystroke.getAndSet(keyNone); // after getting the previous key, re-initialize to indicate no key pressed so far
     }
 }
