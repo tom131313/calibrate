@@ -366,13 +366,16 @@ private static boolean handleArgs(String[] args) throws ParseException {
         options.addOption("H", "height", true, "camera image height (720)");
         options.addOption("X", "dpmX", true, "print width pixels per meter (9843=250 DPI)");
         options.addOption("Y", "dpmY", true, "print height pixels per meter (9843=250 DPI");
-        options.addOption("F", "pxFmt", true, "pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
+        options.addOption("F", "pxFmt", true, "camera pixel format (kYUYV) " + Arrays.toString(PixelFormat.values()));
         options.addOption("c", "cameraId", true, "camera id (0); two forms: 1. integer or 2. name, http://...");
-        options.addOption("R", "fps", true, "frames per second (10)");
-        options.addOption("B", "printBoard", false, "print to file ChArUco Board");
+        options.addOption("R", "fps", true, "camera frames per second (10)");
+        options.addOption("x", "sqrWide", true, "ChArUco board squares wide (8)");
+        options.addOption("y", "sqrHigh", true, "ChArUco board squares high (8)");
+        options.addOption("D", "dictionary", true, "8x8 square ArUco board; dictionary (FourByFour) " + Arrays.toString(Cfg.Dictionary.values()));
+        options.addOption("B", "printBoard", false, "print ChArUco Board to file ChArUcoBoard.png");
         options.addOption("f", "focus", false, "sharpness measure mode - no calibration");
         options.addOption("d", "displayPort", true, "output image port (1185)");
-        options.addOption("S", "logSnapshot", false, "save snapshots image file and corners");
+        options.addOption("S", "logSnapshot", false, "save snapshots image files and corners");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -396,13 +399,15 @@ private static boolean handleArgs(String[] args) throws ParseException {
         Cfg.resXDPM = Integer.parseInt(cmd.getOptionValue("dpmX", "9843"));
         Cfg.resYDPM = Integer.parseInt(cmd.getOptionValue("dpmY", "9843"));
         pixelFormat = PixelFormat.valueOf(cmd.getOptionValue("pxFmt", "kYUYV"));
+        Cfg.board_x = Integer.parseInt(cmd.getOptionValue("x", "8"));
+        Cfg.board_y = Integer.parseInt(cmd.getOptionValue("y", "8"));
+        Cfg.dictionary = Cfg.Dictionary.valueOf(cmd.getOptionValue("dictionary", "FourByFour")).dictionary;
         camId = cmd.getOptionValue("cameraId", "0");
         fps = Integer.parseInt(cmd.getOptionValue("fps", "10"));
         displayPort = Integer.parseInt(cmd.getOptionValue("displayPort", "1185"));
 
-        if (cmd.hasOption("B")) {
-            ChArUcoBoardPrint.print(); // do the function here rather than pass back a switch to do it
-            return false; // exit program
+        if (cmd.hasOption("B")) { // must be after the dictionary and number of board squares options
+            ChArUcoBoardPrint.print(); // because do the function here rather than pass back a switch to do it
         }
 
         focus = cmd.hasOption("f");
@@ -420,11 +425,11 @@ private static boolean handleArgs(String[] args) throws ParseException {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-    private static int captureCount = 0; // image save file name sequence number
-    
+    private static int captureCount; // image save file name sequence number
+    private static String fileTime;
     /**
-     * Save Detected Board data in mrgingham format plus the board info
-     * Save snapshot images
+     * Save Detected Board corner data in mrgingham format plus the board info
+     * Save snapshot images individually and as a video (movie)
      * Vnlog (“vanilla-log”) file format (https://github.com/dkogan/vnlog)
      * @param img Camera image to be saved
      * @param findBoardCornersGuidancePipeResult Detection to be saved
@@ -432,33 +437,23 @@ private static boolean handleArgs(String[] args) throws ParseException {
      */
     public static void logSnapshot(Mat img, CVPipeResult<FindBoardCornersGuidancePipeResult> findBoardCornersGuidancePipeResult) throws FileNotFoundException
     {
-        var fileTime = new SimpleDateFormat("_yyyy-MM-dd_HH-mm-ss")
-                    .format(System.currentTimeMillis());
-
-        if (vnlog == null) // first time switch
+        if (vnlog == null || video == null) // first time switch
         {
+            fileTime = new SimpleDateFormat("_yyyy-MM-dd_HH-mm").format(System.currentTimeMillis());
             captureCount = 0;
-            vnlog = new PrintWriter(
-                Cfg.cornersLog + fileTime + ".vnl");
+
+            vnlog = new PrintWriter(Cfg.cornersLog + fileTime + ".vnl");
             vnlog.println("## produced by pose guidance calibration program");
             vnlog.println("# filename x y level cid boardX boardY");
-        }
-
-        if (video == null) // first time switch
-        {
-            captureCount = 0;
-            video = new VideoCreation(
-                Cfg.videoFile + fileTime + ".mp4",
-                img.size());
-        }
-
-        // write the captured frame to the video file
-        video.addFrame(img);
+            video = new VideoCreation(Cfg.videoFile + fileTime + ".mp4", img.size());
+     }
+        
+        video.addFrame(img); // save camera image in the video file
 
         // write the captured frame to a sequenced file name
-        String filename = String.format("img%03d.jpg", ++captureCount);
+        String filename = String.format("img_%s_%03d.jpg", fileTime, ++captureCount);
         final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
-        Imgcodecs.imwrite(filename, img, writeBoardParams); // save camera image
+        Imgcodecs.imwrite(filename, img, writeBoardParams); // save camera image in its own file
 
         // for efficiency put Mat data in primative arrays
 

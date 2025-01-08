@@ -24,23 +24,27 @@ public class Cfg
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-// MAYBE SHOULD BE USER SPECIFIABLE
-    static final String boardFile = "ChArUcoBoard";
+// USER SPECIFIABLE
+    static int dictionary = Dictionary.valueOf("FourByFour").dictionary;
+    static int board_x = 8; //9;
+    static int board_y = 8; //6;
     static int resXDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
     static int resYDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
+
+// MAYBE SHOULD BE USER SPECIFIABLE
+    static final String boardFile = "ChArUcoBoard";
     static final String cornersLog = "Corners"; // only used for a snapshot log
     static final String videoFile = "CalibrationVideo"; // video format of saved images
     static final long messageHoldTime = 5000L; // milliseconds to hold display of message
 
-// ALL THE FOLLOWING STUFF MIGHT NEVER NEED TO BE CHANGED
+    // ALL THE FOLLOWING STUFF MIGHT NEVER NEED TO BE CHANGED
     public static final int garbageCollectionFrames = 500; // camera frames - periodically do garbage collection because Java doesn't know there are big Mats to be released
     static final double initialFocalLength = 1000.; // fx and fy, aspect ratio = 1 (fy/fx)
     // ChArUco Board pixels = (board_x*square_len, board_y*square_len)
-    static final int board_x = 8; //9;
-    static final int board_y = 8; //6;
+
+
     static final int square_len = 250; //280;
     static final int marker_len = 188; //182;
-    static final int dictionary = 0;
     // intensity of the green guidance board
     // suggest "white" [-100]; (dull) -128 to -1 (bright)
     // suggest "black" [1]; (somewhat transparent) 1 to 64 (more obscuring)
@@ -72,7 +76,19 @@ public class Cfg
     static final double solvePnPRefineVVSLambda = 1.;
 
     static final TermCriteria undistortPointsIterCriteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 20, FLT_EPSILON); // default cv::TermCriteria(cv::TermCriteria::COUNT, 5, 0.01)
-/////////////////////////////////////////////////////////    
+/////////////////////////////////////////////////////////
+
+    // User choices for ArUco
+    public enum Dictionary {
+        FourByFour(Objdetect.DICT_4X4_1000),
+        FiveByFive(Objdetect.DICT_5X5_1000);
+        int dictionary;
+        private Dictionary(int dictionary)
+        {
+            this.dictionary = dictionary;
+        }
+    }
+
     private Cfg()
     {
         throw new UnsupportedOperationException("This is a utility class");

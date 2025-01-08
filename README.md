@@ -41,13 +41,13 @@ internal and external cameras connected at boot up: external=0, internal=1
 internal camera connected at boot up and external plugged in later: internal=0, external=1
 It may be convenient to disable the internal camera for extended calibration testing to make the camera id for the external constant.
 
-This program is setup to use the PhotonVision calibration board 1" squares, 0.75" markers, 4x4 dictionary. LimeLight Vision can also use that calibration.
+This program is setup to use the PhotonVision calibration board 1" squares, 0.75" markers, 4x4 dictionary. LimeLight Vision can also use that calibration. The 5x5 dictionary and other numbers of squares on the board are supported.
 
 If a board isn't available, then start the program with the `-printBoard` option to make a `ChArUcoBoard.png` file that can be printed. Instead of printing, 
 the ChArUcoBoard file can be displayed in another window on the computer screen or on a second screen. Use of a computer flat screen display can improve the 
 camera calibration, however, there may be restrictions compared to using a paper board or commercail stiff board. Computer displays must be flat and visible 
 at steep (nearly parallel) angles. For the smallest guidance target some displays may not have enough resolution or refresh rate to display the guidance 
-(although it may look fine to the human eye).
+(although it may look fine to the human eye). The size of the squares must be determined accurately without scratching the display.
 
 Run the program and aim the camera at the printed board in the pose that matches the guidance board on the computer screen. It may be easier to align a fixed 
 camera and hold and move the board.

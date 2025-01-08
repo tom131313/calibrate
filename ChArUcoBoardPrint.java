@@ -23,7 +23,7 @@ public class ChArUcoBoardPrint {
 
     // Charuco Board configuration (duplicates ChArucoDetector)
     private static Size board_sz = new Size(Cfg.board_x, Cfg.board_y);
-    private static final Dictionary dictionary = Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
+    private static final Dictionary dictionary = Objdetect.getPredefinedDictionary(Cfg.dictionary);
     private static final Size boardImageSize = new Size(Cfg.board_x*Cfg.square_len, Cfg.board_y*Cfg.square_len);
     static final Mat boardImage = new Mat();
     private static final CharucoBoard board = new CharucoBoard(board_sz, Cfg.square_len, Cfg.marker_len, dictionary);
