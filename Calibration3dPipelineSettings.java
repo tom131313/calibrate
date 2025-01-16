@@ -27,7 +27,7 @@ public class Calibration3dPipelineSettings {
         private static Logger LOGGER;
     static {
       LOGGER = Logger.getLogger("");
-      LOGGER.finest("Loading");     
+      LOGGER.finer("Loading");     
     }
     public int boardHeight = 8;
     public int boardWidth = 8;

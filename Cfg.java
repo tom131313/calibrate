@@ -4,6 +4,8 @@ import org.opencv.core.Scalar;
 import org.opencv.core.TermCriteria;
 import org.opencv.objdetect.Objdetect;
 
+import java.util.logging.Level;
+
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
 /*                                                                                                 */
@@ -32,6 +34,7 @@ public class Cfg
     static int resYDPM = 9843; // board printing pixels per meter 9843 = 250 DPI
 
 // MAYBE SHOULD BE USER SPECIFIABLE
+    static final Level loggerMinimumLevel = Level.FINE;
     static final String boardFile = "ChArUcoBoard";
     static final String cornersLog = "Corners"; // only used for a snapshot log
     static final String videoFile = "CalibrationVideo"; // video format of saved images

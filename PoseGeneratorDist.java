@@ -32,7 +32,7 @@ public class PoseGeneratorDist {
     private static Logger LOGGER;
     static {
       LOGGER = Logger.getLogger("");
-      LOGGER.finest("Loading");     
+      LOGGER.finer("Loading");     
     }
 
 /*-------------------------------------------------------------------------------------------------*/
@@ -113,17 +113,17 @@ public class PoseGeneratorDist {
  */
     private static Mat unproject(MatOfPoint2f p, Mat K, Mat cdist, double Z)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // returns a translation (t) Mat
-        // LOGGER.finest("p in " + p.dump());
-        // LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
-        // LOGGER.finest("cdist " + cdist.dump());
-        // LOGGER.finest("Z " + Z);
+        LOGGER.finest("p in " + p.dump());
+        LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
+        LOGGER.finest("cdist " + cdist.dump());
+        LOGGER.finest("Z " + Z);
 
         Calib3d.undistortPointsIter(p, p, K, cdist, new Mat(), new Mat(), Cfg.undistortPointsIterCriteria);
 
-        // LOGGER.finest("p out " + p.dump());
+        LOGGER.finest("p out " + p.dump());
 
         double[] pXY = p.get(0, 0); // get X and Y channels for the point (ravel)
  
@@ -132,7 +132,7 @@ public class PoseGeneratorDist {
 
         Core.multiply(p3D, new Scalar(Z, Z, Z), p3D);
 
-        // LOGGER.finest("return p3D Z scaled " + p3D.dump());
+        LOGGER.finest("return p3D Z scaled " + p3D.dump());
 
         return p3D;
     }
@@ -156,13 +156,13 @@ public class PoseGeneratorDist {
  */
     private static List<Mat> orbital_pose(Mat bbox, double rx, double ry, double Z, double rz) // force caller to use rz=0 if defaulting
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        // LOGGER.finest("bbox " + bbox + "\n" + bbox.dump());
-        // LOGGER.finest("rx " + rx);
-        // LOGGER.finest("ry " + ry);
-        // LOGGER.finest("Z " + Z);
-        // LOGGER.finest("rz " + rz);
+        LOGGER.finest("bbox " + bbox + "\n" + bbox.dump());
+        LOGGER.finest("rx " + rx);
+        LOGGER.finest("ry " + ry);
+        LOGGER.finest("Z " + Z);
+        LOGGER.finest("rz " + rz);
         
         // compute rotation matrix from rotation vector
         double[] angleZ = {0., 0., rz};
@@ -184,9 +184,9 @@ public class PoseGeneratorDist {
         Calib3d.Rodrigues(angleYVector, Ry);
         /**************************************************************************************** */
 
-        // LOGGER.finest("Rz\n" + Rz.dump());
-        // LOGGER.finest("Rx\n" + Rx.dump());
-        // LOGGER.finest("Ry\n" + Ry.dump());
+        LOGGER.finest("Rz\n" + Rz.dump());
+        LOGGER.finest("Rx\n" + Rx.dump());
+        LOGGER.finest("Ry\n" + Ry.dump());
 
         // in Python (Ry).dot(Rx).dot(Rz) messed up nomenclature - it's often really matrix multiply Ry times Rx times Rz
         Mat R = Mat.eye(4, 4, CvType.CV_64FC1);
@@ -211,19 +211,19 @@ public class PoseGeneratorDist {
         Mat translateToBoardCenter = new Mat(bbox.rows(), bbox.cols(), bbox.type()); // matching bbox for element by element multiply
         translateToBoardCenter.put(0, 0, -0.5, -0.5, 0.);
         translateToBoardCenter = bbox.mul(translateToBoardCenter);
-        // LOGGER.finest("translateToBoardCenter\n" + translateToBoardCenter.dump());
+        LOGGER.finest("translateToBoardCenter\n" + translateToBoardCenter.dump());
 
-        // LOGGER.finest("R " + R.dump());
-        // LOGGER.finest("R3x3 " + R3x3.dump());
-        // LOGGER.finest("Tc " + Tc.dump());
-        // LOGGER.finest("Tc1x3 " + Tc1x3.dump());
+        LOGGER.finest("R " + R.dump());
+        LOGGER.finest("R3x3 " + R3x3.dump());
+        LOGGER.finest("Tc " + Tc.dump());
+        LOGGER.finest("Tc1x3 " + Tc1x3.dump());
 
         /*************************************************************************************** */
         Core.gemm(R3x3, translateToBoardCenter, 1., new Mat(), 0.,Tc3x1);
         Tc3x1.t().copyTo(Tc1x3); // update Tc
         /*************************************************************************************** */
-        // LOGGER.finest("Tc " + Tc.dump());
-        // LOGGER.finest("Tc1x3 " + Tc1x3.dump());
+        LOGGER.finest("Tc " + Tc.dump());
+        LOGGER.finest("Tc1x3 " + Tc1x3.dump());
 
         // translate board to center of image
 
@@ -234,9 +234,9 @@ public class PoseGeneratorDist {
         translateToImageCenter.put(0, 0, -0.5, -0.5, Z);
         bbox.mul(translateToImageCenter).t().copyTo(T1x3);   
         /*************************************************************************************** */
-        // LOGGER.finest("translateToImageCenter " + translateToImageCenter.dump());
-        // LOGGER.finest("T1x3 " + T1x3.dump());
-        // LOGGER.finest("T " + T.dump());
+        LOGGER.finest("translateToImageCenter " + translateToImageCenter.dump());
+        LOGGER.finest("T1x3 " + T1x3.dump());
+        LOGGER.finest("T " + T.dump());
 
         // rotate center of board
         Mat Rf = new Mat();
@@ -246,7 +246,7 @@ public class PoseGeneratorDist {
         Core.gemm(Rf, Tc, 1., new Mat(), 0.,Rf);
         Core.gemm(Rf, T, 1., new Mat(), 0.,Rf);
         /*************************************************************************************** */
-        // LOGGER.finest("Rf " + Rf.dump());
+        LOGGER.finest("Rf " + Rf.dump());
 
         // return cv2.Rodrigues(Rf[:3, :3])[0].ravel(), Rf[3, :3]
         Mat Rf3x3 = Rf.submat(0, 3, 0, 3);
@@ -256,12 +256,12 @@ public class PoseGeneratorDist {
         Calib3d.Rodrigues(Rf3x3,RfVector);
         Core.transpose(RfVector, RfVector);
         /*************************************************************************************** */
-        // LOGGER.finest("RfVector returned " + RfVector.dump());
+        LOGGER.finest("RfVector returned " + RfVector.dump());
 
         Mat t = Rf.submat(3, 4, 0, 3);
         Mat tVector = new Mat();
         t.copyTo(tVector);
-        // LOGGER.finest("tVector returned " + tVector.dump());
+        LOGGER.finest("tVector returned " + tVector.dump());
 
         Tc.release();
         Tc1x3.release();
@@ -290,14 +290,14 @@ public class PoseGeneratorDist {
 /*-------------------------------------------------------------------------------------------------*/
     private static List<Mat> pose_planar_fullscreen(Mat K, Mat cdist, Size img_size, Mat bbox)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // don't use the principal point throughout just have X and Y no Z until it's calculated in the middle
         // compute a new Z
-        // LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
-        // LOGGER.finest("cdist " + cdist.dump());
-        // LOGGER.finest("img_size " + img_size.toString());
-        // LOGGER.finest("bbox " + bbox + "\n" + bbox.dump());
+        LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
+        LOGGER.finest("cdist " + cdist.dump());
+        LOGGER.finest("img_size " + img_size.toString());
+        LOGGER.finest("bbox " + bbox + "\n" + bbox.dump());
 
         Mat KB = new Mat(); // ignore principal point
         Mat bboxZeroZ = new Mat(3, 1, CvType.CV_64FC1);
@@ -318,11 +318,11 @@ public class PoseGeneratorDist {
         
         Mat t = unproject(p, K, cdist, Z);
 
-        // LOGGER.finest("KBnoPrinciplePoint " + KB + KB.dump());
-        // LOGGER.finest("Z, pB(x, y) " + Z + ", " + java.util.Arrays.toString(pB));
-        // LOGGER.finest("p " + p + p.dump());
-        // LOGGER.finest("returning r " + r + r.dump());
-        // LOGGER.finest("returning t " + t + t.dump());
+        LOGGER.finest("KBnoPrinciplePoint " + KB + KB.dump());
+        LOGGER.finest("Z, pB(x, y) " + Z + ", " + java.util.Arrays.toString(pB));
+        LOGGER.finest("p " + p + p.dump());
+        LOGGER.finest("returning r " + r + r.dump());
+        LOGGER.finest("returning t " + t + t.dump());
 
         bboxZeroZ.release();
         KB.release();
@@ -353,13 +353,13 @@ public class PoseGeneratorDist {
     */
     private pose_from_boundsReturn pose_from_bounds(Mat src_extParm, Rect tgt_rect, Mat K, Mat cdist, Size img_sz)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        // LOGGER.finest("src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
-        // LOGGER.finest("tgt_rect " + tgt_rect); // guidance board posed
-        // LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
-        // LOGGER.finest("cdist " + cdist.dump());
-        // LOGGER.finest("img_sz " + img_sz.toString()); // camera screen image size
+        LOGGER.finest("src_extParm " + src_extParm + "\n" + src_extParm.dump()); // full ChArUcoBoard size + Z
+        LOGGER.finest("tgt_rect " + tgt_rect); // guidance board posed
+        LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
+        LOGGER.finest("cdist " + cdist.dump());
+        LOGGER.finest("img_sz " + img_sz.toString()); // camera screen image size
 
         double[] src_ext = new double[(int)src_extParm.total()];
         src_extParm.get(0, 0, src_ext);
@@ -368,7 +368,7 @@ public class PoseGeneratorDist {
 
         int MIN_WIDTH = (int)Math.floor(img_sz.width/3.333); // posed guidance board must be about a third or more of the camera, screen size
 
-        // LOGGER.finest("rot90 " + rot90);
+        LOGGER.finest("rot90 " + rot90);
 
         if (rot90)
         {
@@ -431,14 +431,14 @@ public class PoseGeneratorDist {
 
             Calib3d.Rodrigues(r, R);
 
-            // LOGGER.finest("R " + R.dump());
+            LOGGER.finest("R " + R.dump());
             Mat rz = new Mat(1, 3, CvType.CV_64FC1);
             rz.put(0, 0, 0., 0., -Math.PI/2.);
             Mat Rz = new Mat();
 
             Calib3d.Rodrigues(rz, Rz);
 
-            // LOGGER.finest("Rz " + Rz.dump());
+            LOGGER.finest("Rz " + Rz.dump());
 
             Core.gemm(R, Rz, 1., new Mat(), 0., R); // rotation matrix of the input Euler Angles
 
@@ -453,14 +453,14 @@ public class PoseGeneratorDist {
         }
 
         double Z = (K.get(0, 0)[0] * src_ext[0]) / tgt_rect.width;
-        // LOGGER.finest("before clip tgt_rect " + tgt_rect);
+        LOGGER.finest("before clip tgt_rect " + tgt_rect);
 
         //  clip to image region
         int[] min_off = {0, 0};
         int[] max_off = {(int)(img_sz.width - tgt_rect.width), (int)(img_sz.height - tgt_rect.height)};
         tgt_rect.x = Math.min(max_off[0], Math.max(tgt_rect.x, min_off[0]));
         tgt_rect.y = Math.min(max_off[1], Math.max(tgt_rect.y, min_off[1]));
-        // LOGGER.finest("after clip tgt_rect " + tgt_rect);
+        LOGGER.finest("after clip tgt_rect " + tgt_rect);
 
         if ( ! rot90)
         {
@@ -476,9 +476,9 @@ public class PoseGeneratorDist {
             tgt_rect.y -= tgt_rect.height;
         }
 
-        // LOGGER.finest("returning r " + r.dump());
-        // LOGGER.finest("returning t " + t.dump());
-        // LOGGER.finest("returning tgt_rect " + tgt_rect);
+        LOGGER.finest("returning r " + r.dump());
+        LOGGER.finest("returning t " + t.dump());
+        LOGGER.finest("returning tgt_rect " + tgt_rect);
 
         return new pose_from_boundsReturn(r, t, tgt_rect);
     }
@@ -530,7 +530,7 @@ public class PoseGeneratorDist {
  */
     PoseGeneratorDist(Size img_size)
     {
-        LOGGER.finest("Instantiating ----------------------------------------");
+        LOGGER.finer("Instantiating");
 
         this.img_size = img_size;
         mask = Mat.zeros(
@@ -548,7 +548,7 @@ public class PoseGeneratorDist {
 /*-------------------------------------------------------------------------------------------------*/
     private List<Mat> compute_distortion(Mat K, Mat cdist, int subsample)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return Distortion.sparse_undistort_map(K, img_size, cdist, K, subsample);
     }
@@ -575,12 +575,12 @@ public class PoseGeneratorDist {
  */
     List<Mat> get_pose(Mat bbox, int nk, int tgt_param, Mat K, Mat cdist)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-        // LOGGER.finest("bbox " + bbox + "\n" + bbox.dump());
-        // LOGGER.finest("nk " + nk);
-        // LOGGER.finest("tgt_param " + tgt_param);
-        // LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
-        // LOGGER.finest("cdist " + cdist.dump());
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finest("bbox " + bbox + "\n" + bbox.dump());
+        LOGGER.finest("nk " + nk);
+        LOGGER.finest("tgt_param " + tgt_param);
+        LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
+        LOGGER.finest("cdist " + cdist.dump());
 
         // first frame will be orbital pose from fixed angles
         if (nk == 0)
@@ -613,13 +613,13 @@ public class PoseGeneratorDist {
             // r, t = orbital_pose(bbox, *next(self.orbital[axis]));
 
             double[] angleIteration = this.orbital.apply(axis); // get the next iteration for x & y pair of angles for the given axis
-            // LOGGER.finest("angleIteration " + java.util.Arrays.toString(angleIteration));
+            LOGGER.finest("angleIteration " + java.util.Arrays.toString(angleIteration));
 
             /********************************************************************************************************* */
             List<Mat> rt = orbital_pose(bbox, angleIteration[0], angleIteration[1], orbitalZfocalLength, rzFocalLength);
             /********************************************************************************************************* */
             
-            // LOGGER.finest("rt " + rt.get(0).dump() + rt.get(1).dump());
+            LOGGER.finest("rt " + rt.get(0).dump() + rt.get(1).dump());
             
             Mat t = rt.get(1);
 
@@ -644,7 +644,7 @@ public class PoseGeneratorDist {
 
             rt.set(1, t); // update the nudged t and return r and t
 
-            // LOGGER.finest("returning rt " + rt.get(0).dump() + rt.get(1).dump());
+            LOGGER.finest("returning rt " + rt.get(0).dump() + rt.get(1).dump());
 
             return rt;
         }
@@ -677,9 +677,9 @@ public class PoseGeneratorDist {
         Mat t = res2.t;
         Rect nbounds = res2.tgt_rect;
 
-        // LOGGER.finest("returning r " + r.dump());
-        // LOGGER.finest("returning t " + t.dump());
-        // LOGGER.finest("nbounds " + nbounds);
+        LOGGER.finest("returning r " + r.dump());
+        LOGGER.finest("returning t " + t.dump());
+        LOGGER.finest("nbounds " + nbounds);
    
         nbounds.x = (int)Math.ceil((double)nbounds.x / SUBSAMPLE);
         nbounds.y = (int)Math.ceil((double)nbounds.y / SUBSAMPLE);
@@ -691,7 +691,7 @@ public class PoseGeneratorDist {
         Mat.ones(nbounds.height, nbounds.width, this.mask.type())
             .copyTo(this.mask.submat(nbounds.y, nbounds.y+nbounds.height, nbounds.x, nbounds.x+nbounds.width));
 
-        // LOGGER.finest("mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + ArrayUtils.brief(this.mask));
+        LOGGER.finest("mask count non-zeros = " + Core.countNonZero(this.mask) + "\n" + ArrayUtils.brief(this.mask));
 
         List<Mat> rt = new ArrayList<>(2);
         rt.add(r);

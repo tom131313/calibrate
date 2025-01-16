@@ -5,7 +5,9 @@
 package Guidance;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.opencv.calib3d.Calib3d;
@@ -28,7 +30,7 @@ public class Calibrator {
 	private static Logger LOGGER;
 	static {
 	  LOGGER = Logger.getLogger("");
-	  LOGGER.finest("Loading");     
+	  LOGGER.finer("Loading");     
 	}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -92,7 +94,7 @@ public class Calibrator {
 
     Calibrator(Size img_size)
     {
-        LOGGER.finest("Instantiating ----------------------------------------");
+        LOGGER.finer("Instantiating");
         this.img_size = img_size;
         // initial fake camera matrix to get things started
         // initial K matrix
@@ -103,7 +105,7 @@ public class Calibrator {
         this.Kin.put(2, 2, 1.);
         this.Kin = Calib3d.getDefaultNewCameraMatrix(this.Kin, img_size, true);
         this.Kin.copyTo(this.K);
-        // LOGGER.finest("K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
+        LOGGER.finest("K/Kin\n" + this.K.dump() + "\n" + this.Kin.dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -116,7 +118,7 @@ public class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     private double[] get_intrinsics()
     {
-      // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
       double[] intrinsics = {
         this.K.get(0, 0)[0],
         this.K.get(1, 1)[0],
@@ -128,8 +130,8 @@ public class Calibrator {
         this.cdist.get(0, 3)[0],
         this.cdist.get(0, 4)[0]
         };
-      // LOGGER.finest("K\n" + K.dump());
-      // LOGGER.finest(java.util.Arrays.toString(intrinsics));
+      LOGGER.finest("K\n" + K.dump());
+      LOGGER.finest(java.util.Arrays.toString(intrinsics));
       return intrinsics;
     }
 /*-------------------------------------------------------------------------------------------------*/
@@ -143,7 +145,7 @@ public class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     public double[] calibrate(List<keyframe> keyframes) // force use of keyframes instead of default None
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int nkeyframes = this.keyframes.size(); // first pose is called #0 which is the number of previously captured poses
  
@@ -212,7 +214,7 @@ public class Calibrator {
 /*-------------------------------------------------------------------------------------------------*/
     private static double[] index_of_dispersion(double[] mean, double[] variance)
     {
-      // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
       // computes index of dispersion:
       // https://en.wikipedia.org/wiki/Index_of_dispersion
@@ -259,7 +261,7 @@ public class Calibrator {
      */
     private static double[] compute_pose_var(List<Mat> rvecs, List<Mat> tvecs)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         double[] ret = new double[6]; // return 
 
@@ -274,7 +276,7 @@ public class Calibrator {
         {
           Calib3d.Rodrigues(r, dst);
           double[] reuler = Calib3d.RQDecomp3x3(dst, mtxR, mtxQ); // always returns reuler.length = 3
-          // LOGGER.finest("\nreuler degrees " + java.util.Arrays.toString(reuler) + "\nr " + r.t().dump());
+          LOGGER.finest("\nreuler degrees " + java.util.Arrays.toString(reuler) + "\nr " + r.t().dump());
           // workaround for the given board so r_x does not oscilate between +-180°
           reuler[0] = reuler[0] % 360.;
           reulers.add(reuler);
@@ -329,7 +331,7 @@ public class Calibrator {
      */
     private static double[] simpleVariance(List<double[]> data)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // always 3 components x, y, z so do all 3 at once
         double[] sum = {0., 0., 0.};
@@ -376,7 +378,7 @@ public class Calibrator {
      */
     calibrateCameraReturn calibrateCamera(List<keyframe> keyframes, Size img_size, int flags, Mat K)
     {
-      // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+      LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // split keyframes into its two separate components, image points and object points, for OpenCV calibrateCamera
         // we put them together when detected then we take them apart for calibration.
@@ -401,8 +403,8 @@ public class Calibrator {
         List<Mat> tvecs = new ArrayList<>();
         Mat stdDeviationsIntrinsics = new Mat();
         double reperr = Double.NaN;
-        // LOGGER.finest("K input to calibration\n" + K.dump());
-        // LOGGER.finest(UserGuidance.formatFlags(flags));
+        LOGGER.finest("K input to calibration\n" + K.dump());
+        LOGGER.finest(formatFlags(flags));
         try
         {
             reperr = Calib3d.calibrateCameraExtended(
@@ -412,20 +414,18 @@ public class Calibrator {
             stdDeviationsIntrinsics, new Mat(), new Mat(),
             flags, Cfg.calibrateCameraCriteria);
 
-          // LOGGER.finest("camera matrix K " + K + "\n" + K.dump());
-          // LOGGER.finest("distortion coefficients " + cdist.dump() + cdist);
-          // LOGGER.finest("repError " + reperr);
+          LOGGER.finer("total caputered number of points = " + N);
+          LOGGER.finer("camera matrix " + K + "\n" + K.dump());
+          LOGGER.finer("distortion coefficients " + cdist.dump() + cdist);
+          LOGGER.finer("repError " + reperr);
         }
         catch(CvException error)
         {
           LOGGER.severe("Calib3d.calibrateCameraExtended error" + error);
         }
-        // LOGGER.finest("K output from calibration\n" + K.dump());
+
         Mat varianceIntrinsics = new Mat();
         Core.multiply(stdDeviationsIntrinsics, stdDeviationsIntrinsics, varianceIntrinsics); // variance = stddev squared
-
-        // LOGGER.finest("cdist " + cdist.dump() + ", N = " + N);
-
         stdDeviationsIntrinsics.release();
 
         return new calibrateCameraReturn(reperr, K, cdist, rvecs, tvecs, varianceIntrinsics);
@@ -449,6 +449,49 @@ public class Calibrator {
             this.varianceIntrinsics = varianceIntrinsics;
             // N_pts not used
         }         
+    }
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/*                                                                                                 */
+/*                                     formatFlags                                                 */
+/*                                     formatFlags                                                 */
+/*                                     formatFlags                                                 */
+/*                                                                                                 */
+/*-------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+    static String formatFlags(int flagsCalibration)
+    {
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+
+        HashMap<Integer, String> flags = new HashMap<>(3);
+        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix_principal_point");
+        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero_tangent_dist");
+        flags.put(Calib3d.CALIB_USE_LU, "+use_lu");
+        flags.put(Calib3d.CALIB_FIX_ASPECT_RATIO, "+fix aspect ratio");
+        flags.put(Calib3d.CALIB_FIX_PRINCIPAL_POINT, "+fix principal point");
+        flags.put(Calib3d.CALIB_ZERO_TANGENT_DIST, "+zero tangent dist");
+        flags.put(Calib3d.CALIB_FIX_K1, "+fix k1");
+        flags.put(Calib3d.CALIB_FIX_K2, "+fix k2");
+        flags.put(Calib3d.CALIB_FIX_K3, "+fix k3");
+      
+        StringBuilder flags_str = new StringBuilder("flags: ");
+        int unknownFlags = flagsCalibration; // initially assume all flags are unknown to the hashmap
+
+        for (Map.Entry<Integer, String> flag : flags.entrySet())
+        {
+            if ((flagsCalibration & flag.getKey()) == flag.getKey())
+            {
+                flags_str.append(flag.getValue());
+                unknownFlags -= flag.getKey(); // this flag is known so un-mark unknown flags
+            }                       
+        }
+
+        flags_str.append(String.format("\nflags: %08x", flagsCalibration));
+        if (unknownFlags != 0)
+        {
+            flags_str.append(String.format("; unknown flag usage = %08x", unknownFlags));          
+        }
+        return flags_str.toString();
     }
 }
 /*-------------------------------------------------------------------------------------------------*/

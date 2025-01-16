@@ -57,7 +57,7 @@ public class FindBoardCornersGuidancePipe
 	private static Logger LOGGER;
 	static {
 	  LOGGER = Logger.getLogger("");
-	  LOGGER.finest("Loading");     
+	  LOGGER.finer("Loading");     
 	}
 
     Mat progressInsert;
@@ -247,7 +247,7 @@ public class FindBoardCornersGuidancePipe
         {
             // if ( ! (ugui.user_info_text().equals("initialization"))) // stop spamming "initialization" to log
             // {
-            //      LOGGER.warning(ugui.user_info_text());
+            //     LOGGER.warning(ugui.user_info_text());
             // }
             String message1 = ugui.user_info_text();
             Imgproc.putText(out, message1, new Point(80, 20), Imgproc.FONT_HERSHEY_SIMPLEX, .8, new Scalar(0, 0, 0), 2);

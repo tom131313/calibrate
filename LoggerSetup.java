@@ -50,9 +50,9 @@ public class LoggerSetup {
 
     handlers = LOGGER.getHandlers();
     for(Handler handler : handlers) {
-        handler.setLevel(Level.FINEST);
+        handler.setLevel(Cfg.loggerMinimumLevel);
     }
-    LOGGER.setLevel(Level.FINEST);
+    LOGGER.setLevel(Cfg.loggerMinimumLevel);
     Logger.getLogger("").getHandlers()[0].setLevel(Level.FINEST);
 
     return LOGGER;

@@ -21,7 +21,7 @@ public class ArrayUtils
 	private static Logger LOGGER;
 	static {
 	  LOGGER = Logger.getLogger("");
-	  LOGGER.finest("Loading");     
+	  LOGGER.finer("Loading");     
 	}
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/

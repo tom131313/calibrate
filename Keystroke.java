@@ -11,7 +11,7 @@ class Keystroke implements Runnable
 {
         private static final Logger LOGGER = Logger.getLogger(""); 
         static {
-          LOGGER.finest("Loading");     
+          LOGGER.finer("Loading");     
         }
 
     // keyboard mapping returns from OpenCV waitKey

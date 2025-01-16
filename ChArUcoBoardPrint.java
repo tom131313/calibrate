@@ -16,7 +16,7 @@ public class ChArUcoBoardPrint {
 	private static Logger LOGGER;
 	static {
 	  LOGGER = Logger.getLogger("");
-	  LOGGER.finest("Loading");     
+	  LOGGER.finer("Loading");     
 	}
 
     private ChArUcoBoardPrint() {}
@@ -30,7 +30,7 @@ public class ChArUcoBoardPrint {
 
     public static void print()
     {
-        LOGGER.finest("Instantiating ----------------------------------------");
+        LOGGER.finer("Instantiating");
 
         /// create board
         board.generateImage(boardImageSize, boardImage);

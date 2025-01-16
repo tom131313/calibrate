@@ -12,7 +12,7 @@ public class VideoCreation {
 
 	static {
 	  LOGGER = Logger.getLogger("");
-	  LOGGER.finest("Loading");     
+	  LOGGER.finer("Loading");     
 	}
 
         String filename;

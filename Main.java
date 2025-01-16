@@ -28,6 +28,9 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CharucoBoard;
+import org.opencv.objdetect.Dictionary;
+import org.opencv.objdetect.Objdetect;
 
 import Guidance.CVPipe.CVPipeResult;
 import Guidance.FindBoardCornersGuidancePipe.FindBoardCornersGuidancePipeResult;
@@ -70,7 +73,7 @@ public class Main {
     static {
         LOGGER = LoggerSetup.setupLogger();
 
-        LOGGER.finest("Loading");
+        LOGGER.finer("Loading");
         LOGGER.config("Pose Guidance Camera Calibration version " + VERSION);
 
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
@@ -311,7 +314,7 @@ public class Main {
 
                 if (findBoardCornersGuidancePipeResult.output.haveEnough) // done calibrating
                 {
-                    //  further processing of the complete set of snapshots could be done here - this is the end   
+                    // further processing of the complete set of snapshots could be done here - this is the end   
                     // The guidance program prints elsewhere its calibration results to the LOGGER and notifies us here.
                     if(logSnapshot) {
                         if(vnlog != null) {
@@ -323,7 +326,7 @@ public class Main {
                             video = null; // redundant cleanup just to make sure a logic error doesn't try to use it again
                         }
                     }
-                        LOGGER.severe("Pose Guidance Camera action calibrated");
+                        LOGGER.info("Pose Guidance Camera action calibrated");
 
                     // check for holding the last message before quitting
                     if (!recentSnapshot)
@@ -346,7 +349,7 @@ public class Main {
         // quitting
         mjpegServer.close();
         networkDisplay.close();
-        LOGGER.finest("End of running main");
+        LOGGER.info("End of running main");
     } // end main method
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -427,9 +430,15 @@ private static boolean handleArgs(String[] args) throws ParseException {
 /*-------------------------------------------------------------------------------------------------*/
     private static int captureCount; // image save file name sequence number
     private static String fileTime;
+    // Charuco Board configuration (duplicates ChArucoDetector)
+    private static Size board_sz;
+    private static Dictionary dictionary;
+    private static CharucoBoard board;
+    private static float[] chessboardCorners;
     /**
-     * Save Detected Board corner data in mrgingham format plus the board info
-     * Save snapshot images individually and as a video (movie)
+     * Save setected board corners in mrgingham format for mrcal
+     * Save snapshot images individually
+     * Save snapshot images as a video for wpical
      * Vnlog (“vanilla-log”) file format (https://github.com/dkogan/vnlog)
      * @param img Camera image to be saved
      * @param findBoardCornersGuidancePipeResult Detection to be saved
@@ -437,89 +446,94 @@ private static boolean handleArgs(String[] args) throws ParseException {
      */
     public static void logSnapshot(Mat img, CVPipeResult<FindBoardCornersGuidancePipeResult> findBoardCornersGuidancePipeResult) throws FileNotFoundException
     {
+        if (findBoardCornersGuidancePipeResult.output.idCorners.rows() <= 0)
+        {
+            LOGGER.severe("Capture attempt had no detected corners");
+            return;
+        }
+        
         if (vnlog == null || video == null) // first time switch
         {
-            fileTime = new SimpleDateFormat("_yyyy-MM-dd_HH-mm").format(System.currentTimeMillis());
             captureCount = 0;
+            fileTime = new SimpleDateFormat("_yyyy-MM-dd_HH-mm").format(System.currentTimeMillis());
 
             vnlog = new PrintWriter(Cfg.cornersLog + fileTime + ".vnl");
             vnlog.println("## produced by pose guidance calibration program");
-            vnlog.println("# filename x y level cid boardX boardY");
+            vnlog.println("# filename x y level");
+
             video = new VideoCreation(Cfg.videoFile + fileTime + ".mp4", img.size());
-     }
+
+            // Charuco Board configuration (duplicates ChArucoDetector)
+            board_sz = new Size(Cfg.board_x, Cfg.board_y);
+            dictionary = Objdetect.getPredefinedDictionary(Cfg.dictionary);
+            board = new CharucoBoard(board_sz, Cfg.square_len, Cfg.marker_len, dictionary);
+            var chessboardCornersMat = board.getChessboardCorners();
+            chessboardCorners = new float[chessboardCornersMat.rows()*chessboardCornersMat.cols()
+                *chessboardCornersMat.channels()]; // below assumes x, y and z in a row
+            chessboardCornersMat.get(0, 0, chessboardCorners);
+            LOGGER.finest("all checkerboard corners\n" + chessboardCornersMat.dump());
+        }
         
-        video.addFrame(img); // save camera image in the video file
+        video.addFrame(img); // write the captured frame to a video file (maybe WPIcal can use it)
 
         // write the captured frame to a sequenced file name
         String filename = String.format("img_%s_%03d.jpg", fileTime, ++captureCount);
         final MatOfInt writeBoardParams = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100); // pair-wise; param1, value1, ...
         Imgcodecs.imwrite(filename, img, writeBoardParams); // save camera image in its own file
 
-        // for efficiency put Mat data in primative arrays
-
-        float[] ChessboardCorners = new float[findBoardCornersGuidancePipeResult.output.objectPoints.rows()
-            *findBoardCornersGuidancePipeResult.output.objectPoints.cols()
-            *findBoardCornersGuidancePipeResult.output.objectPoints.channels()]; // below assumes x and y in a row
-        findBoardCornersGuidancePipeResult.output.objectPoints.get(0, 0, ChessboardCorners);
-
-        int[] DetectedCIDs = new int[findBoardCornersGuidancePipeResult.output.idCorners.rows()]; // get detected corners - assume captured image does have corners
-        findBoardCornersGuidancePipeResult.output.idCorners.get(0, 0, DetectedCIDs);
+        int[] detectedCIDs = new int[findBoardCornersGuidancePipeResult.output.idCorners.rows()]; // get detected corners - assume captured image does have corners
+        findBoardCornersGuidancePipeResult.output.idCorners.get(0, 0, detectedCIDs);
 
         float[] DetectedCorners = new float[findBoardCornersGuidancePipeResult.output.imagePoints.rows()
             *findBoardCornersGuidancePipeResult.output.imagePoints.cols()
             *findBoardCornersGuidancePipeResult.output.imagePoints.channels()]; // below assumes x and y in a row
         findBoardCornersGuidancePipeResult.output.imagePoints.get(0, 0, DetectedCorners);
 
-        // save vnlog     
-        for (int detectedCornerIndex = 0; detectedCornerIndex < DetectedCIDs.length; detectedCornerIndex++)
+        // save corners vnlog
+        // detected corners have the x y printed; missing corners have - - printed
+        // board w = 9 h = 6 => 54 squares; 8x5 => 40 interior corners possible
+
+        int detectedCornerIndex = 0; // initially we already verified at least one corner
+        // put out values for all possible squares - one corner per square
+        for (int allCornersIndx = 0; allCornersIndx < board.getChessboardCorners().rows(); allCornersIndx++)
         {
-            int boardCornerId = DetectedCIDs[detectedCornerIndex]; // get board corner that is detected
-            StringBuilder logLine = new StringBuilder();
-            logLine.append(filename);
-            logLine.append(" ");
-            logLine.append(DetectedCorners[detectedCornerIndex*2]); // x
-            logLine.append(" ");
-            logLine.append(DetectedCorners[detectedCornerIndex*2+1]); // y
-            logLine.append(" 0 "); // intended to be decimations always 0
-            logLine.append(boardCornerId);
-            logLine.append(" ");
-            logLine.append(ChessboardCorners[detectedCornerIndex*2]); // x
-            logLine.append(" ");
-            logLine.append(ChessboardCorners[detectedCornerIndex*2+1]); // y
-            vnlog.println(logLine.toString());                    
+            String detectedX = "-"; // initially indicate not detected corner MrGingham style
+            String detectedY = "-";
+            // make sure there are still some detected corners in the list to look at
+            if (detectedCornerIndex <= findBoardCornersGuidancePipeResult.output.idCorners.rows())
+            {
+                // get the next detected corner and check if this is the place to write it
+                // assume corner ids sorted so access is more efficient
+                int[] detectedCornerId = {Integer.MIN_VALUE};
+                findBoardCornersGuidancePipeResult.output.idCorners.get(detectedCornerIndex, 0, detectedCornerId);
+                if (detectedCornerId[0] == allCornersIndx)
+                {
+                    detectedX = Float.toString(DetectedCorners[detectedCornerIndex*2]);
+                    detectedY = Float.toString(DetectedCorners[detectedCornerIndex*2+1]);
+                    detectedCornerIndex++;                     
+                }
+            }
+                StringBuilder logLine = new StringBuilder();
+                logLine.append(filename);
+                logLine.append(" ");
+                logLine.append(detectedX);
+                logLine.append(" ");
+                logLine.append(detectedY);
+                logLine.append(" 0"); // decimations or scale factor; always 0 which is full resolution ((1/2)**N)
+                // for debugging or more add cid boardX boardY boardZ
+                // logLine.append(" ");
+                // logLine.append(allCornersIndx);
+                // logLine.append(" ");
+                // logLine.append(chessboardCorners[allCornersIndx*3]); // x
+                // logLine.append(" ");
+                // logLine.append(chessboardCorners[allCornersIndx*3+1]); // y
+                // logLine.append(" ");
+                // logLine.append(chessboardCorners[allCornersIndx*3+2]); // z
+                vnlog.println(logLine.toString());  
         }
         vnlog.flush();
     }
 }
-/*
-partial sample final calibration output
-
-2024-12-30 14:17:43.977 INFO    [ Guidance.UserGuidance update] image capture number 14 
-2024-12-30 14:17:44.008 FINEST  [ Guidance.UserGuidance update] camera matrix
-[904.7665459523686, 0, 601.9607576366333;
- 0, 904.3826311013136, 414.9059682892109;
- 0, 0, 1] 
-2024-12-30 14:17:44.008 FINEST  [ Guidance.UserGuidance update] camera distortion [0.0358651354893901, 0.02390999179756997, 0.0005797443857783846, -0.001179131497828185, -0.1237528713726453] 
-
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] Camera Calibration Data 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] nr_of_frames: 14 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] image_width: 1280.0 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] image_height: 800.0 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] board_width: 8.0 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] board_height: 8.0 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] square_size: 250 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] marker_size: 188 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] fisheye_model: 0 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] camera_matrix:
-[904.7665459523686, 0, 601.9607576366333;
- 0, 904.3826311013136, 414.9059682892109;
- 0, 0, 1] 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] distortion_coefficients:
-[0.0358651354893901, 0.02390999179756997, 0.0005797443857783846, -0.001179131497828185, -0.1237528713726453] 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] avg_reprojection_error: 0.41918087385668834 
-2024-12-30 14:17:44.035 CONFIG  [ Guidance.UserGuidance write] End of Calibration 
- */
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  parking lot for PV instructions from Matt (not this Guidance program instructions)
 // https://github.com/mcm001/photonvision/tree/2023-10-30_pose_calib_integration
@@ -540,3 +554,74 @@ partial sample final calibration output
 
 // Disable spotless in VSCode extensions or Append "-x spotlessapply" to the
 // commands you run to disable it
+
+
+// "\nccorners; cids; board obj points" + this.ccorners.dump() + "\n" + this.cids.dump() + "\n"
+// + markerCorners.size() + " " + markerCorners.get(0).dump() + "\n" + markerIds.dump()
+
+// int counter;
+// counter = 0;
+// this.board.getObjPoints().forEach((corners) -> System.out.println(counter++ + corners.dump()));
+/*
+In OpenCV Java, you can use the Imgproc.cornerSubPix method to refine the location of detected corners to sub-pixel accuracy. Here's an example: 
+import org.opencv.core.*;
+import org.opencv.imgproc.Imgproc;
+
+public class CornerSubPixExample {
+    public static void main(String[] args) {
+        // Load the OpenCV library
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+
+        // Create a sample image (replace with your own image)
+        Mat image = new Mat(500, 500, CvType.CV_8UC1);
+        // ... (fill the image with some content)
+
+        // Detect corners (e.g., using goodFeaturesToTrack)
+        MatOfPoint corners = new MatOfPoint();
+        Imgproc.goodFeaturesToTrack(image, corners, 100, 0.01, 10);
+
+        // Convert corners to an array
+        Point[] cornerArray = corners.toArray();
+
+        // Refine corner locations using cornerSubPix
+        MatOfPoint2f cornersFloat = new MatOfPoint2f(cornerArray);
+        Size winSize = new Size(5, 5);
+        Size zeroZone = new Size(-1, -1);
+        TermCriteria criteria = new TermCriteria(TermCriteria.EPS + TermCriteria.MAX_ITER, 40, 0.001);
+        Imgproc.cornerSubPix(image, cornersFloat, winSize, zeroZone, criteria);
+
+        // Convert refined corners back to an array
+        Point[] refinedCornerArray = cornersFloat.toArray();
+
+        // Do something with the refined corners
+        for (Point corner : refinedCornerArray) {
+            System.out.println("Corner: " + corner.x + ", " + corner.y);
+        }
+    }
+}
+Explanation: 
+• Import necessary libraries: 
+	• org.opencv.core.* 
+	• org.opencv.imgproc.Imgproc 
+• Load the OpenCV library: 
+	• System.loadLibrary(Core.NATIVE_LIBRARY_NAME); 
+• Create a sample image: 
+	• Replace this with your own image. 
+• Detect corners: 
+	• Use a corner detection algorithm like Imgproc.goodFeaturesToTrack. 
+• Convert corners to an array: 
+	• This is necessary for cornerSubPix. 
+• Refine corner locations: 
+	• Use Imgproc.cornerSubPix with appropriate parameters: 
+		• image: The input image (grayscale or color). 
+		• cornersFloat: Input and output array of corner points. 
+		• winSize: Half of the side length of the search window. [1]  
+		• zeroZone: Half of the size of the dead region in the middle of the search zone. 
+		• criteria: Termination criteria for the iterative algorithm. 
+• Convert refined corners back to an array: 
+	• If needed. 
+• Use the refined corners: 
+	• Draw them on the image, perform further processing, etc. 
+Generative AI is experimental.
+[1] https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html
+ */

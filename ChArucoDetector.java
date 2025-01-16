@@ -38,7 +38,7 @@ public class ChArucoDetector {
     private static Logger LOGGER;
     static {
       LOGGER = Logger.getLogger("");
-      LOGGER.finest("Loading");     
+      LOGGER.finer("Loading");     
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -128,7 +128,7 @@ public class ChArucoDetector {
 
     public ChArucoDetector(Size img_size) // throws FileNotFoundException, IOException
     {
-        LOGGER.finest("Instantiating ----------------------------------------");
+        LOGGER.finer("Instantiating");
 
         this.img_size = img_size;
         /// create board
@@ -162,12 +162,12 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void set_intrinsics(Calibrator calib)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.intrinsic_valid = true;
         this.K = calib.K();
         this.cdist = calib.cdist();
-        // LOGGER.finest("K\n" + this.K.dump() + "\n" + calib.K().dump());
+        LOGGER.finest("K\n" + this.K.dump() + "\n" + calib.K().dump());
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -184,7 +184,7 @@ public class ChArucoDetector {
      */
     public void draw_axis(Mat img)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         Calib3d.drawFrameAxes(
             img, this.K, this.cdist, this.rvec, this.tvec, square_len*2.5f, 2);
@@ -200,16 +200,20 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public void detect_pts(Mat img)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
-
-        final List<Mat> markerCorners = new ArrayList<>();
-        final Mat markerIds = new Mat();
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         this.N_pts = 0;
         this.mean_flow = Double.MAX_VALUE;
  
         try
         {
-            detector.detectBoard( img, this.ccorners, this.cids, markerCorners, markerIds );
+            this.ccorners.release();
+            this.cids.release();
+
+            detector.detectBoard( img, this.ccorners, this.cids/*, markerCorners, markerIds*/ );
+            if (!this.cids.empty())
+            {
+                Objdetect.drawDetectedCornersCharuco(img, this.ccorners, this.cids);
+            }
         }
         catch(Exception e) // shouldn't happen but it does; likely OpenCV error since it should handle whatever image it is given
         {
@@ -244,16 +248,15 @@ public class ChArucoDetector {
         {
             this.N_pts = this.cids.rows();
         }
-
-        // LOGGER.finest("N_pts " + this.N_pts);
     
         if (this.N_pts <= 0) // the less than shouldn't happen (maybe use the min N_pts from Cfg?)
         {
             return; // skipping this image frame
         }
 
-        // LOGGER.finest("detected ccorners\n" + this.ccorners.dump());
-        // LOGGER.finest("detected cids\n" + this.cids.dump());
+        LOGGER.finest("N_pts " + this.N_pts);
+        LOGGER.finest("detected ccorners\n" + this.ccorners.dump());
+        LOGGER.finest("detected cids\n" + this.cids.dump());
         
         // reformat the Mat to a List<Mat> for matchImagePoints
         final List<Mat> ccornersList = new ArrayList<>();
@@ -261,15 +264,12 @@ public class ChArucoDetector {
           ccornersList.add(this.ccorners.row(i));
         }
 
-        // display the detected cids on the board (debugging)
-        // Objdetect.drawDetectedCornersCharuco(img, ccorners, cids);
-
-        board.matchImagePoints(ccornersList, this.cids,this.p3d, this.p2d); // p2d same data as ccornersList
+        board.matchImagePoints(ccornersList, this.cids, this.p3d, this.p2d); // p2d same data as ccornersList
         // oddly this method returns 3 channels instead of 2 for imgPoints and there isn't much to do about it and it works in solvePnP
         // after copying to MatOfPoint2f. A waste of cpu and memory.
 
-        // LOGGER.finest("p3d\n" + this.p3d.dump()); // data okay here
-        // LOGGER.finest("p2d\n" + this.p2d.dump()); // data okay here
+        LOGGER.finest("p3d\n" + this.p3d.dump()); // data okay here
+        LOGGER.finest("p2d\n" + this.p2d.dump()); // data okay here
 
         if (this.p3d.empty() || this.p2d.empty()) // shouldn't happen
         {
@@ -363,11 +363,10 @@ public class ChArucoDetector {
  * 
  * @param img
  * @return true if too few corners to use image
- * @throws Exception
  */
     public boolean detect(Mat img)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
         // raw_img never used - not converted
         boolean fewCorners = false;
         this.detect_pts(img);
@@ -390,7 +389,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public Mat get_pts3d()
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return this.p3d;
     }
@@ -405,7 +404,7 @@ public class ChArucoDetector {
 /*-------------------------------------------------------------------------------------------------*/
     public keyframe get_calib_pts()
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         return new keyframe(this.img_size, this.get_pts3d().clone(), this.ccorners.clone(), this.cids.clone());
     }
@@ -418,7 +417,6 @@ public class ChArucoDetector {
 /*                                                                                                 */
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-
 /**
  * 
  * @return fewCorners
@@ -427,11 +425,11 @@ public class ChArucoDetector {
     public boolean update_pose()
     {
         boolean fewCorners = false;
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         if (this.N_pts < Cfg.minCorners) // original had 4; solvePnp wants 6 sometimes, and UserGuidance wants many more
         {
-            // LOGGER.finest("too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
+            LOGGER.finest("too few corners " + (this.N_pts == 0 ? "- possibly blurred by movement or bad aim" : this.N_pts));
             fewCorners = true;
             this.pose_valid = false;
             return fewCorners;
@@ -441,8 +439,8 @@ public class ChArucoDetector {
         MatOfPoint2f p2dReTyped = new MatOfPoint2f(this.p2d);
         MatOfDouble distReTyped = new MatOfDouble(this.cdist);
 
-        // LOGGER.finest("p3d\n" + p3dReTyped.dump());
-        // LOGGER.finest("p2d\n" + p2dReTyped.dump());
+        LOGGER.finest("p3d\n" + p3dReTyped.dump());
+        LOGGER.finest("p2d\n" + p2dReTyped.dump());
         
         Mat rvec = new Mat(); // neither previous pose nor guidance board pose helped the solvePnP (made pose estimate worse)
         Mat tvec = new Mat(); // so don't give solvePnP a starting pose estimate
@@ -455,11 +453,11 @@ public class ChArucoDetector {
             rvec, tvec,
             false, 100, 8.0f, 0.99, inLiers, Calib3d.SOLVEPNP_ITERATIVE);
 
-        // LOGGER.finest("inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
+        LOGGER.finest("inliers " + inLiers.rows() + " of " + p3dReTyped.rows() + " " + inLiers);
         
         if ( ! this.pose_valid)
         {
-            // LOGGER.finest("pose not valid");
+            LOGGER.finest("pose not valid");
             return fewCorners;            
         }
 
@@ -527,8 +525,8 @@ public class ChArucoDetector {
         this.rvec = rvec.t(); // t() like ravel(), solvePnp returns r and t as Mat(3, 1, )
         this.tvec = tvec.t(); // and the rest of the program uses Mat(1, 3, )
 
-        // LOGGER.finest("out rvec\n" + this.rvec.dump());
-        // LOGGER.finest("out tvec\n" + this.tvec.dump());
+        LOGGER.finest("out rvec\n" + this.rvec.dump());
+        LOGGER.finest("out tvec\n" + this.tvec.dump());
         return fewCorners;
     }
 }

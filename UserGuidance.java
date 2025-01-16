@@ -32,7 +32,7 @@ public class UserGuidance {
     private static Logger LOGGER;
     static {
       LOGGER = Logger.getLogger("");
-      LOGGER.finest("Loading");     
+      LOGGER.finer("Loading");     
     }
 
 /*-------------------------------------------------------------------------------------------------*/
@@ -55,7 +55,7 @@ public class UserGuidance {
 
     // get geometry from tracker
     public ChArucoDetector tracker;
-    private int allpts;
+    private int minCornersInitially;
     private int square_len;
     private int marker_len;
     // private int SQUARE_LEN_PIX = 12;
@@ -115,14 +115,14 @@ public class UserGuidance {
 
     public UserGuidance(ChArucoDetector tracker, double var_terminate, Size img_size) // force use of var_terminate=0.1 instead of defaulting
     {
-        LOGGER.finest("Instantiating ----------------------------------------");
+        LOGGER.finer("Instantiating");
 
         this.img_size = img_size;
         this.tracker = tracker;
         this.var_terminate = var_terminate;
         this.calib = new Calibrator(this.img_size);
         this.pconverged = new boolean[this.calib.nintr()]; // initialized to false by Java
-        this.allpts = (Cfg.board_x-1)*(Cfg.board_y-1); // board w = 9 h = 6 => 54 squares; 8x5 => 40 interior corners
+        this.minCornersInitially = (int)(Cfg.board_x*Cfg.board_y*0.4); // intial pose detection requires most of the ArUcos in a board;
         this.square_len = Cfg.square_len;
         this.marker_len = Cfg.marker_len;
         // this.SQUARE_LEN_PIX = this.square_len;
@@ -151,7 +151,7 @@ public class UserGuidance {
 /*-------------------------------------------------------------------------------------------------*/
     private void calibrate()
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
 
         // need at least 2 keyframes to compute the variances, etc.
@@ -177,7 +177,7 @@ public class UserGuidance {
 
             if (total_var > total_var_prev)
             {
-                // LOGGER.finest("note: total var degraded");
+                LOGGER.finest("note: total var degraded");
             }
             // check for convergence
             for (int i = 0; i < pvar.length; i++)
@@ -185,11 +185,11 @@ public class UserGuidance {
                 rel_pstd[i] = 1 - Math.sqrt(pvar[i]) / Math.sqrt(pvar_prev[i]); //relative change to each std dev
             }
 
-            // LOGGER.finest("relative stddev " + Arrays.toString(rel_pstd));
+            LOGGER.finest("relative stddev " + Arrays.toString(rel_pstd));
             
             if (rel_pstd[this.tgt_param] < 0)
             {
-                // LOGGER.finest(this.INTRINSICS[this.tgt_param] + " degraded");
+                LOGGER.finest(this.INTRINSICS[this.tgt_param] + " degraded");
             }
 
             // g0(p0 p1 p2 p3)  g1(p4 p5 p6 p7 p8)
@@ -226,7 +226,7 @@ public class UserGuidance {
                 }
                 if (converged.length() > 0)
                 {
-                    // LOGGER.finest("{" + converged + "} converged");
+                    LOGGER.finest("{" + converged + "} converged");
                 }
             }
         }
@@ -252,7 +252,7 @@ public class UserGuidance {
 /*-------------------------------------------------------------------------------------------------*/
     private void set_next_pose()
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         int nk = this.calib.keyframes.size();
     
@@ -276,7 +276,7 @@ public class UserGuidance {
          
         this.board_warped = this.board.project(this.tgt_r, this.tgt_t, false, Imgproc.INTER_NEAREST);
 
-        // LOGGER.finest("r/t and board_warped " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
+        LOGGER.finest("r/t and board_warped " + this.tgt_r.dump() + this.tgt_t.dump()  + board_warped);
     }
 /*-------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
@@ -297,9 +297,9 @@ public class UserGuidance {
      */
     private double pose_close_to_tgt(Mat progressInsert)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        // LOGGER.finest("pose_valid " + this.tracker.pose_valid() + ", tgt_r empty " + this.tgt_r.empty());
+        LOGGER.finest("pose_valid " + this.tracker.pose_valid() + ", tgt_r empty " + this.tgt_r.empty());
         
         double jaccard = 0.;
     
@@ -341,7 +341,7 @@ public class UserGuidance {
         Core.multiply(tempImg, Cfg.progressInsertGuidanceGrey, tempImg); // brighten (to dark gray) so it can be seen by humans
         Core.add(progressInsert, tempImg, progressInsert); // where they overlap is bright white
 
-        // LOGGER.finest("shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
+        LOGGER.finest("shadow_warped created r/t " + this.tracker.rvec().dump() + this.tracker.tvec().dump()  + board_warped);
 
         int Ab = Core.countNonZero(tmp); // number of on (1) pixels in the warped shadow board
         Core.bitwise_and(this.overlap, tmp, this.overlap); // make the overlapped pixels on (1)
@@ -354,7 +354,7 @@ public class UserGuidance {
         tmp.release();
         tempImg.release();
 
-        // LOGGER.finest("jaccard " + jaccard);
+        LOGGER.finest("jaccard " + jaccard);
     
         return jaccard;
     }
@@ -373,22 +373,22 @@ public class UserGuidance {
      */ 
     public boolean update(boolean force, Mat progressInsert)
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        // first pose needs to see at least half of the interior corners
+        // first pose needs to see at least half of the corners
         // this image frame may or may not be good enough to capture so check if better than previous reperr (or initial minimum allowed)
         // if image frame not good enough to capture we'll be back here next time
         // if it is good enough to capture, the calibration is redone far below but that's not too much of a waste
-        if (this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= this.allpts/2) // tempting to make this more corners required but not sure about all cameras
+        if (this.calib.keyframes.isEmpty() && this.tracker.N_pts() >= minCornersInitially)
         {
-            // LOGGER.finest("initial calibrate");
+            LOGGER.finest("initial calibrate");
             // try to estimate intrinsic params from single frame
             this.calib.calibrate(Arrays.asList(this.tracker.get_calib_pts())); // no captures yet so estimate from this frame detection
             // is this bootstrap calibration good enough to use at least for the next guidance display
             if (this.calib.reperr() < this.min_reperr_init) // assume K is all numeric - no way it couldn't be, original checked for nan but it never was
             {
                 // better than previous reperr so use these intrinsics for next guidance display
-                // LOGGER.finest("initial set_next_pose and intrinsics");
+                LOGGER.finest("initial set_next_pose and intrinsics");
                 this.tracker.set_intrinsics(this.calib); // use the better (we are hopeful) intrinsics (rkt reversed this and the next line! did I screw up?)
                 this.set_next_pose();  // update target guidance pose display based on the new intrinsics
                 this.min_reperr_init = this.calib.reperr(); // ratchet what's considered better
@@ -420,13 +420,13 @@ public class UserGuidance {
 
         this.capture = this.pose_reached && (this.still || force);
 
-        // LOGGER.warning(
-            // "corners " + this.tracker.N_pts() +
-            // ", pose_close_to_tgt " + pose_close_to_tgt +
-            // ", still " + this.still +
-            // ", mean_flow " + this.tracker.mean_flow() +
-            // ", pose_reached " + this.pose_reached +
-            // ", force " + force);
+        LOGGER.finest(
+            "corners " + this.tracker.N_pts() +
+            ", pose_close_to_tgt " + pose_close_to_tgt +
+            ", still " + this.still +
+            ", mean_flow " + this.tracker.mean_flow() +
+            ", pose_reached " + this.pose_reached +
+            ", force " + force);
 
         if ( ! this.capture)
         {
@@ -447,8 +447,8 @@ public class UserGuidance {
         // use the updated calibration results for tracking
         this.tracker.set_intrinsics(this.calib);
 
-        LOGGER.finest("camera matrix\n" + this.calib.K().dump());
-        LOGGER.finest("camera distortion " + this.calib.cdist().dump());
+        LOGGER.fine("camera matrix\n" + this.calib.K().dump());
+        LOGGER.fine("camera distortion\n" + this.calib.cdist().dump());
 
         this.converged = isAllTrue(this.pconverged);
 
@@ -477,7 +477,7 @@ public class UserGuidance {
 /*-------------------------------------------------------------------------------------------------*/
     private void _update_user_info()
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         this.user_info_text = "";
 
@@ -533,7 +533,7 @@ public class UserGuidance {
      */
     public void draw(Mat img, boolean mirror) // force users to specify mirror false instead of defaulting
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
         // assumes both img and board are 3 color channels BGR
         if ( ! this.tgt_r.empty())
@@ -583,20 +583,20 @@ public class UserGuidance {
 /*-------------------------------------------------------------------------------------------------*/
     public void write()
     {
-        // LOGGER.finest("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
+        LOGGER.finer("method entered  . . . . . . . . . . . . . . . . . . . . . . . .");
 
-        LOGGER.config("Camera Calibration Data");
-        LOGGER.config("nr_of_frames: " + this.calib.keyframes.size());
-        LOGGER.config("image_width: " + this.calib.img_size().width);
-        LOGGER.config("image_height: " + this.calib.img_size().height);
-        LOGGER.config("board_width: " + this.tracker.board_sz().width);
-        LOGGER.config("board_height: " + this.tracker.board_sz().height);
-        LOGGER.config("square_size: " + this.square_len);
-        LOGGER.config("marker_size: " + this.marker_len);
-        LOGGER.config("fisheye_model: " + 0);
-        LOGGER.config("camera_matrix:\n" + this.calib.K().dump());
-        LOGGER.config("distortion_coefficients:\n" + this.calib.cdist().dump());
-        LOGGER.config("avg_reprojection_error: " + this.calib.reperr());
-        LOGGER.config("End of Calibration");
+        LOGGER.info("\nCamera Calibration Data");
+        LOGGER.info("nr_of_frames: " + this.calib.keyframes.size());
+        LOGGER.info("image_width: " + this.calib.img_size().width);
+        LOGGER.info("image_height: " + this.calib.img_size().height);
+        LOGGER.info("board_width: " + this.tracker.board_sz().width);
+        LOGGER.info("board_height: " + this.tracker.board_sz().height);
+        LOGGER.info("square_size: " + this.square_len);
+        LOGGER.info("marker_size: " + this.marker_len);
+        LOGGER.info("fisheye_model: " + 0);
+        LOGGER.info("camera_matrix:\n" + this.calib.K().dump());
+        LOGGER.info("distortion_coefficients:\n" + this.calib.cdist().dump());
+        LOGGER.info("avg_reprojection_error: " + this.calib.reperr());
+        LOGGER.info("End of Calibration\n");
     }
 }
