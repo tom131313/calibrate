@@ -17,7 +17,7 @@ import edu.wpi.first.util.CircularBuffer;
 
 public class Focus {
      /**
-     * Image Sharpness detemination for focus adjusment.
+     * Image Sharpness determination for focus adjustment.
      * Larger values are sharper.
      */
     static int bufferSize = 20;
@@ -69,9 +69,9 @@ public class Focus {
 			);
 
         if(!circles.empty()) {
-            var extractBoundry = new float[3];
-            circles.get(0, 0, extractBoundry);
-            Imgproc.circle(circleMask, new Point(extractBoundry[0], extractBoundry[1]), (int)extractBoundry[2], new Scalar(255), Imgproc.FILLED);
+            var extractBoundary = new float[3];
+            circles.get(0, 0, extractBoundary);
+            Imgproc.circle(circleMask, new Point(extractBoundary[0], extractBoundary[1]), (int)extractBoundary[2], new Scalar(255), Imgproc.FILLED);
             Core.bitwise_and(gray, circleMask, gray); 
             // HighGui.imshow("gray", gray);    
             // HighGui.waitKey(1);
